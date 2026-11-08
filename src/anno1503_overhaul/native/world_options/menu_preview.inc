@@ -1,5 +1,5 @@
-/* Hit testing uses the same world-to-preview projection and coast mask as
- * painting. Water and inhabited/special islands cannot become start choices. */
+/* Hit testing uses the paint projection and coast mask. Inspection is separate
+ * from selecting a preferred start; inhabited/special islands are inspectable. */
 static void wsMenuPreviewClick(DialogState*d,HWND window,LPARAM position){
  if(!d->previewValid||d->previewBusy)return;
  RECT client;GetClientRect(window,&client);int width=client.right-client.left,height=client.bottom-client.top;
@@ -16,9 +16,8 @@ static void wsMenuPreviewClick(DialogState*d,HWND window,LPARAM position){
   uint32_t row=(uint32_t)(y-top)*WS_PREVIEW_COAST_SIZE/(uint32_t)(bottom-top);
   uint32_t column=(uint32_t)(x-left)*WS_PREVIEW_COAST_SIZE/(uint32_t)(right-left),bit=row*WS_PREVIEW_COAST_SIZE+column;
   if(!(wsPreviewCoasts[p->templateIndex][bit>>3]&(1u<<(bit&7u))))continue;
-  if(!WorldSettingsStartingIslandEligible(i)){status(d,"Choose an ordinary island with safe nearby water. Native, pirate and Venetian islands cannot be selected.");return;}
-  d->creating=1;d->preferredIsland=(int32_t)i;SendDlgItemMessageA(d->window,ID_START_CLIMATE,CB_SETCURSEL,0,0);d->creating=0;
-  KillTimer(d->window,WS_PREVIEW_TIMER);generatePreview(d,0);return;
+  d->inspectedIsland=(int32_t)i;wsMenuIslandInfo(d);wsMenuPage(d,4);InvalidateRect(window,NULL,FALSE);
+  status(d,"Island inspected. Your starting position is unchanged; use the button to prefer an eligible island.");return;
  }
- status(d,"Click the land on an ordinary island to choose a preferred starting position.");
+ status(d,"Click the land on any island to inspect its climate, resources and occupants.");
 }

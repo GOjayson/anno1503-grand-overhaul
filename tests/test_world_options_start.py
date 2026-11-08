@@ -25,6 +25,32 @@ def staged():
 
 
 class StartRecipeTests(unittest.TestCase):
+    def test_stock_scenes_have_contiguous_ordinary_owner_ids_and_ships(self):
+        catalogue = (ROOT / 'legacy/world_settings' / PRIVATE / 'world_catalogue.h').read_text()
+        for difficulty, name in enumerate(('Easy', 'Medium', 'Hard')):
+            scene = bytes(int(v) for v in re.findall(r'\d+',
+                re.search(r'wsScene' + name + r'\[\]\s*=\s*\{(.*?)\};', catalogue, re.S)[1]))
+            ordinary, boats = set(), {}
+            at = 32
+            while at < len(scene):
+                tag = scene[at:at+12].rstrip(b'\0')
+                size, = struct.unpack_from('<I', scene, at+12)
+                payload = scene[at+16:at+16+size]
+                self.assertEqual(len(payload), size)
+                if tag == b'SPIELER':
+                    scope, owner = struct.unpack_from('<II', payload)
+                    self.assertEqual(scope, 0)
+                    for field, data in NativeStartingOptionsTests.fields(payload, 8):
+                        if field == 'HEAD' and len(data) == 108 and struct.unpack_from('<H', data)[0] == 12:
+                            ordinary.add(owner)
+                        if field in ('SCHIFF', 'SCHI64'):
+                            definition, = struct.unpack_from('<H', data, 4 if field == 'SCHI64' else 2)
+                            boats.setdefault(owner, []).append(definition)
+                at += size+16
+            expected = set(range(1, 4 if difficulty == 0 else 5))
+            self.assertEqual(ordinary, expected)
+            self.assertEqual({owner: boats[owner] for owner in expected}, {owner: [1502] for owner in expected})
+
     def test_imported_native_inputs_remain_immutable(self):
         base = ROOT / 'legacy/world_settings'
         names = ('world_ship_reserves.h', 'start_options.inc', 'native_faction_options.h')
@@ -55,13 +81,19 @@ class Settings(C.Structure):
         'factions', 'startingMoney', 'startingFleet', 'aiDifficulty',
         'plantFertility', 'mineralFertility', 'worldSize', 'mapSeed',
         'startClimate', 'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
-        'cargoFood', 'climateBalance', 'layoutStyle', 'disasters')]
+        'cargoFood', 'climateBalance', 'layoutStyle', 'disasters', 'fairStarts',
+        'startSeparation', 'resourceDistribution', 'guaranteeBasics')]
 
 
 class Island(C.Structure):
     _fields_ = [(name, C.c_uint32) for name in (
         'id', 'x', 'y', 'width', 'height', 'templateIndex', 'cropMask',
         'mineralMask', 'cultures', 'climate')]
+
+
+class SceneShip(C.Structure):
+    _fields_ = [('owner', C.c_uint32), ('definition', C.c_uint32),
+                ('x', C.c_float), ('y', C.c_float)]
 
 
 def settings(**changes):
@@ -86,10 +118,10 @@ class NativeStartingOptionsTests(unittest.TestCase):
         output = ROOT / '.local/validation' / ('options-start-' + uuid.uuid4().hex)
         output.mkdir(parents=True)
         for name in ('advanced_settings.h', 'world_ship_reserves.h', 'start_position.inc',
-                     'start_cargo.inc', 'start_options.inc', 'native_faction_options.h'):
+                     'start_cargo.inc', 'start_options.inc', 'native_faction_options.h', 'fair_starts.inc'):
             (output / name).write_bytes(files[PRIVATE + name])
         header = files[PRIVATE + 'world_backend.h'].decode()
-        declarations = '\n'.join(re.findall(r'typedef struct WS(?:WorldSettings|PlanIsland)\s*\{.*?\}\s*WS\w+;', header, re.S))
+        declarations = '\n'.join(re.findall(r'typedef struct WS(?:WorldSettings|PlanIsland|IslandDetails)\s*\{.*?\}\s*WS\w+;', header, re.S))
         source = r'''
 #include <windows.h>
 #include <stdint.h>
@@ -99,13 +131,14 @@ DECLARATIONS
 #include "advanced_settings.h"
 #include "world_ship_reserves.h"
 #define WS_LIMIT 128u
-typedef struct WSTemplate{uint32_t faction;} WSTemplate;
-static WSTemplate wsTemplates[2]={{0},{1}};
-#define WS_COUNT 2u
+typedef struct WSTemplate{uint32_t faction,fertileLand;} WSTemplate;
+static WSTemplate wsTemplates[5]={{0,2000},{1,2000},{0,2500},{0,3000},{0,8000}};
+#define WS_COUNT 5u
 static WSPlanIsland planned[128];
 static uint32_t planCount,planSpacing;
 static struct{uint32_t state;}wsPreviewCache;
 static uint32_t wsTemplateFaction(const WSTemplate*t){return t->faction;}
+static int wsPop(uint32_t n){int count=0;while(n){count++;n&=n-1u;}return count;}
 static void wsMessage(char*out,uint32_t cap,const char*text){if(out&&cap)snprintf(out,cap,"%s",text);}
 static int wsSeparated(const WSPlanIsland*a,const WSPlanIsland*b,uint32_t gap){return a->x+a->width+gap<=b->x||b->x+b->width+gap<=a->x||a->y+a->height+gap<=b->y||b->y+b->height+gap<=a->y;}
 #include "start_position.inc"
@@ -140,6 +173,20 @@ __declspec(dllexport) int fixturePosition(WSWorldSettings*s,const WSPlanIsland*i
  int result=wsApplyPreferredStart(s,error,cap);wsWorldShipPosition(0,xy,xy+1);
  *chosen=wsPreferredIsland;*unchanged=!memcmp(planned,input,count*sizeof(*input));return result;
 }
+__declspec(dllexport) int fixtureFair(WSWorldSettings*s,const WSPlanIsland*input,uint32_t count,int replay,float*xy,int32_t*islands,uint32_t*owners,char*error,uint32_t cap){
+ if(count>128||!wsAdvancedValidateSettings(s,error,cap))return 0;
+ memcpy(planned,input,count*sizeof(*input));planCount=count;planSpacing=(uint32_t)s->spacing;wsPreviewCache.state=replay?1u:0u;
+ if(!wsConfigureWorldSize(s)||!wsApplyPreferredStart(s,error,cap)||!wsValidateFairStarts(s,error,cap))return 0;
+ if(memcmp(planned,input,count*sizeof(*input)))return 0;
+ wsPreviewCache.state=1;
+ for(uint32_t owner=0;owner<4u;owner++){
+  wsWorldShipPosition(owner,xy+2u*owner,xy+2u*owner+1u);
+  islands[owner]=wsAssignedStartIsland[owner];
+ }
+ *owners=WorldSettingsExpectedFairOwners();return 1;
+}
+__declspec(dllexport) int fixtureAnchor(WSWorldSettings*s,uint32_t owner,uint32_t*island){return wsStartResourceAnchor(s,owner,island);}
+__declspec(dllexport) uint32_t fixtureShips(WSSceneShip*out){memcpy(out,wsExpectedSceneShips,wsExpectedSceneShipCount*sizeof(*out));return wsExpectedSceneShipCount;}
 __declspec(dllexport) int fixtureSerialize(WSWorldSettings*s,const unsigned char*source,uint32_t size,unsigned char*out,uint32_t capacity,uint32_t*written,char*error,uint32_t cap){
  *written=0;if(!wsConfigureWorldSize(s)||!wsStartingInspect(source,size,s,error,cap))return 0;
  WSBuffer b={out,0,capacity};
@@ -177,6 +224,16 @@ __declspec(dllexport) int fixtureCargoCertificate(void*ship,void*figure,uint32_t
         cls.position.argtypes = [C.POINTER(Settings), C.POINTER(Island), C.c_uint32, C.c_void_p,
                                 C.c_void_p, C.c_void_p, C.c_void_p, C.c_uint32]
         cls.position.restype = C.c_int
+        cls.fair = cls.dll.fixtureFair
+        cls.fair.argtypes = [C.POINTER(Settings), C.POINTER(Island), C.c_uint32,
+            C.c_int, C.c_void_p, C.c_void_p, C.c_void_p, C.c_void_p, C.c_uint32]
+        cls.fair.restype = C.c_int
+        cls.anchor = cls.dll.fixtureAnchor
+        cls.anchor.argtypes = [C.POINTER(Settings), C.c_uint32, C.c_void_p]
+        cls.anchor.restype = C.c_int
+        cls.ships = cls.dll.fixtureShips
+        cls.ships.argtypes = [C.POINTER(SceneShip)]
+        cls.ships.restype = C.c_uint32
         cls.bind = cls.dll.fixtureBind
         cls.bind.argtypes = [C.c_void_p, C.c_uint32, C.c_int32]
         cls.bind.restype = C.c_int
@@ -273,6 +330,88 @@ __declspec(dllexport) int fixtureCargoCertificate(void*ship,void*figure,uint32_t
         result, _, _, unchanged, error = self.preferred(settings(worldSize=256, startIsland=0), blocked)
         self.assertEqual((result, unchanged), (0, 1))
         self.assertIn(b'clear coastal', error)
+
+    def read_fair(self, value, islands, replay=False):
+        array = (Island * len(islands))(*islands)
+        xy, chosen, owners = (C.c_float * 8)(), (C.c_int32 * 4)(), C.c_uint32()
+        error = C.create_string_buffer(512)
+        result = self.fair(C.byref(value), array, len(array), replay, xy, chosen,
+                           C.byref(owners), error, len(error))
+        return result, tuple(xy), tuple(chosen), owners.value, error.value
+
+    @staticmethod
+    def fair_islands():
+        return [Island(id=i, x=x, y=y, width=128, height=128, templateIndex=template,
+                       cropMask=0xf949, mineralMask=5, climate=2)
+                for i, (x, y, template) in enumerate(((128, 128, 0), (128, 1280, 2),
+                                                     (1280, 128, 3), (1280, 1280, 0)))]
+
+    def test_fair_starts_are_distinct_safe_and_deterministic_with_resource_repair(self):
+        value = settings(difficulty=1, worldSize=2048, fairStarts=1, aiCount=3,
+                         startSeparation=2, startingFleet=2)
+        islands = self.fair_islands()
+        islands[0].mineralMask = 0
+        first = self.read_fair(value, islands)
+        self.assertEqual((first[0], first[3], first[4]), (1, 14, b''))
+        self.assertEqual(len(set(first[2])), 4)
+        self.assertEqual(first, self.read_fair(value, islands))
+        # Start-time replay must retain its exact assignment even after the
+        # basic-resource repair has added compatible iron/salt on one island.
+        islands[0].mineralMask = 5
+        changed = self.read_fair(value, islands, replay=True)
+        self.assertEqual(changed, first)
+        for a in range(4):
+            for b in range(a):
+                dx, dy = first[1][2*a]-first[1][2*b], first[1][2*a+1]-first[1][2*b+1]
+                self.assertGreaterEqual(dx*dx+dy*dy, 1024**2)
+        for island, owner in zip(first[2], range(4)):
+            self.assertEqual(self.dll.WorldSettingsStartOwner(island), owner)
+
+    def test_fair_start_respects_preferred_island_and_preserves_inactive_owner(self):
+        value = settings(difficulty=1, worldSize=2048, fairStarts=1, aiCount=2,
+                         startSeparation=1, startIsland=0, startingFleet=1)
+        result, xy, chosen, mask, error = self.read_fair(value, self.fair_islands())
+        self.assertEqual((result, chosen[0], chosen[3], mask, error), (1, 0, -1, 6, b''))
+        self.assertEqual(xy[6:8], (1536.5, 1536.5))  # inactive owner3 keeps its stock anchor
+        ships = (SceneShip * 32)()
+        count = self.ships(ships)
+        actual = [(ship.owner, ship.definition, ship.x, ship.y) for ship in ships[:count]]
+        self.assertEqual([row[1] for row in actual if row[0] == 0], [1503, 1504, 1504])
+        self.assertIn((3, 1502, 1536.5, 1536.5), actual)
+        self.assertIn((4, 1502, 512.5, 1536.5), actual)
+        for owner in (1, 2):
+            self.assertIn((owner, 1502, xy[owner*2], xy[owner*2+1]), actual)
+        for participant in range(3):
+            anchor = C.c_uint32()
+            self.assertEqual(self.anchor(C.byref(value), participant, C.byref(anchor)), 1)
+            self.assertEqual(anchor.value, chosen[participant])
+        anchor = C.c_uint32()
+        self.assertEqual(self.anchor(C.byref(value), 3, C.byref(anchor)), 0)
+
+    def test_impossible_separation_and_unfair_land_are_rejected(self):
+        islands = self.fair_islands()
+        value = settings(difficulty=1, worldSize=2048, fairStarts=1, aiCount=3, startSeparation=0)
+        self.assertEqual(self.read_fair(value, islands)[0], 0)
+        value.startSeparation = 2
+        islands[3].templateIndex = 4  # 8,000 fertile tiles versus 2,000-3,000
+        result = self.read_fair(value, islands)
+        self.assertEqual(result[0], 0)
+        self.assertIn(b'No fair starts', result[4])
+        islands[3].templateIndex = 0
+        islands[3].cultures = 1
+        self.assertEqual(self.read_fair(value, islands)[0], 0)
+
+    def test_fair_start_summary_and_single_player_island_choice(self):
+        value = settings(worldSize=2048, fairStarts=1, aiCount=0)
+        result = self.read_fair(value, self.fair_islands())
+        self.assertEqual((result[0], result[2][0], result[3]), (1, 2, 0))
+        summary = C.create_string_buffer(512)
+        self.assertEqual(self.dll.WorldSettingsDescribeStarts(summary, len(summary)), 1)
+        self.assertIn(b'estimated fertile area 3000', summary.value)
+        value.startClimate = 0  # no suitable polar growing island in the fixture
+        result = self.read_fair(value, self.fair_islands())
+        self.assertEqual(result[0], 0)
+        self.assertIn(b'preferred island/climate', result[4])
 
     def test_native_disaster_binding_changes_only_two_proven_bytes(self):
         for factions in range(4):

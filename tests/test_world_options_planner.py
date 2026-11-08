@@ -64,7 +64,8 @@ class Settings(C.Structure):
                              'startingFleet', 'aiDifficulty', 'plantFertility',
                              'mineralFertility', 'worldSize', 'mapSeed', 'startClimate',
                              'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
-                             'cargoFood', 'climateBalance', 'layoutStyle', 'disasters')]
+                             'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
+                             'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics')]
 
 
 class Island(C.Structure):
@@ -79,7 +80,7 @@ def settings(**overrides):
                       aiDifficulty=1, plantFertility=1, mineralFertility=1,
                       worldSize=1024, mapSeed=3719, startClimate=-1,
                       startIsland=-1, cargoTools=40, cargoWood=40, cargoFood=10,
-                      disasters=1)
+                      disasters=1, startSeparation=1)
     for key, value in overrides.items():
         setattr(result, key, value)
     return result
@@ -185,7 +186,7 @@ __declspec(dllexport) int FixtureLayoutMatches(const WSWorldSettings*s,const WSP
         return list(out[:count])
 
     def test_native_abi_and_weighted_climate_targets(self):
-        self.assertEqual(self.lib.FixtureABI(), 96)
+        self.assertEqual(self.lib.FixtureABI(), 112)
         self.assertEqual(C.sizeof(Island), 40)
         for balance, favored in ((0, ()), (1, (2, 3)), (2, (4, 5)), (3, (0, 1))):
             options = settings(islandCount=60, climateBalance=balance)

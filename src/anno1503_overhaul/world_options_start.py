@@ -18,32 +18,43 @@ def apply_start(files: dict[str, bytes]) -> None:
     files[ships] = replace(files[ships], b'static uint32_t wsWorld=1024u;',
         b'static uint32_t wsWorld=1024u;\n'
         b'static uint32_t wsBaseShipReserveCount,wsPreferredStartActive;\n'
-        b'static float wsPreferredStartX,wsPreferredStartY;', 'preferred start state')
+        b'static float wsPreferredStartX,wsPreferredStartY;\n'
+        b'static uint32_t wsStartOverrideMask;\n'
+        b'static float wsStartOverrideXY[4][2];', 'preferred start state')
     files[ships] = replace(files[ships],
         b'static void wsWorldShipPosition(uint32_t owner,float*x,float*y){',
         b'static void wsWorldShipPosition(uint32_t owner,float*x,float*y){\n'
+        b' if(owner<4u&&(wsStartOverrideMask&(1u<<owner))){*x=wsStartOverrideXY[owner][0];*y=wsStartOverrideXY[owner][1];return;}\n'
         b' if(!owner&&wsPreferredStartActive){*x=wsPreferredStartX;*y=wsPreferredStartY;return;}',
         'human spawn override')
     files[ships] = replace(files[ships], b' wsExpectedSceneShipCount=wsActiveShipReserveCount=0;',
-        b' wsExpectedSceneShipCount=wsActiveShipReserveCount=wsBaseShipReserveCount=0;wsPreferredStartActive=0;',
+        b' wsExpectedSceneShipCount=wsActiveShipReserveCount=wsBaseShipReserveCount=0;wsPreferredStartActive=wsStartOverrideMask=0;',
         'new spawn reservation scope')
     files[ships] = replace(files[ships], b'}wsActiveShipReserveCount=5;}\n return 1;',
         b'}wsActiveShipReserveCount=5;}\n wsBaseShipReserveCount=wsActiveShipReserveCount;\n return 1;',
         'base reservation count')
 
     backend = PRIVATE + 'world_backend.c'
-    files[backend] = replace(files[backend], b'#include "mineral_fertility.inc"',
-        b'#include "mineral_fertility.inc"\n#include "start_position.inc"', 'preferred start helpers')
+    if b'#include "resource_distribution.inc"' in files[backend]:
+        files[backend] = replace(files[backend], b'#include "resource_distribution.inc"',
+            b'#include "resource_distribution.inc"\n#include "start_position.inc"', 'preferred start after resource helpers')
+    else:
+        # The isolated starting-policy fixture has no resource planner. Full
+        # production apply_options always stages resource helpers first.
+        files[backend] = replace(files[backend], b'#include "mineral_fertility.inc"',
+            b'#include "mineral_fertility.inc"\n#include "start_position.inc"', 'preferred start helpers')
     files[backend] = replace(files[backend], b'  if(failed||!wsPack',
         b'  if(!wsConfigureWorldSize(s)){wsMessage(error,cap,"The starting ship reservation could not reset.");return 0;}\n'
         b'  if(failed||!wsPack', 'reset preferred spawn before every packing attempt')
-    files[backend] = replace(files[backend], b'  planCount=n;',
-        b'  planCount=n;\n  if(!wsApplyPreferredStart(s,error,cap)){planCount=0;return 0;}',
-        'preferred start after final packing')
+    files[backend] = replace(files[backend],
+        b'  if(wsValidatePlan(s,error,cap)){wsPreviewRemember(s,seed);wsMessage(error,cap,"");return 1;}planCount=0;',
+        b'  if(!wsApplyPreferredStart(s,error,cap)||!wsGuaranteeStartResources(s,seed,error,cap)||!wsValidateFairStarts(s,error,cap)){planCount=0;return 0;}\n'
+        b'  if(wsValidatePlan(s,error,cap)){wsPreviewRemember(s,seed);wsMessage(error,cap,"");return 1;}planCount=0;',
+        'starting assignments after resource distribution and before preview')
     files[backend] = replace(files[backend],
         b' if(!wsConfigureWorldSize(s)){wsMessage(error,cap,"The selected world size or starting fleet is unsupported.");return 0;}',
         b' if(!wsConfigureWorldSize(s)){wsMessage(error,cap,"The selected world size or starting fleet is unsupported.");return 0;}\n'
-        b' if(!wsApplyPreferredStart(s,error,cap)||!wsValidatePlan(s,error,cap))return 0;',
+        b' if(!wsApplyPreferredStart(s,error,cap)||!wsValidateFairStarts(s,error,cap)||!wsValidatePlan(s,error,cap))return 0;',
         'stage preferred fleet and recertify unchanged islands')
     files[backend] = replace(files[backend], b'#include "mineral_persistence.inc"',
         b'#include "mineral_persistence.inc"\n'
@@ -53,6 +64,7 @@ def apply_start(files: dict[str, bytes]) -> None:
         b'  wsMessage(error,cap,"Loaded disasters differ from the option chosen in World Settings.");return 0;\n'
         b' }return 1;\n}\n', 'post-profile read-only disaster certificate')
     files[PRIVATE + 'start_position.inc'] = authored('start_position.inc')
+    files[PRIVATE + 'fair_starts.inc'] = authored('fair_starts.inc')
 
     cargo = PRIVATE + 'start_options.inc'
     files[cargo] = replace(files[cargo],
@@ -89,8 +101,15 @@ def apply_start(files: dict[str, bytes]) -> None:
     ai = PRIVATE + 'world_ai.c'
     files[ai] = replace(files[ai], b'extern int WorldSettingsIsActive(void);',
         b'extern int WorldSettingsIsActive(void);\n'
-        b'extern int WorldSettingsValidateChosenDisasters(void*,char*,uint32_t);',
+        b'extern int WorldSettingsValidateChosenDisasters(void*,char*,uint32_t);\n'
+        b'extern uint32_t WorldSettingsExpectedFairOwners(void);',
         'post-profile disaster declaration')
+    files[ai] = replace(files[ai],
+        b'  if(!suspend&&!disabled&&thinking)active++;',
+        b'  if(!suspend&&!disabled&&thinking)active++;\n'
+        b'  uint32_t fair=WorldSettingsExpectedFairOwners();\n'
+        b'  if(fair&&((!suspend&&!disabled&&thinking)!=(id<32u&&!!(fair&(1u<<id)))))return wsAIError(error,cap,"Active opponent owners differ from the validated fair starting positions.");',
+        'read-only active opponent owner identity certificate')
     files[ai] = replace(files[ai],
         b' if(valid==1)valid=WorldSettingsBindAIDiplomacy(world,expected,wsDiplomacyExpected,approved,wsProfileError,sizeof wsProfileError);',
         b' if(valid==1)valid=WorldSettingsBindAIDiplomacy(world,expected,wsDiplomacyExpected,approved,wsProfileError,sizeof wsProfileError);\n'

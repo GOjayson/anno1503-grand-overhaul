@@ -9,12 +9,12 @@ from anno1503_overhaul import world_options_snapshot as snapshot
 
 
 def fixture(**changes):
-    settings = dict(zip(snapshot.SETTINGS_FIELDS, [96, 1, 3, 2, 0, 0, 255, 3,
-        30000, 0, 1, 1, 1, 1024, 4294967295, -1, -1, 0, 40, 40, 10, 0, 0, 1]))
+    settings = dict(zip(snapshot.SETTINGS_FIELDS, [112, 1, 3, 2, 0, 0, 255, 3,
+        30000, 0, 1, 1, 1, 1024, 4294967295, -1, -1, 0, 40, 40, 10, 0, 0, 1, 0, 1, 0, 0]))
     settings.update(changes)
     data = bytearray(snapshot.SNAPSHOT_SIZE)
     struct.pack_into('<4I', data, 0, len(data), 1, settings['mapSeed'], 2)
-    struct.pack_into('<I5i2I6iI9i', data, 16, *settings.values())
+    struct.pack_into('<I5i2I6iI13i', data, 16, *settings.values())
     for index, x in enumerate((0, 128)):
         struct.pack_into('<10I', data, snapshot.ROWS_OFFSET + index * 40, index, x, 0, 64, 64, index, 1, 0, 0, 2)
     return data
@@ -44,7 +44,8 @@ class OptionsSnapshotTests(unittest.TestCase):
 
     def test_invalid_selection_fields_and_seed_mismatch_refused(self):
         for key, value in [('startIsland', 2), ('startClimate', 6), ('disasters', 2),
-                           ('layoutStyle', 3), ('climateBalance', 4), ('cargoFood', -1)]:
+                           ('layoutStyle', 3), ('climateBalance', 4), ('cargoFood', -1),
+                           ('fairStarts', 2), ('startSeparation', -1), ('resourceDistribution', 3), ('guaranteeBasics', 2)]:
             with self.subTest(field=key), self.assertRaises(ValueError):
                 snapshot.decode(fixture(**{key: value}))
         data = fixture()

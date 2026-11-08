@@ -21,7 +21,8 @@ FIELDS = ('difficulty', 'islandSize', 'islandCount', 'spacing', 'aiCount',
           'cultures', 'factions', 'startingMoney', 'startingFleet', 'aiDifficulty',
           'plantFertility', 'mineralFertility', 'worldSize', 'mapSeed',
           'startClimate', 'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
-          'cargoFood', 'climateBalance', 'layoutStyle', 'disasters')
+          'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
+          'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics')
 
 DRIVER = r'''
 #include <stdint.h>
@@ -38,9 +39,13 @@ typedef struct WSWorldSettings {
  int32_t startingMoney,startingFleet,aiDifficulty,plantFertility,mineralFertility,worldSize;
  uint32_t mapSeed;
  int32_t startClimate,startIsland,cargoMode,cargoTools,cargoWood,cargoFood,climateBalance,layoutStyle,disasters;
+ int32_t fairStarts,startSeparation,resourceDistribution,guaranteeBasics;
 } WSWorldSettings;
+typedef struct WSPlanIsland {uint32_t id,x,y,width,height,templateIndex,cropMask,mineralMask,cultures,climate;} WSPlanIsland;
+typedef struct WSIslandDetails {uint32_t size,index,fertileLand,oreSlots,whales,faction,startEligible;int32_t startOwner;uint32_t nearbyCrops,nearbyMinerals,resourceRadius;} WSIslandDetails;
 #define WS_WORLD_OPTIONS_GENERATOR "menu-codec-native-fixture-v1"
 #include "menu_presets_codec.inc"
+#include "menu_island_text.inc"
 int main(int argc,char**argv){
 #ifdef _WIN32
  _setmode(_fileno(stdin),_O_BINARY);_setmode(_fileno(stdout),_O_BINARY);
@@ -49,10 +54,21 @@ int main(int argc,char**argv){
  if(!strcmp(argv[1],"name"))return argc==3&&wsPresetNameValid(argv[2])?0:2;
  if(!strcmp(argv[1],"unsigned")){uint32_t value;if(argc!=3||!wsMenuUnsigned(argv[2],strlen(argv[2]),&value))return 2;printf("%u",value);return 0;}
  if(!strcmp(argv[1],"signed")){int32_t value;if(argc!=3||!wsMenuSigned(argv[2],strlen(argv[2]),&value))return 2;printf("%d",value);return 0;}
+ if(!strcmp(argv[1],"island")){
+  WSPlanIsland p={.id=3,.x=128,.y=256,.width=128,.height=96,.cropMask=0x1fff,.mineralMask=0x2f,.cultures=128,.climate=4};
+  WSIslandDetails d={.size=sizeof d,.index=3,.fertileLand=2345,.oreSlots=3,.whales=1,.faction=0,.startEligible=0,.startOwner=-1,.nearbyCrops=0x1009,.nearbyMinerals=5,.resourceRadius=256};
+  if(argc>2&&!strcmp(argv[2],"human")){p.cultures=0;d.startOwner=0;d.startEligible=1;}
+  if(argc>2&&!strcmp(argv[2],"ai")){p.cultures=0;d.startOwner=3;d.startEligible=1;}
+  if(argc>2&&!strcmp(argv[2],"venetians"))d.faction=2;
+  if(argc>2&&!strcmp(argv[2],"pirates"))d.faction=1;
+  if(argc>2&&!strcmp(argv[2],"invalid"))d.index=4;
+  char text[4096];uint32_t cap=argc>2&&!strcmp(argv[2],"short")?8u:(uint32_t)sizeof text;
+  if(!wsMenuDescribeIsland(&p,&d,text,cap))return 2;fputs(text,stdout);return 0;
+ }
  WSWorldSettings value={.size=sizeof value,.difficulty=2,.islandSize=4,.islandCount=24,.spacing=16,.aiCount=3,
   .cultures=255,.factions=3,.startingMoney=100000,.startingFleet=1,.aiDifficulty=3,.plantFertility=3,.mineralFertility=2,
   .worldSize=2048,.mapSeed=UINT32_MAX,.startClimate=-1,.startIsland=127,.cargoMode=1,.cargoTools=400,.cargoWood=0,.cargoFood=0,
-  .climateBalance=3,.layoutStyle=2,.disasters=1};
+  .climateBalance=3,.layoutStyle=2,.disasters=1,.fairStarts=1,.startSeparation=2,.resourceDistribution=2,.guaranteeBasics=1};
  char data[WS_PRESET_MAX_BYTES+1];uint32_t length=0;
  if(!strcmp(argv[1],"encode")){if(!wsPresetEncode(&value,data,WS_PRESET_MAX_BYTES,&length))return 8;fwrite(data,1,length,stdout);return 0;}
  if(strcmp(argv[1],"decode"))return 9;
@@ -79,7 +95,7 @@ class MenuStagingTests(unittest.TestCase):
         before = {name: hashlib.sha256(value).hexdigest() for name, value in files.items()}
         apply_menu(files)
         self.assertEqual(set(files) - set(before), {PRIVATE + name for name in
-            ('menu_values.inc', 'menu_create.inc', 'menu_preview.inc', 'menu_presets_codec.inc')})
+            ('menu_values.inc', 'menu_create.inc', 'menu_preview.inc', 'menu_presets_codec.inc', 'menu_island_text.inc')})
         self.assertEqual(before, {name: hashlib.sha256((FROZEN / name).read_bytes()).hexdigest()
                                   for name in before})
         for name in before:
@@ -139,7 +155,7 @@ class NativePresetCodecTests(unittest.TestCase):
     def test_round_trip_keeps_every_setting_and_unsigned_seed(self):
         value = self.decoded()
         self.assertEqual(set(value), {'size', *FIELDS})
-        self.assertEqual(value['size'], 96)
+        self.assertEqual(value['size'], 112)
         self.assertEqual(value['mapSeed'], 4294967295)
         self.assertEqual(value['startClimate'], -1)
         self.assertEqual(value['startIsland'], 127)
@@ -147,6 +163,10 @@ class NativePresetCodecTests(unittest.TestCase):
         self.assertEqual(value['layoutStyle'], 2)
         self.assertEqual(value['cargoTools'], 400)
         self.assertEqual(value['disasters'], 1)
+        self.assertEqual(value['fairStarts'], 1)
+        self.assertEqual(value['startSeparation'], 2)
+        self.assertEqual(value['resourceDistribution'], 2)
+        self.assertEqual(value['guaranteeBasics'], 1)
         self.assertEqual(value, self.decoded(self.encoded.replace(b'\n', b'\r\n')))
 
     def test_seed_zero_and_high_bit_values_are_not_signed_or_replaced(self):
@@ -157,7 +177,7 @@ class NativePresetCodecTests(unittest.TestCase):
 
     def test_rejects_invalid_numbers_and_incomplete_or_extra_schema(self):
         cases = [self.encoded[:-1], self.encoded + b'extra\n', b'\0' + self.encoded,
-                 self.encoded.replace(b'PRESET 1\n', b'PRESET 2\n'),
+                 self.encoded.replace(b'PRESET 2\n', b'PRESET 1\n'),
                  self.encoded.replace(b'menu-codec-native-fixture-v1', b'another-generator'),
                  self.encoded.replace(b'mapSeed=4294967295', b'mapSeed=4294967296'),
                  self.encoded.replace(b'mapSeed=4294967295', b'mapSeed=-1'),
@@ -166,6 +186,8 @@ class NativePresetCodecTests(unittest.TestCase):
                  self.encoded.replace(b'cargoTools=400\n', b'cargoTools=400\ncargoTools=1\n'),
                  self.encoded.replace(b'cargoTools=400\n', b''),
                  self.encoded.replace(b'disasters=1', b'unknown=1'),
+                 self.encoded.replace(b'fairStarts=1\n', b''),
+                 self.encoded.replace(b'resourceDistribution=2\n', b'resourceDistribution=2\nresourceDistribution=0\n'),
                  self.encoded.replace(b'startIsland=127', b'startIsland=2147483648'),
                  b'x' * 4097]
         for data in cases:
@@ -193,6 +215,35 @@ class NativePresetCodecTests(unittest.TestCase):
         for name in ('', 'x' * 33, '../other', '..', 'x.awp', 'C:other', 'a/b', 'a\\b',
                      ' Leading', 'Trailing ', 'con', 'NUL', 'COM1', 'lpt9', 'a\nname'):
             self.assertEqual(self.call('name', name).returncode, 2)
+
+    def test_island_description_has_verified_resource_names_and_honest_area_estimate(self):
+        result = self.call('island')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        text = result.stdout.decode()
+        for expected in ('Island 4 - Jungle', '128 x 96', '128, 256',
+                         'catalogue estimate): 2345', 'restrict usable space',
+                         'Occupants: Polynesians',
+                         'Grain, Tobacco, Spices, Flax, Sugar cane, Cotton, Grapes, Cocoa, Hops, Silk, Indigo, Herbs, Potatoes',
+                         'Planned minerals: Iron, Gold, Salt, Gems, Marble',
+                         'ore occurrences: 3; whale occurrence: Yes',
+                         'within 256 tiles', 'Crops: Grain, Flax, Potatoes',
+                         'Minerals: Iron, Salt', 'Starting assignment: Not assigned',
+                         'Preferred start: Unavailable'):
+            self.assertIn(expected, text)
+
+    def test_island_description_distinguishes_human_ai_and_special_occupants(self):
+        expected = {'human': ('Occupants: Uninhabited', 'Starting assignment: Human player', 'Preferred start: Eligible'),
+                    'ai': ('Starting assignment: AI opponent 3',),
+                    'venetians': ('Occupants: Venetians',),
+                    'pirates': ('Occupants: Pirates',)}
+        for kind, phrases in expected.items():
+            with self.subTest(kind=kind):
+                result = self.call('island', kind)
+                self.assertEqual(result.returncode, 0)
+                for phrase in phrases:
+                    self.assertIn(phrase, result.stdout.decode())
+        for kind in ('short', 'invalid'):
+            self.assertEqual(self.call('island', kind).returncode, 2)
 
 
 if __name__ == '__main__':

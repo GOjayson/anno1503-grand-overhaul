@@ -21,13 +21,14 @@ from .world_options import apply_options, generator_id, PRIVATE, SETTINGS_SIZE, 
 
 
 PINNED_RUNTIMES = {
-    'world-only': 'f7a070e6825a9269e61d2f504e0e855f38002be13ad5befedcf87bd5081f8b14',
-    'food-world': '23b2b69956d70e900cb0fa0aa079fdc5b7f00215b74c853c276ac90633fb837f',
+    'world-only': '3ae9e17383ff7aa4405fe0a39274f81e443d545f10582c395cc97c138554f371',
+    'food-world': 'f2eab1d1a9dcb7aaa35f2e28b277101e94d0b538a9b77583f59d031cad1d381b',
 }
-PINNED_GENERATOR = 'ws4-443c04febaf41fe2328c0084ad379232a6e7d6a6b049c70707f587d768cccf1a'
+PINNED_GENERATOR = 'ws5-9763e325b88da3c2e60d75368626888fe5effa444071076c45bb3683dada1808'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
-    'WorldSettingsStartingIslandChosen'}
+    'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',
+    'WorldSettingsStartOwner', 'WorldSettingsDescribeStarts', 'WorldSettingsExpectedFairOwners'}
 UNITS = [PRIVATE + name for name in ('WorldSettings.c', 'world_backend.c', 'world_ai.c')]
 UNITS += ['developer/source/world_factory.c', old.AI_LOADER,
           'developer/source/engine_resume/route_coverage/selection.c',

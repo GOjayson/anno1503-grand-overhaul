@@ -41,3 +41,15 @@ def apply_planner(files: dict[str, bytes]) -> None:
         b'"Island size, count and spacing do not fit in the selected %u by %u world. Reduce count, island size or spacing."',
         b'"Island size, count, spacing and layout do not fit in the selected %u by %u world. Reduce them or choose another layout."',
         'layout fit diagnostic')
+    files[backend] = replace(files[backend], b'#include "mineral_fertility.inc"',
+        b'#include "mineral_fertility.inc"\n#include "resource_distribution.inc"',
+        'resource geography and nearby basic-resource policy')
+    files[backend] = replace(files[backend],
+        b'if(!wsApplyPlantFertility(s,seed,error,cap)||!wsApplyMineralFertility(s,seed,error,cap))',
+        b'if(!wsApplyPlantFertility(s,seed,error,cap)||!wsApplyMineralFertility(s,seed,error,cap)||!wsApplyResourceDistribution(s,seed,error,cap))',
+        'preserve fertility census while distributing resources')
+    files[backend] = replace(files[backend],
+        b' if(pirates!=((s->factions&1u)!=0)',
+        b' if(!wsValidateStartResources(s,error,cap))return 0;\n'
+        b' if(pirates!=((s->factions&1u)!=0)', 'independent resource and nearby basics certificate')
+    files[PRIVATE + 'resource_distribution.inc'] = authored('resource_distribution.inc')

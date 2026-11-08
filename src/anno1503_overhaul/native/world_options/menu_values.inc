@@ -1,15 +1,16 @@
 /* Menu state, clipboard and local named presets. All world options are
  * collected inside the game; no external settings file is required. */
 #include "menu_presets_codec.inc"
+#include "menu_island_text.inc"
 static int collect(DialogState*d);
 static void invalidatePreview(DialogState*d);
 static int generatePreview(DialogState*d,int regenerate);
 static uint32_t freshPreviewSeed(uint32_t previous);
 
 static void wsMenuPage(DialogState*d,int page){
- if(page<0||page>3)return;d->page=page;
+ if(page<0||page>4)return;d->page=page;
  for(uint32_t i=0;i<d->pageControlCount;i++)ShowWindow(d->pageControls[i],d->controlPages[i]==page?SW_SHOW:SW_HIDE);
- for(int i=0;i<4;i++)SendDlgItemMessageA(d->window,ID_TAB_WORLD+i,BM_SETSTATE,i==page,0);
+ for(int i=0;i<5;i++)SendDlgItemMessageA(d->window,ID_TAB_WORLD+i,BM_SETSTATE,i==page,0);
 }
 static void wsMenuPutNumber(DialogState*d,int id,int32_t value){char text[32];snprintf(text,sizeof text,"%d",value);SetDlgItemTextA(d->window,id,text);}
 static void wsMenuPutSeed(DialogState*d,uint32_t value){char text[16];snprintf(text,sizeof text,"%u",value);SetDlgItemTextA(d->window,ID_SEED,text);}
@@ -23,6 +24,23 @@ static void wsMenuCargoControls(DialogState*d){
  int custom=SendDlgItemMessageA(d->window,ID_CARGO_MODE,BM_GETCHECK,0,0)==BST_CHECKED;
  for(int id=ID_CARGO_TOOLS;id<=ID_CARGO_FOOD;id++)EnableWindow(GetDlgItem(d->window,id),custom);
 }
+static void wsMenuFairControls(DialogState*d){
+ int balanced=SendDlgItemMessageA(d->window,ID_FAIR_STARTS,BM_GETCHECK,0,0)==BST_CHECKED;
+ EnableWindow(GetDlgItem(d->window,ID_START_SEPARATION),balanced);
+}
+static void wsMenuIslandInfo(DialogState*d){
+ char text[4096],summary[768];WSIslandDetails details={0};details.size=sizeof details;
+ int selected=d->previewValid&&d->inspectedIsland>=0&&(uint32_t)d->inspectedIsland<d->previewCount;
+ int known=selected&&WorldSettingsIslandDetails((uint32_t)d->inspectedIsland,&details);
+ if(known){
+  if(!wsMenuDescribeIsland(&d->previewIslands[d->inspectedIsland],&details,text,sizeof text))
+   snprintf(text,sizeof text,"The island information could not be displayed.");
+ }else snprintf(text,sizeof text,d->previewValid?"Click any island on the preview to inspect its resources, climate and occupants.\r\n\r\nInspection does not change your starting position. Use the button above to prefer an eligible island.":"Island information is available when the map preview is ready.");
+ SetDlgItemTextA(d->window,ID_ISLAND_DETAILS,text);
+ EnableWindow(GetDlgItem(d->window,ID_USE_ISLAND),known&&details.startEligible);
+ if(!d->previewValid||!WorldSettingsDescribeStarts(summary,sizeof summary))snprintf(summary,sizeof summary,"Starting-position and resource checks appear here when the preview is ready.");
+ SetDlgItemTextA(d->window,ID_FAIR_SUMMARY,summary);
+}
 static int wsMenuCollectAdvanced(DialogState*d,WSSettings*s){
  if(!wsMenuReadSeed(d,&s->mapSeed))return 0;
  s->startIsland=d->preferredIsland;
@@ -34,13 +52,17 @@ static int wsMenuCollectAdvanced(DialogState*d,WSSettings*s){
  s->climateBalance=(int)SendDlgItemMessageA(d->window,ID_CLIMATE_BALANCE,CB_GETCURSEL,0,0);
  s->layoutStyle=(int)SendDlgItemMessageA(d->window,ID_LAYOUT_STYLE,CB_GETCURSEL,0,0);
  s->disasters=SendDlgItemMessageA(d->window,ID_DISASTERS,BM_GETCHECK,0,0)==BST_CHECKED;
+ s->fairStarts=SendDlgItemMessageA(d->window,ID_FAIR_STARTS,BM_GETCHECK,0,0)==BST_CHECKED;
+ s->startSeparation=(int)SendDlgItemMessageA(d->window,ID_START_SEPARATION,CB_GETCURSEL,0,0);
+ s->resourceDistribution=(int)SendDlgItemMessageA(d->window,ID_RESOURCE_DISTRIBUTION,CB_GETCURSEL,0,0);
+ s->guaranteeBasics=SendDlgItemMessageA(d->window,ID_GUARANTEE_BASICS,BM_GETCHECK,0,0)==BST_CHECKED;
  return 1;
 }
 static void wsMenuStartHint(DialogState*d){
  char text[160];int climate=(int)SendDlgItemMessageA(d->window,ID_START_CLIMATE,CB_GETCURSEL,0,0)-1;
- if(d->preferredIsland>=0)snprintf(text,sizeof text,"Preferred start: island %d. Click another ordinary island to change it.",d->preferredIsland+1);
- else if(climate>=0&&climate<6){static const char*names[]={"Polar","Tundra","North","Prairie","Jungle","Steppe"};snprintf(text,sizeof text,"Preferred start: %s climate. You can also click an ordinary island.",names[climate]);}
- else snprintf(text,sizeof text,"Starting position: automatic. Click an ordinary island to prefer it.");
+ if(d->preferredIsland>=0)snprintf(text,sizeof text,"Preferred start: island %d. Inspect islands to change it.",d->preferredIsland+1);
+ else if(climate>=0&&climate<6){static const char*names[]={"Polar","Tundra","North","Prairie","Jungle","Steppe"};snprintf(text,sizeof text,"Preferred start: %s climate. Inspect an island for details.",names[climate]);}
+ else snprintf(text,sizeof text,"Click any island to inspect it. S: human start; 1-3: AI starts.");
  SetDlgItemTextA(d->window,ID_START_HINT,text);
 }
 static void wsMenuApplySettings(DialogState*d,const WSSettings*s){
@@ -58,14 +80,18 @@ static void wsMenuApplySettings(DialogState*d,const WSSettings*s){
  SendDlgItemMessageA(d->window,ID_START_CLIMATE,CB_SETCURSEL,s->startClimate+1,0);
  SendDlgItemMessageA(d->window,ID_CLIMATE_BALANCE,CB_SETCURSEL,s->climateBalance,0);
  SendDlgItemMessageA(d->window,ID_LAYOUT_STYLE,CB_SETCURSEL,s->layoutStyle,0);
+ SendDlgItemMessageA(d->window,ID_START_SEPARATION,CB_SETCURSEL,s->startSeparation,0);
+ SendDlgItemMessageA(d->window,ID_RESOURCE_DISTRIBUTION,CB_SETCURSEL,s->resourceDistribution,0);
  for(int i=0;i<8;i++)SendDlgItemMessageA(d->window,ID_CULTURE+i,BM_SETCHECK,s->cultures&(1u<<i)?BST_CHECKED:BST_UNCHECKED,0);
  for(int i=0;i<2;i++)SendDlgItemMessageA(d->window,ID_FACTION+i,BM_SETCHECK,s->factions&(1u<<i)?BST_CHECKED:BST_UNCHECKED,0);
  SendDlgItemMessageA(d->window,ID_CARGO_MODE,BM_SETCHECK,s->cargoMode?BST_CHECKED:BST_UNCHECKED,0);
  SendDlgItemMessageA(d->window,ID_DISASTERS,BM_SETCHECK,s->disasters?BST_CHECKED:BST_UNCHECKED,0);
+ SendDlgItemMessageA(d->window,ID_FAIR_STARTS,BM_SETCHECK,s->fairStarts?BST_CHECKED:BST_UNCHECKED,0);
+ SendDlgItemMessageA(d->window,ID_GUARANTEE_BASICS,BM_SETCHECK,s->guaranteeBasics?BST_CHECKED:BST_UNCHECKED,0);
  wsMenuPutNumber(d,ID_COUNT,s->islandCount);wsMenuPutNumber(d,ID_SPACING,s->spacing);
  wsMenuPutNumber(d,ID_CARGO_TOOLS,s->cargoTools);wsMenuPutNumber(d,ID_CARGO_WOOD,s->cargoWood);wsMenuPutNumber(d,ID_CARGO_FOOD,s->cargoFood);
  wsMenuPutSeed(d,s->mapSeed);d->previewSeed=s->mapSeed;d->preferredIsland=s->startIsland;d->settings=*s;
- wsMenuCargoControls(d);wsMenuStartHint(d);d->creating=0;
+ d->inspectedIsland=-1;wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuStartHint(d);d->creating=0;
 }
 static void wsMenuCopySeed(DialogState*d){
  uint32_t seed;if(!wsMenuReadSeed(d,&seed))return;wchar_t text[16];swprintf(text,16,L"%u",seed);
@@ -148,7 +174,12 @@ static void wsMenuSavePreset(DialogState*d){
  wsPresetRefresh(d,name);status(d,"Preset saved, including the seed and every world setting.");
 }
 static int wsMenuCommand(DialogState*d,int id,int notice){
- if(id>=ID_TAB_WORLD&&id<ID_TAB_WORLD+4&&notice==BN_CLICKED){wsMenuPage(d,id-ID_TAB_WORLD);return 1;}
+ if(id>=ID_TAB_WORLD&&id<ID_TAB_WORLD+5&&notice==BN_CLICKED){wsMenuPage(d,id-ID_TAB_WORLD);return 1;}
+ if(id==ID_USE_ISLAND&&notice==BN_CLICKED){
+  if(!d->previewValid||d->inspectedIsland<0||!WorldSettingsStartingIslandEligible((uint32_t)d->inspectedIsland)){status(d,"Inspect an ordinary island with safe nearby water first.");return 1;}
+  d->creating=1;d->preferredIsland=d->inspectedIsland;SendDlgItemMessageA(d->window,ID_START_CLIMATE,CB_SETCURSEL,0,0);d->creating=0;
+  KillTimer(d->window,WS_PREVIEW_TIMER);generatePreview(d,0);return 1;
+ }
  if(id==ID_COPY_SEED&&notice==BN_CLICKED){wsMenuCopySeed(d);return 1;}
  if(id==ID_PRESET_SAVE&&notice==BN_CLICKED){wsMenuSavePreset(d);return 1;}
  if(id==ID_PRESET_LOAD&&notice==BN_CLICKED){wsMenuLoadPreset(d);return 1;}
@@ -159,6 +190,6 @@ static int wsMenuCommand(DialogState*d,int id,int notice){
  return 0;
 }
 static void wsMenuOptionChanged(DialogState*d,int id){
- if(id!=ID_MONEY&&id!=ID_AI_DIFFICULTY&&id!=ID_CARGO_MODE&&id!=ID_CARGO_TOOLS&&id!=ID_CARGO_WOOD&&id!=ID_CARGO_FOOD&&id!=ID_DISASTERS){d->preferredIsland=-1;}
- if(id==ID_CARGO_MODE)wsMenuCargoControls(d);wsMenuStartHint(d);
+ if(id!=ID_MONEY&&id!=ID_AI_DIFFICULTY&&id!=ID_CARGO_MODE&&id!=ID_CARGO_TOOLS&&id!=ID_CARGO_WOOD&&id!=ID_CARGO_FOOD&&id!=ID_DISASTERS&&id!=ID_FAIR_STARTS&&id!=ID_START_SEPARATION&&id!=ID_GUARANTEE_BASICS){d->preferredIsland=-1;d->inspectedIsland=-1;}
+ if(id==ID_CARGO_MODE)wsMenuCargoControls(d);if(id==ID_FAIR_STARTS)wsMenuFairControls(d);wsMenuStartHint(d);
 }

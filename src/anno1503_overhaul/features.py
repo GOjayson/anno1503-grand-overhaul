@@ -135,7 +135,7 @@ def default_catalog() -> FeatureCatalog:
         Feature(
             id="world_settings",
             name="World Settings",
-            description="The imported in-game World Settings 0.11.0-dev.1 and automatic launcher baseline.",
+            description="In-game world settings with island inspection, fair starts, resource controls and automatic startup.",
             status="experimental",
             priority="priority",
             default_enabled=True,

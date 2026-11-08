@@ -4,7 +4,8 @@
 #define WS_WORLD_OPTIONS_GENERATOR "pending-build"
 
 /* The original 56-byte prefix retains every native bridge field offset. */
-_Static_assert(sizeof(WSWorldSettings)==96,"Advanced settings ABI differs");
+_Static_assert(sizeof(WSWorldSettings)==112,"Advanced settings ABI differs");
+_Static_assert(sizeof(WSIslandDetails)==44,"Island details ABI differs");
 static inline int wsAdvancedValidateSettings(const WSWorldSettings*s,char*error,uint32_t cap){
  const char*reason=NULL;
  if(!s||s->size!=sizeof(*s))reason="Invalid World Settings structure.";
@@ -21,6 +22,10 @@ static inline int wsAdvancedValidateSettings(const WSWorldSettings*s,char*error,
  if(!reason&&s->climateBalance>3)reason="Choose a supported climate balance.";
  if(!reason&&(s->layoutStyle<0||s->layoutStyle>2))reason="Choose evenly spread, archipelagos or central ocean.";
  if(!reason&&(s->disasters<0||s->disasters>1))reason="Choose whether disasters are enabled.";
+ if(!reason&&(s->fairStarts<0||s->fairStarts>1))reason="Choose automatic or balanced starting positions.";
+ if(!reason&&(s->startSeparation<0||s->startSeparation>2))reason="Choose close, balanced or distant starting positions.";
+ if(!reason&&(s->resourceDistribution<0||s->resourceDistribution>2))reason="Choose normal, spread or specialised resource distribution.";
+ if(!reason&&(s->guaranteeBasics<0||s->guaranteeBasics>1))reason="Choose whether basic resources are guaranteed near starts.";
  if(error&&cap)snprintf(error,cap,"%s",reason?reason:"");
  return reason==NULL;
 }

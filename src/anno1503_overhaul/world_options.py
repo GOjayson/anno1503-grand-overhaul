@@ -12,11 +12,12 @@ from .world_runtime_build import RuntimeBuildError
 
 ROOT = Path(__file__).resolve().parents[2]
 PRIVATE = 'developer/source/engine_resume/ai_food/experiment_runtime/'
-SETTINGS_SIZE = 96
-PREVIEW_SIZE = 5232
+SETTINGS_SIZE = 112
+PREVIEW_SIZE = 5248
 FIELDS = ('mapSeed', 'startClimate', 'startIsland', 'cargoMode', 'cargoTools',
-          'cargoWood', 'cargoFood', 'climateBalance', 'layoutStyle', 'disasters')
-VERSION = '0.4.0-dev.1'
+          'cargoWood', 'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
+          'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics')
+VERSION = '0.5.0-dev.1'
 
 
 def generator_id() -> str:
@@ -29,7 +30,7 @@ def generator_id() -> str:
     inputs = {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
               for path in paths}
     inputs['frozen_compiled_sources'] = json.loads((ROOT / 'provenance/legacy_import.json').read_bytes())['compiled_source_sha256']
-    return 'ws4-' + hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
+    return 'ws5-' + hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
 
 
 def replace(data: bytes, before: bytes, after: bytes, label: str, count: int = 1) -> bytes:
@@ -53,15 +54,26 @@ def apply_common(files: dict[str, bytes]) -> None:
     files[header] = replace(files[header], b' int32_t worldSize;',
         b' int32_t worldSize;\n uint32_t mapSeed;\n'
         b' int32_t startClimate,startIsland,cargoMode,cargoTools,cargoWood,cargoFood;\n'
-        b' int32_t climateBalance,layoutStyle,disasters;', 'settings extension')
+        b' int32_t climateBalance,layoutStyle,disasters;\n'
+        b' int32_t fairStarts,startSeparation,resourceDistribution,guaranteeBasics;', 'settings extension')
+    files[header] = replace(files[header], b'#endif',
+        b'typedef struct WSIslandDetails {\n'
+        b' uint32_t size,index,fertileLand,oreSlots,whales,faction,startEligible;\n'
+        b' int32_t startOwner;\n'
+        b' uint32_t nearbyCrops,nearbyMinerals,resourceRadius;\n'
+        b'} WSIslandDetails;\n'
+        b'__declspec(dllexport) int WorldSettingsIslandDetails(uint32_t,WSIslandDetails*);\n'
+        b'__declspec(dllexport) int WorldSettingsStartOwner(uint32_t);\n'
+        b'__declspec(dllexport) int WorldSettingsDescribeStarts(char*,uint32_t);\n'
+        b'#endif', 'island details query declarations')
     files[header] = replace(files[header], b'#endif',
         b'#include "advanced_settings.h"\n#endif', 'shared settings validation')
     files[PRIVATE + 'advanced_settings.h'] = authored('advanced_settings.h')
     preview = PRIVATE + 'preview_state.inc'
     files[preview] = replace(files[preview], b'sizeof(WSWorldSettings)==56',
-                             b'sizeof(WSWorldSettings)==96', 'settings ABI assertion')
+                             b'sizeof(WSWorldSettings)==112', 'settings ABI assertion')
     files[preview] = replace(files[preview], b'sizeof(WSPreviewSnapshot)==5192',
-                             b'sizeof(WSPreviewSnapshot)==5232', 'snapshot ABI assertion')
+                             b'sizeof(WSPreviewSnapshot)==5248', 'snapshot ABI assertion')
     backend = PRIVATE + 'world_backend.c'
     files[backend] = replace(files[backend], b' wsPreviewClear();\n planCount=0;',
         b' wsPreviewClear();\n planCount=0;\n'
@@ -84,6 +96,10 @@ def apply_options(files: dict[str, bytes]) -> dict[str, bytes]:
     apply_planner(result)
     apply_start(result)
     apply_menu(result)
+    backend = PRIVATE + 'world_backend.c'
+    result[backend] = replace(result[backend], b'#include "mineral_persistence.inc"',
+        b'#include "mineral_persistence.inc"\n#include "island_details.inc"', 'read-only island details query')
+    result[PRIVATE + 'island_details.inc'] = authored('island_details.inc')
     name = PRIVATE + 'advanced_settings.h'
     result[name] = replace(result[name], b'"pending-build"',
                            ('"' + generator_id() + '"').encode(), 'generator fingerprint')

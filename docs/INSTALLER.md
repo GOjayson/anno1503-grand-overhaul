@@ -112,7 +112,7 @@ acceptance. The earlier stock-host observations remain in
 ## Configure a world inside Anno
 
 Starting a supported endless game opens the expanded World Settings screen.
-Use **World**, **Players**, **Starting options** and **Presets** to choose the
+Use **World**, **Players**, **Starting options**, **Presets** and **Islands** to choose the
 world. The preview, displayed seed, regeneration and Start remain visible.
 
 **Map seed** accepts decimal values from 0 to 4294967295. **Copy seed** puts
@@ -126,11 +126,39 @@ spacing, grouped archipelagos or a central ocean. Existing overlap, map-border,
 minimum-spacing and essential-resource checks still apply; an impossible
 configuration is blocked with an explanation.
 
-Under **Starting options**, choose a preferred climate or click ordinary land
-on the preview. The starting-island badge marks the chosen island. The fleet
-starts in checked water nearby; the player builds the settlement normally.
-Native, pirate and Venetian islands cannot be selected as starting islands.
-Use **Use automatic starting position** to clear both preferences.
+Click any island's land on the preview to open **Islands**. Its details show
+climate, dimensions, the catalogue's fertile-land estimate, planned crops and
+minerals, occupants and nearby ordinary-island resources. The fertile-land
+estimate is not proof of accessible construction space or mining access.
+The white outline identifies the inspected island; inspection does not change
+the starting position. Native, Pirate and Venetian islands can be inspected.
+
+Under **Starting options**, choose a preferred climate. Alternatively inspect
+an ordinary island and choose **Use inspected island as preferred starting
+position**. The human fleet starts in checked water nearby; the player builds
+the settlement normally. Native, Pirate and Venetian islands are not eligible
+starting islands. **Use automatic starting position** clears both preferences.
+
+**Balance starting islands for human and AI players** requests comparable
+ordinary islands for the human and selected AI opponents. Choose close
+neighbours, balanced separation or distant rivals. The preview displays **S**
+for the human and **1–3** for ordinary AI starts, with a summary on **Islands**.
+A preferred human island/climate remains a constraint, and an impossible
+combination is refused. Fair starts do not enable a smarter-AI module or add
+player slots.
+
+On **World**, **Resource distribution** keeps original assignments, spreads
+resources or favours specialised regions. Spread maximises separation for each
+resource; Specialised regions groups each resource around a seeded compatible
+region. Redistribution preserves each resource's world count from the selected
+fertility level while retaining native climate and ore-occurrence constraints.
+Per-island availability can change, and Very fertile can leave little room for
+redistribution. Native/special-faction resources stay unchanged.
+**Guarantee basic resources near every
+player's start** can additionally provide grain, flax, potatoes, iron and salt
+on ordinary islands within `max(128, worldSize / 4)` tiles of each participant's
+starting island. This optional guarantee can add resources above fertility
+abundance. It does not promise the entire Food-overhaul production chain.
 
 Select **Custom cargo on every trade ship** to enter tools, wood and food in
 tons. Each good occupies separate 50-ton holds. Small trade ships have four
@@ -145,10 +173,14 @@ preview is ready. Choose an existing preset and **Load selected preset** to
 restore every world option and its seed. Replacing a named preset requires an
 in-game confirmation. Presets use versioned, bounded text files in the managed
 copy's `WorldSettingsPresets/` folder. They remain during restoration and are
-refused when their generator fingerprint differs. Feature-profile files still
+refused when their generator fingerprint differs. Version-2 presets contain
+all 27 settings; older presets remain on disk and are not silently converted.
+Feature-profile files still
 contain installer choices only.
 
-The expanded menu has its own [validation record](WORLD_OPTIONS_VALIDATION.md).
+The 0.5 additions have their own
+[validation record](WORLD_FAIRNESS_VALIDATION.md). Earlier seven-option
+acceptance remains in [World options validation](WORLD_OPTIONS_VALIDATION.md).
 Seed reproducibility covers generation choices and the preview; AI decisions
 and a played world's later events can differ.
 
@@ -177,17 +209,32 @@ inputs for independent recipe verification and uses:
 | Canonical runtime | `4ede7aefddeb78319328f9de7e4597e49d6d1652739539c29afe5439024a86e9` |
 | Stock-bound engine plan | `71940166c7131f78d1b5efd68c1e6dff0299ea8d3334ed811420da4a53fa1f4e` |
 
-The current installer prepares the separate expanded-menu package kind for
-both profiles. It retains and verifies the frozen corpus, then binds the new
-runtime, generator identity and 96-byte settings/5232-byte preview schema.
-Its reviewed canonical runtimes are:
+The installer prepares the separate expanded-menu package kind for both
+profiles. It retains and verifies the frozen corpus and binds the exact
+runtime, generator identity and snapshot schema. The 0.5 development schema
+is 112-byte settings and a 5248-byte preview; its current build and acceptance
+state is recorded in [fairness validation](WORLD_FAIRNESS_VALIDATION.md).
 
-| Expanded-menu native profile | SHA-256 |
+| Current 0.5 expanded-menu native profile | SHA-256 |
+| --- | --- |
+| World only | `3ae9e17383ff7aa4405fe0a39274f81e443d545f10582c395cc97c138554f371` |
+| Food and World | `f2eab1d1a9dcb7aaa35f2e28b277101e94d0b538a9b77583f59d031cad1d381b` |
+
+The current generator fingerprint is
+`ws5-9763e325b88da3c2e60d75368626888fe5effa444071076c45bb3683dada1808`.
+Both profiles compiled three times to their identical reviewed output, with
+exact native preimage checks. Compilation is separate from actual game
+acceptance; consult the current validation record for that scope.
+
+The preserved 0.4 schema was 96-byte settings and a 5232-byte preview. Its
+historical reviewed canonical runtimes are:
+
+| Historical 0.4 expanded-menu native profile | SHA-256 |
 | --- | --- |
 | World only | `f7a070e6825a9269e61d2f504e0e855f38002be13ad5befedcf87bd5081f8b14` |
 | Food and World | `23b2b69956d70e900cb0fa0aa079fdc5b7f00215b74c853c276ac90633fb837f` |
 
-The advanced generator fingerprint is
+The historical 0.4 generator fingerprint is
 `ws4-443c04febaf41fe2328c0084ad379232a6e7d6a6b049c70707f587d768cccf1a`.
 Changing authored native generator source requires another reviewed build and
 matching package/preset identity. Historical validators and pins remain intact.

@@ -51,7 +51,8 @@ __declspec(dllexport) int WorldSettingsStartingIslandEligible(uint32_t index){
 __declspec(dllexport) int WorldSettingsStartingIslandChosen(void){
  return wsPreviewCache.state==1?wsPreferredIsland:-1;
 }
-static int wsApplyPreferredStart(const WSWorldSettings*s,char*error,uint32_t cap){
+#include "fair_starts.inc"
+static int wsApplyLegacyPreferredStart(const WSWorldSettings*s,char*error,uint32_t cap){
  wsPreferredIsland=-1;wsExpectedDisasters=s->disasters;
  if(s->startIsland<0&&s->startClimate<0)return 1;
  float x=0,y=0;int32_t chosen=-1;
@@ -71,5 +72,17 @@ static int wsApplyPreferredStart(const WSWorldSettings*s,char*error,uint32_t cap
  wsPreferredStartX=x;wsPreferredStartY=y;wsPreferredStartActive=1;wsPreferredIsland=chosen;
  wsActiveShipReserveCount=wsBaseShipReserveCount;
  wsActiveShipReserves[wsActiveShipReserveCount++]=(WSPlanIsland){0,(uint32_t)x-24u,(uint32_t)y-24u,49u,49u,0,0,0,0,0};
+ return 1;
+}
+static int wsApplyPreferredStart(const WSWorldSettings*s,char*error,uint32_t cap){
+ if(s->fairStarts)return wsApplyFairStarts(s,error,cap);
+ wsAssignedStartCount=0;wsFairOwnerMask=0;wsFairCacheValid=0;
+ for(uint32_t i=0;i<4u;i++)wsAssignedStartIsland[i]=-1;
+ if(!wsApplyLegacyPreferredStart(s,error,cap))return 0;
+ wsAssignedStartCount=(uint32_t)s->aiCount+1u;
+ for(uint32_t owner=0;owner<wsAssignedStartCount;owner++){
+  uint32_t island;
+  if(wsStartResourceAnchor(s,owner,&island))wsAssignedStartIsland[owner]=(int32_t)island;
+ }
  return 1;
 }

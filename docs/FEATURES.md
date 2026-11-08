@@ -10,7 +10,7 @@ It does not support arbitrary combinations of future native modifications.
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Expanded in-game options 0.4.0-dev.1 for stock and Food hosts, with the historical runtimes retained | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; new options validation is tracked separately |
+| World Settings | Priority | Expanded in-game options 0.5.0-dev.1 add island details, fair starts and resource distribution; historical runtimes remain retained | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; source, native and live validation remain separate |
 | Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
 | Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
@@ -27,15 +27,20 @@ The UI should explain their status and the validator must enforce it too.
 
 ## Expanded in-game World Settings
 
-Version 0.4.0-dev.1 adds the following settings to the in-game screen. The
+Version 0.5.0-dev.1 extends the in-game screen with island inspection,
+balanced starts and resource distribution. The
 installer selects the feature combination; it does not configure individual
-worlds. Four menu pages keep these choices beside the persistent map preview.
+worlds. Five menu pages keep these choices beside the persistent map preview.
 
 | Setting | Behavior and constraints |
 | --- | --- |
 | Map seed | Enter or copy an unsigned 32-bit seed, including zero. The same seed, generator fingerprint and settings reproduce the validated map preview. Regenerate chooses another displayed seed. |
-| Saved presets | Save/load all 23 world choices, including the seed and preferred island, using bounded named files inside the managed copy. A different generator fingerprint is refused. |
-| Starting position | Choose a climate or click an ordinary uninhabited island on the preview. Starting ships move to checked nearby water; native/special islands and unsafe coastal starts are refused. No settlement is built automatically. |
+| Saved presets | Save/load all 27 world choices, including seed, preferred island and the new fairness/resource choices, using bounded version-2 named files inside the managed copy. A different generator fingerprint is refused; older files are retained. |
+| Island inspection | Click any preview island, including native and special-faction islands, to inspect dimensions, climate, fertile-land estimate, planned crop/mineral masks, occupants, template ore/whale occurrences, nearby resources and starting eligibility. The estimate does not establish building or mine accessibility. |
+| Starting position | Choose a climate or inspect an ordinary uninhabited island and explicitly prefer it. Starting ships move to checked nearby water; native/special islands and unsafe coastal starts are refused. Inspection alone does not move the starting fleet; no settlement is built automatically. |
+| Balanced starts | Optionally allocate distinct ordinary islands to the human and selected ordinary AI opponents using fertile-land estimates and resource access. Close, balanced and distant separation choices apply to balanced starts. A preferred human island/climate remains a constraint. This does not improve AI strategy or increase the supported AI count. |
+| Resource distribution | Original, Spread resources or Specialised regions. Spread separates each resource geographically; Specialised regions groups it around a compatible seeded region. Both preserve each resource's world count from the selected fertility level, with native climate and occurrence limits. Per-island quantities can change; Very fertile can leave little freedom. Native/special-faction resource assignments remain untouched. |
+| Nearby basic resources | Optionally guarantee grain, flax, potatoes, iron and salt on ordinary islands within `max(128, worldSize / 4)` tiles of each actual participant's starting island. This can increase world abundance above fertility settings and is not a complete Food-overhaul diet guarantee. |
 | Starting cargo | Custom tools, wood and food apply to each trade ship. Each distinct stack uses a 50-ton hold; small trade ships have four holds and big trade ships have eight. The choice must fit every trade ship in the fleet. Warship cannon equipment is retained. |
 | Climate balance | Balanced, favour temperate (north/prairie), tropical (jungle/steppe) or polar (polar/tundra). Enabled cultures, all six climates and essential resources remain required. |
 | Layout style | Evenly spread, grouped archipelagos or a central ocean. Geometry, native placement grid, ship reserves, border bounds and minimum spacing remain validated. An impossible choice fails rather than changing layout style silently. |
@@ -46,11 +51,12 @@ generation choices clears a stale preferred-island selection; loading a preset
 restores its seed, settings and selected index together. The preview remains
 the exact cached plan used by Start.
 
-Both new native profiles compiled reproducibly from reviewed staged changes.
-Native policy, serialization, parser and exact History Edition instruction
-fixtures passed. Actual in-game acceptance for this expanded menu is tracked
-in [World options validation](WORLD_OPTIONS_VALIDATION.md); earlier observations
-below remain bound to their original builds.
+The original seven expanded options have separately recorded compilation,
+native fixtures and actual World-only acceptance in
+[World options validation](WORLD_OPTIONS_VALIDATION.md). The 0.5 additions have
+their own [fairness validation record](WORLD_FAIRNESS_VALIDATION.md); older
+results must not be relabelled as testing the new generator. Both native
+profiles require their own reviewed build and validation.
 
 ## Preserved World Settings baseline
 

@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.4.0-dev.1 adds seeds, presets, preferred starts, custom cargo, climate/layout choices and disasters to both native profiles; see its validation scope |
+| World Settings | Priority | Experimental 0.5.0-dev.1 adds island inspection, balanced starts and resource distribution to the existing in-game options; stock and Food hosts have separate validation |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -63,8 +63,10 @@ change installation registration or persist startup values. Earlier stock-host
 startup and gameplay observations are recorded separately in
 [decoupling validation](docs/DECOUPLING_VALIDATION.md). World options remain
 inside Anno; Huge saves still need the compatible runtime after restoration.
-New menu features and their current test scope are recorded separately in
-[World options validation](docs/WORLD_OPTIONS_VALIDATION.md).
+The seven earlier menu additions are recorded in
+[World options validation](docs/WORLD_OPTIONS_VALIDATION.md). The new island,
+starting-position and resource controls have a separate
+[fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md).
 
 A public clone can prepare Food-only installation inputs. World Settings also
 requires a local payload provider containing the complete preserved
@@ -103,8 +105,8 @@ fleet and other world options remain in the game's World Settings screen.
 
 ## In-game world options
 
-The menu has **World**, **Players**, **Starting options** and **Presets** pages,
-with the map preview and seed always visible. In addition to the existing
+The menu has **World**, **Players**, **Starting options**, **Presets** and
+**Islands** pages, with the map preview and seed always visible. In addition to the existing
 world, island, fertility, fleet and opponent choices, it provides:
 
 - **Map seed:** enter a number from 0 to 4294967295, copy it, or regenerate to
@@ -112,9 +114,23 @@ world, island, fertility, fleet and opponent choices, it provides:
   preview with the same generator version.
 - **Saved presets:** save and load every world setting, including the seed and
   preferred starting island, from inside the game.
-- **Starting position:** click an ordinary island on the preview or choose a
-  climate to start nearby. This positions the starting ships; it does not
-  automatically build a settlement.
+- **Island details:** click any island to inspect its climate, dimensions,
+  estimated fertile land, planned crops and minerals, occupants and nearby
+  resources. Inspection is separate from selecting a starting position;
+  fertile land is not a guarantee of usable building space.
+- **Starting position:** choose a climate, or inspect an ordinary island and
+  choose **Use inspected island as preferred starting position**. Starting
+  ships move to checked nearby water; no settlement is built automatically.
+- **Balanced starts:** optionally choose comparable ordinary starting islands
+  for the human and selected AI opponents, with close, balanced or distant
+  separation. The preview marks assigned starts and displays a summary.
+- **Resource distribution:** keep the original assignments, spread resources,
+  or concentrate them into specialised regions. Redistribution preserves each
+  resource's world count from the selected fertility level while respecting
+  climate compatibility and actual ore occurrences. Individual islands can differ.
+- **Nearby basic resources:** optionally ensure grain, flax, potatoes, iron
+  and salt near each player's start. This can add resources above fertility
+  abundance. It does not guarantee every production chain in the Food overhaul.
 - **Starting cargo:** customise tools, wood and food on each trade ship, with
   validation of separate 50-ton holds and the selected fleet's capacity.
 - **Climate balance:** favour temperate, tropical or polar islands while
@@ -126,8 +142,10 @@ world, island, fertility, fleet and opponent choices, it provides:
 Presets belong to the managed game copy and remain when restoring original
 game files. They require the matching generator fingerprint. Seed reuse is a
 map-generation feature, not a promise that AI events or a played game will
-unfold identically. Compilation, native fixtures and actual game acceptance
-are distinguished in [the validation record](docs/WORLD_OPTIONS_VALIDATION.md).
+unfold identically. Earlier presets remain on disk when a new generator
+refuses their fingerprint; they are not silently converted. Compilation,
+native fixtures and actual game acceptance are distinguished in the
+[current validation record](docs/WORLD_FAIRNESS_VALIDATION.md).
 
 ## Source and local builds
 
