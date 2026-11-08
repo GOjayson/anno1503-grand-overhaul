@@ -11,9 +11,19 @@ Use copies and explicit local paths for any integration or live game test.
   addresses without proving that they apply.
 - World Settings 0.11.0-dev.1, Food overhaul 0.5.0 and automatic launcher 1.0.0
   are experimental imported baselines. Preserve their source and test scope.
-- Current World Settings activation requires Food 0.5 in the source game and
-  the exact combined build on a marked independent copy. Keep that dependency
-  explicit until decoupling has been implemented and tested.
+- Food and World Settings are independent feature choices. Do not silently
+  select Food when World Settings is selected, or treat a profile flag as proof
+  that the native feature set matches it.
+- The preserved combined profile still uses its exact Food 0.5 startup inputs
+  and runtime. World-only uses a separate stock native/data host and separately
+  pinned runtime, engine plan and private World-policy AI modules. Never relax
+  one profile's fingerprints to accept the other.
+- World-only must preserve the checked vanilla diet, markets, data, archives,
+  UI and host DLLs. Its native hooks and engine transaction apply in memory to
+  the independent managed host; they are not Food compatibility patches.
+- Keep the original 43 imported compiled inputs byte-exact. The World-only
+  builder applies reviewed transformations only to newly staged copies. Keep
+  compilation, native preimage proofs, startup and gameplay evidence separate.
 - Eight ordinary AI players and eight LAN players are research targets, not
   established limits or implemented features. Flags, colors, owner IDs and
   special factions do not establish playable-player capacity.
@@ -40,3 +50,8 @@ and refuse unknown versions or conflicting files rather than overwriting them.
 Run relevant portable tests and repository-content checks before publishing.
 Live engine activation requires a fresh, verified game process and its existing
 guarded transaction; no retry after uncertain/partial activation.
+World-only startup may relay the already verified normal Ubisoft launch context
+to an identical independent executable. Keep arguments/environment in memory
+only, never log their values, never synthesize authentication data, and close
+only the exact fresh owned source main menu. Do not edit Ubisoft registration,
+installation paths, security settings or the executable to make a copy launch.

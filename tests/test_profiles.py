@@ -26,9 +26,10 @@ def document(**flags):
 
 
 class CatalogTests(unittest.TestCase):
-    def test_default_catalogue_preserves_current_dependency_and_priorities(self):
+    def test_default_catalogue_keeps_food_and_world_independent_and_preserves_priorities(self):
         catalog = default_catalog()
-        self.assertEqual(catalog["world_settings"].requires, ("food_overhaul",))
+        self.assertEqual(catalog["world_settings"].requires, ())
+        self.assertEqual(catalog["food_overhaul"].requires, ())
         self.assertEqual(catalog["world_settings"].priority, "priority")
         self.assertEqual(catalog["food_overhaul"].priority, "priority")
         self.assertEqual(catalog["lan_multiplayer"].priority, "priority")
@@ -76,15 +77,32 @@ class ProfileTests(unittest.TestCase):
                          {"food_overhaul", "world_settings"})
         self.assertEqual(validate_profile(value), value)
 
-    def test_world_settings_without_food_is_rejected(self):
-        with self.assertRaisesRegex(ProfileError, "requires Food overhaul"):
-            validate_profile(document(world_settings=True, food_overhaul=False))
+    def test_every_food_and_world_combination_preserves_the_selected_flags(self):
+        for world, food in ((True, False), (False, True), (True, True), (False, False)):
+            for auto in (False, True):
+                with self.subTest(world=world, food=food, auto=auto):
+                    value = resolve_selection(document(world_settings=world, food_overhaul=food),
+                                              auto_enable_dependencies=auto)
+                    self.assertIs(value["features"]["world_settings"], world)
+                    self.assertIs(value["features"]["food_overhaul"], food)
+                    self.assertEqual({f.id for f in selected_features(value)},
+                                     {key for key, enabled in (("world_settings", world), ("food_overhaul", food))
+                                      if enabled})
 
-    def test_explicit_dependency_resolution_enables_food(self):
+    def test_world_only_does_not_enable_food_when_other_flags_are_omitted(self):
         value = resolve_selection(document(world_settings=True), auto_enable_dependencies=True)
         self.assertTrue(value["features"]["world_settings"])
-        self.assertTrue(value["features"]["food_overhaul"])
+        self.assertFalse(value["features"]["food_overhaul"])
         self.assertFalse(value["features"]["lan_multiplayer"])
+
+    def test_declared_dependencies_are_still_required_in_other_catalogues(self):
+        catalog = FeatureCatalog((entry("world", requires=("food",)), entry("food")))
+        with self.assertRaisesRegex(ProfileError, "requires food"):
+            validate_profile(document(world=True, food=False), catalog)
+        value = resolve_selection(document(world=True, food=False), catalog,
+                                  auto_enable_dependencies=True)
+        self.assertTrue(value["features"]["world"])
+        self.assertTrue(value["features"]["food"])
 
     def test_partial_profiles_do_not_silently_enable_defaults(self):
         food = validate_profile(document(food_overhaul=True))
@@ -185,6 +203,14 @@ class ProfileStorageTests(unittest.TestCase):
         self.assertEqual(load_profile(target), value)
         self.assertEqual(sorted(p.relative_to(self.root).as_posix() for p in self.root.rglob("*") if p.is_file()),
                          ["profiles/default.json"])
+
+    def test_world_only_profile_keeps_food_disabled_after_save_and_reload(self):
+        value = document(world_settings=True, food_overhaul=False)
+        target = profile_path(self.root, "world-only")
+        save_profile(target, value)
+        loaded = load_profile(target)
+        self.assertTrue(loaded["features"]["world_settings"])
+        self.assertFalse(loaded["features"]["food_overhaul"])
 
     def test_existing_profile_is_preserved_without_overwrite(self):
         target = profile_path(self.root, "default")

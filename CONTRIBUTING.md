@@ -29,10 +29,12 @@ independent marked game copy. Installation/restoration requires a closed game;
 unknown inputs and conflicting changes must fail before publication. Native
 activation must retain its process/menu and transactional safety guards.
 
-The modular installer supports Food alone and Food with World Settings on an
-independent managed copy. Food-only preparation must work from public source
-without private World payloads. The combined selection must retain its
-explicit Food and Ubisoft source-installation dependency. Read
+The modular installer exposes independent Food and World choices on a managed
+copy. Food-only preparation must work from public source without private World
+payloads. Preserve the existing combined profile's exact compatibility contract.
+World-only uses its separate stock host, runtime and engine-plan pins, with no
+Food diet, market or native host changes. Do not make the checkbox independent
+while retaining Food semantics underneath it. Read
 `docs/INSTALLER.md` before changing package, copy or restoration behavior.
 
 Keep **Check installation** separate from publication and revalidate inputs

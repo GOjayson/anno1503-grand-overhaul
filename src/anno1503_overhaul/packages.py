@@ -308,6 +308,9 @@ def validate_package(path: Path | str, source_game: Path | str | None = None) ->
         raise PackageError("Select a prepared installer package folder")
     manifest = _json(_read(root, "manifest.json"), "package manifest")
     kind = manifest.get("kind")
+    if kind == "anno1503-world-only-installer-package":
+        from .world_only_package import validate_world_only_package
+        return validate_world_only_package(root, source_game)
     if kind not in ("anno1503-food-installer-package", "anno1503-local-installer-package"):
         raise PackageError("Unknown installer package kind")
     food_only = kind == "anno1503-food-installer-package"

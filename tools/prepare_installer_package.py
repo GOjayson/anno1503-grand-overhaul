@@ -15,11 +15,18 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--source-game", type=Path, required=True)
     parser.add_argument("--copy-game", type=Path)
-    parser.add_argument("--food-only", action="store_true", help="Prepare Food from public source without private World Settings inputs")
+    selection=parser.add_mutually_exclusive_group()
+    selection.add_argument("--food-only", action="store_true", help="Prepare Food from public source without private World Settings inputs")
+    selection.add_argument("--world-only", action="store_true", help="Prepare World Settings with stock food and native host modules")
     args = parser.parse_args()
     try:
         if args.food_only:
             root = prepare_food_package(args.output, args.source_game, args.copy_game)
+        elif args.world_only:
+            if args.copy_game is None:
+                parser.error('--world-only requires --copy-game')
+            from anno1503_overhaul.world_only_package import prepare_world_only_package
+            root=prepare_world_only_package(args.baselines,args.output,args.source_game,args.copy_game)
         else:
             root = prepare_package(args.baselines, args.output, args.source_game, args.copy_game)
         result = validate_package(root, args.source_game)

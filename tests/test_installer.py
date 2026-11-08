@@ -117,14 +117,46 @@ class InstallerLifecycleTests(unittest.TestCase):
             installer.check_install(self.source, self.target, self.profile, package=self.package)
         self.validate_package.assert_not_called()
 
-    def test_world_selection_does_not_silently_install_food_into_original(self):
+    def test_world_only_preserves_food_off_and_never_prepares_food_for_original(self):
         self.profile["features"]["world_settings"] = True
         self.profile["features"]["food_overhaul"] = False
-        with mock.patch.object(installer.adapter, "prepare_edits", return_value={"state": "vanilla", "edits": ["food edit"]}):
-            with self.assertRaisesRegex(installer.InstallerError, "exact Food 0.5"):
-                installer.check_install(self.source, self.target, self.profile, package=self.package)
+        self.validate_package.return_value['kind'] = 'anno1503-world-only-installer-package'
+        with mock.patch.object(installer.adapter, "prepare_edits") as prepare:
+            plan = installer.check_install(self.source, self.target, self.profile, package=self.package)
+        prepare.assert_not_called()
+        self.assertFalse(plan['profile']['features']['food_overhaul'])
         self.assertFalse(self.target.exists())
         self.assertEqual((self.source / "Sample.dat").read_bytes(), b"original fixture")
+
+    def test_world_only_refuses_a_combined_food_package_before_game_writes(self):
+        self.profile['features']['world_settings'] = True
+        self.profile['features']['food_overhaul'] = False
+        with self.assertRaisesRegex(installer.InstallerError, 'different Food selection'):
+            installer.check_install(self.source, self.target, self.profile, package=self.package)
+        self.assertFalse(self.target.exists())
+        self.assertEqual((self.source / 'Sample.dat').read_bytes(), b'original fixture')
+
+    def test_world_only_checks_unowned_stock_inputs_before_removing_any_payload(self):
+        self.profile['features']['world_settings'] = True
+        self.profile['features']['food_overhaul'] = False
+        self.validate_package.return_value['kind'] = 'anno1503-world-only-installer-package'
+        world = self.package / 'world'
+        world.mkdir()
+        (world / 'world_mod.py').write_text('''from types import SimpleNamespace
+def resolve_copy(spec, root, package=None): return root
+def build_edits(root, spec, progress=print):
+    return 'vanilla', [SimpleNamespace(name='PrivateRuntime/helper.dat', before=None,
+        after=b'world-only fixture', file_size=None, offset=None)]
+''', encoding='utf-8')
+        (world / 'world_patch.json').write_text(json.dumps({
+            'exe_sha256': filesystem.file_sha(self.source / 'Anno1503.exe')}), encoding='utf-8')
+        self.install()
+        (self.target / 'Sample.dat').write_bytes(b'external stock-file change')
+        journal = (self.target / 'GrandOverhaul_Backup_v1/manifest.json').read_bytes()
+        with self.assertRaisesRegex(vanilla.VanillaError, 'verified original baseline'):
+            installer.restore(self.target)
+        self.assertEqual((self.target / 'PrivateRuntime/helper.dat').read_bytes(), b'world-only fixture')
+        self.assertEqual((self.target / 'GrandOverhaul_Backup_v1/manifest.json').read_bytes(), journal)
 
     def test_running_game_refusal_occurs_before_creating_copy(self):
         self.closed.side_effect = RuntimeError("Close Anno first")

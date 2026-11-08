@@ -116,20 +116,28 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
         output = _workspace() / ('package-' + uuid.uuid4().hex)
         if profile['features']['world_settings']:
             provider = baseline_dir if baseline_dir is not None else REPO / '.local' / 'baselines'
-            package = prepare_package(provider, output, source, copy_game=target)
+            if profile['features']['food_overhaul']:
+                package = prepare_package(provider, output, source, copy_game=target)
+            else:
+                from .world_only_package import prepare_world_only_package
+                package = prepare_world_only_package(provider, output, source, target)
         else:
             package = prepare_food_package(output, source, copy_game=target)
     package = checked_path(package)
     metadata = validate_package(package, source_game=source)
     if Path(metadata.get('copy_root') or '').resolve() != target:
         raise InstallerError('These prepared mod files belong to another modded copy. Prepare a package for this copy.')
+    if profile['features']['world_settings']:
+        is_world_only = metadata['kind'] == 'anno1503-world-only-installer-package'
+        if is_world_only == profile['features']['food_overhaul']:
+            raise InstallerError('The prepared package has a different Food selection. Check the selected features again.')
     food = package / 'food'
     progress('Checking original-game recovery files…')
     recovery = plan_vanilla_recovery(source, food)
-    if profile['features']['world_settings']:
+    if profile['features']['world_settings'] and profile['features']['food_overhaul']:
         report = adapter.prepare_edits('food', food, source, _workspace() / ('source-check-' + uuid.uuid4().hex), progress)
         if report['state'] != 'combined-0.5.0' or report['edits']:
-            raise InstallerError('World Settings currently needs exact Food 0.5 in the Ubisoft game folder for startup. The original folder was not changed.')
+            raise InstallerError('This preserved combined runtime needs exact Food 0.5 in the Ubisoft source folder. World Settings alone uses its independent stock-game profile.')
         spec = json.loads((package / 'world' / 'world_patch.json').read_bytes())
         expected = {**spec['source_baselines'], **spec['unchanged_native']}
         for name, digest in expected.items():
@@ -202,6 +210,12 @@ def restore(copy_game: Path, *, progress=lambda _: None) -> dict:
     read_copy_marker(root)
     with operation_lock(root):
         record = _read_install(root)
+        if (record and record['profile']['features']['world_settings']
+                and not record['profile']['features']['food_overhaul']):
+            # World-only leaves these files unowned by the transaction. Check
+            # them before removing any World payload, so external changes cannot
+            # turn a failed restore into a partially removed installation.
+            verify_vanilla(root, REPO / 'legacy' / 'food_overhaul')
         _verify_journal(root, installed=False)
         require_game_closed()
         state = adapter.restore(root, progress)

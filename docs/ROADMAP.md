@@ -18,9 +18,10 @@ and acceptance gates, not release dates or promised engine capabilities.
 
 **Delivered foundation:** source and local baseline preservation, feature
 profiles, portable checks and repository boundaries are in place. The modular
-installer now adds a supported Food-only and combined installation path. This
-does not claim a portable rebuild of every historical native package or new
-actual-game evidence for the installer integration.
+installer adds Food-only, combined and a separate experimental World-only
+stock-host path. Independent checkboxes now select native profiles; they do not
+just record an intended feature set. This does not claim a portable rebuild of
+every historical native package or unperformed gameplay evidence.
 
 ## Priority: modular platform and existing features
 
@@ -29,7 +30,10 @@ interface with Food and World checkboxes, reviewed local package recipes,
 verified vanilla recovery on managed copies, a shared installation/restoration
 journal and the pinned automatic World launcher adapter. Food-only package
 preparation uses public source without private World payloads. The combined
-path retains its exact local payload and source-Food requirements.
+path retains its exact local payload and source-Food requirements. World-only
+has a controlled stock-host runtime build and a separate package recipe that
+preserves stock food, markets, UI and host DLLs. Its normal-client handoff and
+actual gameplay acceptance are tracked independently.
 
 Remaining work:
 
@@ -39,8 +43,10 @@ Remaining work:
    local baseline store is no longer required for the combined selection.
 3. Exercise the modular installer, automatic startup, gameplay and restoration
    together in actual game runs; retain bounded historical evidence separately.
-4. Decouple World Settings from the Food baseline if independent selection is
-   to be offered. Until then, keep Food as an explicit required dependency.
+4. Broaden the accepted independent World-only profile beyond its passing
+   automatic-startup, 1024-world and stock-diet save/reload case with zero AI.
+   Cover active AI, Huge worlds and extended play, while retaining the separate
+   native profile and guarded normal-client handoff.
 5. Validate each supported selection on an isolated game copy. Record save
    compatibility and new-world requirements for every module.
 

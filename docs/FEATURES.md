@@ -2,7 +2,7 @@
 
 The overhaul offers feature checkboxes before installation, with world-specific
 choices remaining in the in-game World Settings menu. The modular installer
-checks and installs Food alone or Food with World Settings on an independent
+checks and installs Food alone, World Settings alone, or both on an independent
 managed copy, and restores its managed files to the verified vanilla baseline.
 It does not support arbitrary combinations of future native modifications.
 
@@ -10,9 +10,9 @@ It does not support arbitrary combinations of future native modifications.
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Experimental 0.11.0-dev.1 with a local modular package/installer path | Requires Food, exact preserved local payloads, a marked combined copy and exact Food 0.5 in the Ubisoft source installation |
+| World Settings | Priority | Preserved combined 0.11.0-dev.1 and independent experimental stock-host profile | Food is optional; each selection needs its own exact local payload/runtime profile and marked copy; new World-only startup/gameplay evidence is tracked separately |
 | Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
-| Automatic launch | Supporting platform | Imported launcher 1.0.0 source; actual automatic startup/activation/menu test exists for the preserved build | Bound to the inspected World Settings package and supported native fingerprints |
+| Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
 | Local-host multiplayer | Priority research | No new transport, lobby or capacity implementation provided by this migration | Unavailable; establish engine/network feasibility and session limits first |
 | Knowledge overhaul | Planned | Design and native-state investigation pending | Unavailable; establish education/research behavior, persistence and interactions first |
@@ -50,6 +50,29 @@ modular installer integration. They do not certify all combinations,
 extended trade/combat, harvesting/mining access or long-session stability.
 Earlier failed Huge builds and the limited different-runtime save migration
 must remain distinguishable from accepted tests.
+
+## Independent World Settings profile
+
+Leaving Food unchecked selects a different native profile rather than merely
+hiding a checkbox. The managed copy remains the actual executable host and
+world data root. Inspected stock native DLLs, resident/food definitions,
+building archives and UI images stay unchanged. The installed additions are
+the World runtime, World-policy private AI modules and required World island
+assets. Stock AI retains only the narrowly derived World-policy flag-preserver
+hook, not the Food goods/index adaptations.
+
+The independent runtime and its stock-bound 173-edit engine plan have separate
+fingerprints from the preserved combined build. Food-only and combined paths
+retain their existing Food changes. Restore before changing the installed
+selection and use a fresh game launch. Profiles with Food disabled remain
+disabled when saved and reloaded.
+
+Compilation and native preimage proofs have passed for the independent profile.
+Its packaged automatic startup, World Settings menu, new 1024 world, stock diet
+inspection and fresh-process native save reload also passed with zero ordinary
+AI selected. See [decoupling validation](DECOUPLING_VALIDATION.md) for the exact
+scope and remaining active-AI, Huge and extended-gameplay coverage. Older
+combined-world observations remain separate evidence.
 
 ## Food baseline
 

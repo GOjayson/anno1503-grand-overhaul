@@ -24,6 +24,7 @@ def main(argv=None):
         options=setup.add_mutually_exclusive_group()
         options.add_argument('--profile',type=Path)
         options.add_argument('--food-only',action='store_true')
+        options.add_argument('--world-only',action='store_true')
         setup.add_argument('--baselines',type=Path)
         setup.add_argument('--package',type=Path)
     for action in ('restore','status','launch'):
@@ -36,7 +37,7 @@ def main(argv=None):
             gui();return 0
         if args.command=='features':
             result=dict(features=[f.to_dict()for f in default_catalog().features],
-                        scope='Install Food or Food + World Settings on a managed copy; World currently requires Food.')
+                        scope='Choose Food, World Settings, or both on a managed copy; Food is optional.')
         elif args.command=='new-profile':
             saved=save_profile(args.path,default_profile(name=args.name))
             result=dict(saved=str(saved),installed=False)
@@ -50,6 +51,7 @@ def main(argv=None):
             if args.command in ('check-install','install'):
                 profile=load_profile(args.profile) if args.profile else default_profile()
                 if args.food_only:profile['features']['world_settings']=False
+                if args.world_only:profile['features']['food_overhaul']=False
                 if args.command=='check-install':
                     result=installer.check_install(args.source,args.copy,profile,args.baselines,args.package,progress)
                 else:

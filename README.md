@@ -5,13 +5,13 @@ outside the installed game, with optional features chosen before installation
 or launch and world-specific settings configured inside Anno.
 
 The starting point is the existing experimental World Settings, Food overhaul
-and automatic-launch work. The modular installer now checks and installs Food
-alone or Food with World Settings on a separate managed game copy. It also
-restores the files it manages to their verified original-game baseline.
+and automatic-launch work. Food and World Settings have independent checkboxes:
+choose either feature or both on a separate managed game copy. The installer
+also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Imported experimental 0.11.0-dev.1; corrected Huge-world baseline preserved locally |
+| World Settings | Priority | Preserved combined baseline plus a separate experimental World-only stock-game profile; see its validation scope |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -29,9 +29,11 @@ with Tk support; World Settings startup needs 64-bit Python. Choose your
 installed History Edition folder and a separate destination for the modded
 copy, then select the feature checkboxes:
 
-1. **Food overhaul:** install Food 0.5 from the reviewed public source.
-2. **World Settings:** also selects Food, because the current implementation
-   depends on it. This choice needs the complete preserved local mod packages.
+1. **Food overhaul:** enable the Food 0.5 gameplay changes, or leave it unchecked
+   to retain the stock food economy.
+2. **World Settings:** enable world configuration independently of Food. This
+   choice needs the complete preserved local mod inputs; World-only also needs
+   its separately pinned native runtime profile.
 3. Click **Check installation**, review the destination and copy size, then
    click **Install selected features**.
 
@@ -46,12 +48,19 @@ If the source already has Food changes, the installer needs verified original
 bytes from its existing backups to prepare a vanilla baseline in the copy.
 A clean supported source needs no such recovery.
 
-World Settings currently has a startup dependency as well: the registered
-Ubisoft game folder must already contain exact Food 0.5. The installer checks
-that requirement without installing anything there. **Start with World
-Settings** uses Ubisoft Connect and the selected combined copy. World options
-remain inside Anno; Huge saves still need the compatible World Settings runtime
-after restoration.
+World-only keeps the inspected stock food definitions, markets, archives, UI
+and native host DLLs. Its copied executable is the actual game host and world
+data root; Food changes in the input installation are not carried into that
+world. The preserved combined profile keeps its existing Food implementation
+and exact startup contract.
+
+**Start with World Settings** uses normal Ubisoft authentication and the
+selected profile's guarded launch path. World-only relays the verified normal
+client startup context to the identical managed copy in memory; it does not
+change installation registration or persist startup values. The new profile's
+live startup/gameplay validation is tracked separately in
+[decoupling validation](docs/DECOUPLING_VALIDATION.md). World options remain
+inside Anno; Huge saves still need the compatible runtime after restoration.
 
 A public clone can prepare Food-only installation inputs. World Settings also
 requires a local payload provider containing the complete preserved
@@ -74,8 +83,10 @@ python -m anno1503_overhaul gui
 
 `FEATURE_SELECTOR.cmd` remains an alias for the installer. Profiles save feature
 choices separately from installation. Research features remain unavailable.
-World Settings currently requires Food 0.5, so selecting it also selects Food.
-Decoupling that dependency is a planned compatibility task.
+Food and World Settings selections stay independent when saved and reloaded.
+Restore the managed copy before changing an installed feature set, then use a
+fresh launch. This is an installation choice, not a switch inside a running
+world.
 
 ```console
 python -m anno1503_overhaul features
@@ -111,7 +122,7 @@ binds its game paths explicitly and records the relocation as new integration.
 Historical live-test evidence stays bound to the frozen runtime; package
 preparation does not count as a new game run.
 
-The native World Settings runtime can be compiled into a new local candidate
+The preserved combined World Settings runtime can be compiled into a new local candidate
 outside the game folder on Windows with the matching Zig 0.16.0 toolchain:
 
 ```console
@@ -122,8 +133,20 @@ The tools directory must contain `ziglang/zig.exe` and its libraries. An ignored
 `.local/toolchain/` installation is discovered automatically. The builder writes
 only beneath `.local/builds/` and does not install, launch or patch Anno. Full
 payload reconstruction from arbitrary new native builds and save compatibility
-need their own integration work. The installer accepts the reviewed frozen
-World Settings runtime rather than automatically accepting a rebuilt DLL.
+need their own integration work. The combined installer accepts the reviewed
+frozen runtime rather than automatically accepting a rebuilt DLL.
+
+The independent stock-game runtime has a separate controlled builder:
+
+```console
+python tools/build_world_only_runtime.py --vanilla-game PATH_TO_VERIFIED_STOCK_COPY
+```
+
+It verifies the imported source fingerprints and all stock hook/engine
+preimages, stages reviewed changes, and accepts only the pinned canonical
+World-only output. It writes beneath ignored `.local/builds/` and
+`.local/runtime-profiles/`; it does not install or start the game. The old
+combined runtime and imported source remain intact.
 
 ## Checks and contributions
 

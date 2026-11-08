@@ -49,7 +49,7 @@ def main():
     provider = tk.StringVar(value=str(installer.REPO / '.local/baselines'))
     name = tk.StringVar(value='Default')
     flags = {f.id: tk.BooleanVar(value=f.default_enabled) for f in catalog.features}
-    mutable, controls, buttons = [], {}, {}
+    mutable, buttons = [], {}
     status = tk.StringVar(value='Choose features, then check the installation.')
     busy, checked = [False], [None]
     events = queue.Queue()
@@ -96,13 +96,8 @@ def main():
 
     def refresh(*_):
         checked[0] = None
-        if flags['world_settings'].get():
-            flags['food_overhaul'].set(True)
-        if 'food_overhaul' in controls:
-            controls['food_overhaul'].state(['disabled'] if flags['world_settings'].get() or busy[0] else ['!disabled'])
         if not busy[0]:
-            status.set('World Settings requires Food in this release.' if flags['world_settings'].get()
-                       else 'Choose features, then check the installation.')
+            status.set('Choose either feature or both, then check the installation.')
             update_buttons()
 
     for key, description in (
@@ -111,11 +106,10 @@ def main():
     ):
         check = ttk.Checkbutton(group, text=catalog[key].name, variable=flags[key], command=refresh)
         check.pack(anchor='w', pady=(2, 0))
-        controls[key] = check
         mutable.append(check)
         ttk.Label(group, text=description, foreground='#555555', wraplength=790).pack(anchor='w', padx=24, pady=(3, 9))
-    ttk.Label(group, text='World Settings startup currently needs exact Food 0.5 in the Ubisoft game folder. '
-              'The installer checks this without changing that folder.', wraplength=790).pack(anchor='w', pady=(1, 3))
+    ttk.Label(group, text='Features apply on a fresh launch. World options are chosen inside Anno.',
+              wraplength=790).pack(anchor='w', pady=(1, 3))
     ttk.Label(panel, text='Planned: better AI, local-host multiplayer and Knowledge overhaul.',
               foreground='#555555').pack(anchor='w', pady=(12, 8))
     row = ttk.Frame(panel)
@@ -223,8 +217,6 @@ def main():
                 bar.stop()
                 for widget in mutable:
                     widget.state(['!disabled'])
-                if flags['world_settings'].get():
-                    controls['food_overhaul'].state(['disabled'])
                 if kind == 'error':
                     checked[0] = None
                     status.set('The operation could not finish. See the details above.')

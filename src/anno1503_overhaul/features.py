@@ -139,9 +139,9 @@ def default_catalog() -> FeatureCatalog:
             status="experimental",
             priority="priority",
             default_enabled=True,
-            requires=("food_overhaul",),
             notes=(
-                "The current tested activation requires Food 0.5.0 and the exact combined build on a marked copy.",
+                "World Settings and Food can be selected independently; install the selected feature set on a marked copy.",
+                "Restore before changing the installed features, then use a fresh game launch.",
                 "Currently supports 0–3 ordinary AI opponents through mapped stock placeholders; this is not a proven engine maximum.",
                 "Huge 2048 worlds remain experimental; automated tests and bounded game runs do not establish long-session stability.",
             ),

@@ -15,10 +15,12 @@ There are two distinct layers:
   A valid profile records a selection; installation also requires the exact
   supported local inputs and native fingerprints.
 
-The installer supports Food alone and Food with World Settings. World Settings
-continues to use the preserved experimental native runtime. The new work
-composes installation and restoration; it does not declare a new native runtime
-or certify unperformed gameplay. See [installer usage](INSTALLER.md).
+The installer exposes Food alone, World Settings alone and the combined
+selection. Food-only and combined installations preserve their existing Food
+implementations. World-only uses a separate stock-host native derivative with
+its own runtime and engine-plan fingerprints. Build checks do not certify
+unperformed gameplay. See [installer usage](INSTALLER.md) and
+[decoupling validation](DECOUPLING_VALIDATION.md).
 
 ## Repository and local workspace
 
@@ -42,22 +44,34 @@ sibling `developer/huge_world/`. Moving a file into a tidier folder can break
 that relationship without changing its contents. Preserve the legacy tree until
 an explicit build adaptation replaces it.
 
-## Current feature dependency
+## Independent choices and native profiles
 
-World Settings currently depends on Food overhaul 0.5.0. This is an observed
-installation requirement, not a desired permanent coupling:
+The feature catalogue has no Food requirement on World Settings. Saved flags
+and checkboxes remain independent. Installation resolves those choices to a
+specific native/data profile:
 
-1. The World Settings installer composes Food changes with the copied native
-   overlays and private runtime, AI and island files.
-2. Activation preflight requires exact Food 0.5.0 in the original source game.
-3. The independently marked game copy must contain the exact combined World
-   Settings build before activation can proceed.
+| Selection | Host and gameplay data | Native profile |
+| --- | --- | --- |
+| Food only | Inspected Food 0.5 outputs on the managed copy | Existing Food patch recipe |
+| World only | Stock host DLLs, diet, markets, archives and UI on the managed copy | Separately pinned stock-host runtime, private World-policy AI and stock-bound engine plan |
+| Food and World | Existing Food and World outputs composed together | Preserved combined runtime and native overlays |
 
-The selector must make this dependency visible and resolve or reject an
-incomplete selection. A World Settings-only profile cannot promise a working
-installation until decoupling is implemented and tested. Separately imported
-Food code also keeps its original limitations; later combined AI work does not
-retroactively certify every standalone Food configuration.
+The preserved combined path retains its exact Food 0.5 source-installation
+startup contract. Its runtime is not repurposed by relaxing fingerprints.
+World-only instead runs the identical game executable from a fully independent
+stock managed copy and uses that same folder as the world data root. The input
+installation remains separate and read-only; verified historical originals can
+provide stock recovery inputs even when that installation contains Food.
+
+The World-only C derivative accepts the executable host as data root only with
+the regular managed-copy marker and matching directory identity/spelling. Its
+Python preflight verifies the complete marker/source binding, stock inputs,
+introduced payloads, restoration journal and private AI identities. Native hook
+installation still checks exact stock module hashes and every native preimage.
+
+Restoration is required before switching profiles. Selection changes do not
+hot-swap a running world, rewrite save semantics or transfer historical gameplay
+evidence from one runtime to another.
 
 ## Intended feature lifecycle
 
@@ -88,6 +102,15 @@ specification and generates a relocated specification plus launcher pins for
 the explicit source/copy pair. Provider Python is checked but never executed;
 the package's helpers derive from tracked, provenance-checked source.
 
+`world_only_package.py` has a distinct package kind and regenerates its expected
+recipe from the same pinned local corpus plus verified stock native inputs.
+It uses `world_only_backend.py` in place of the combined Food composer. That
+backend verifies the stock diet/native/archive/UI closure and introduces only
+World runtime, World-policy AI and island files; it never calls Food transforms.
+Derived disk Frame/Scene/Welt overlays are not installed on the stock host.
+The private AI derivation retains one World-policy flag-preservation hook and
+its exact unwind metadata while leaving the other original mapped bytes stock.
+
 `filesystem.py` creates a separate writable copy using bounded game locations,
 with inventory checks, reparse refusal and path-bound managed-copy metadata.
 It does not copy historical backups or mod development workspaces into the new
@@ -115,6 +138,20 @@ installation** separate from **Install selected features**; publication
 rechecks the prepared inputs. The UI's restore action affects managed copies
 only. Retained journal bytes and reviewed source specifications make recovery
 independent of a prepared package's continued availability.
+
+`client_context.py` implements the stock-host startup handoff. It starts the
+normal registered Ubisoft route, positively identifies the fresh source main
+menu and captures its existing startup context in memory. After rechecking that
+exact owned menu, it starts the identical independent executable once while the
+verified normal menu remains alive for client SDK initialization. Both exact
+processes must reach and remain at their verified menus before the handoff
+requests a normal close of its source menu. The copied host must then survive
+alone at its verified menu before native activation. Existing games, worlds and
+unknown processes are not adopted or closed. Argument and
+environment values are not written to logs or packages, synthesized, or reused
+for a second attempt. The Ubisoft client retains authentication and ownership
+checks. No registration, permanent install-path or security-setting change is
+part of this handoff.
 
 ## Shared platform responsibilities
 
@@ -158,6 +195,20 @@ current installer imports the exact frozen World payloads; it does not claim
 to reconstruct every historical native artifact from a clean public clone.
 Any new native build needs output comparisons, isolated installation and
 restoration checks, then separate actual launch/gameplay evidence.
+
+`world_runtime_build.py` stages the imported 43-file compiled closure after
+checking every original fingerprint. Only four staged compiled inputs change:
+stock module/AI pins, the managed same-root configuration guard and the two
+stock exception-table edit RVAs. All nine hook preimages and 173 engine sites
+are checked on the exact stock PE images, including two original chained
+Scene unwind parents. The engine plan relocates the two Food-expanded `.pdata`
+fields to their uniquely matched stock function tuples; unchanged numeric
+addresses are not assumed compatible.
+
+The builder uses Zig 0.16.0, verifies AMD64 exports and canonicalizes only COFF
+and debug build metadata. Two separate staging builds produced the same pinned
+World-only runtime. Runtime profiles and old candidates stay under ignored
+local storage; unknown rebuilt DLLs are not accepted by manifest changes.
 
 ## Multiplayer and player capacity
 
