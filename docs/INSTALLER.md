@@ -148,12 +148,13 @@ combination is refused. Fair starts do not enable a smarter-AI module or add
 player slots.
 
 On **World**, **Resource distribution** keeps original assignments, spreads
-resources or favours specialised regions. Spread maximises separation for each
-resource; Specialised regions groups each resource around a seeded compatible
+resources or favours specialised regions. Spread favours separation for each
+resource; Specialised regions favours grouping around a seeded compatible
 region. Redistribution preserves each resource's world count from the selected
 fertility level while retaining native climate and ore-occurrence constraints.
-Per-island availability can change, and Very fertile can leave little room for
-redistribution. Native/special-faction resources stay unchanged.
+Per-island availability can change, but saturated fertility or native/climate
+constraints can leave modes with identical assignments. Native/special-faction
+resources stay unchanged.
 **Guarantee basic resources near every
 player's start** can additionally provide grain, flax, potatoes, iron and salt
 on ordinary islands within `max(128, worldSize / 4)` tiles of each participant's

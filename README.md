@@ -124,10 +124,11 @@ world, island, fertility, fleet and opponent choices, it provides:
 - **Balanced starts:** optionally choose comparable ordinary starting islands
   for the human and selected AI opponents, with close, balanced or distant
   separation. The preview marks assigned starts and displays a summary.
-- **Resource distribution:** keep the original assignments, spread resources,
-  or concentrate them into specialised regions. Redistribution preserves each
+- **Resource distribution:** keep original assignments, favour spreading
+  resources, or favour specialised regions. Redistribution preserves each
   resource's world count from the selected fertility level while respecting
-  climate compatibility and actual ore occurrences. Individual islands can differ.
+  climate compatibility and actual ore occurrences. Individual islands can differ;
+  saturated fertility or native/climate constraints can leave assignments unchanged.
 - **Nearby basic resources:** optionally ensure grain, flax, potatoes, iron
   and salt near each player's start. This can add resources above fertility
   abundance. It does not guarantee every production chain in the Food overhaul.
