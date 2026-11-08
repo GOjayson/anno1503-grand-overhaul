@@ -110,8 +110,13 @@ class NativePresetCodecTests(unittest.TestCase):
         source = cls.directory / 'preset_codec_fixture.c'
         source.write_text(DRIVER, encoding='utf-8')
         cls.exe = cls.directory / ('preset_codec_fixture.exe' if os.name == 'nt' else 'preset_codec_fixture')
-        result = subprocess.run([*compiler, '-std=c11', '-O2', '-Wall', '-Wextra', '-Werror',
-                                 '-I', str(NATIVE), str(source), '-o', str(cls.exe)],
+        command = [*compiler, '-std=c11', '-O2', '-Wall', '-Wextra', '-Werror']
+        if os.name != 'nt':
+            # Match the planner fixture's policy for the reviewed compact C:
+            # each guard returns before the independent same-line statement.
+            command.append('-Wno-misleading-indentation')
+        command += ['-I', str(NATIVE), str(source), '-o', str(cls.exe)]
+        result = subprocess.run(command,
                                 capture_output=True, text=True, timeout=90)
         if result.returncode:
             raise AssertionError('Native preset fixture compilation failed:\n' + result.stderr)
