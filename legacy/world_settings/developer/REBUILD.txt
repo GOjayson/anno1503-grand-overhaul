@@ -1,0 +1,50 @@
+Native source reconstruction (developer workflow only)
+=====================================================
+
+The installed product has no external world-options utility. Configuration
+controls live inside the in-process World Settings screen. These commands are
+for rebuilding/checking source copies and do not configure a world.
+
+The regular installer needs Python 3.10+; native recompilation additionally
+needs a Windows x64 cross compiler. The snapshotted runtime build script expects
+Zig at developer/source/_tools/ziglang/zig.exe; the compiler is not distributed
+in this package. Its exact invocation is recorded in SOURCE_BASELINES.json.
+
+With that compiler present, the copied directory structure is retained so:
+
+  python -B developer/source/runtime_dev3/build_runtime.py
+
+builds against the copied UI, backend and factory C files. The runtime must
+default to an unregistered backend, and the regular installer must not enable
+it. The explicit developer test harness may register the candidate only after
+guarding its marked independent copy root. All world options still come from
+the in-game modal. This test registration is not release readiness; a successful
+compile or installer test does not satisfy the documented readiness gates.
+
+The inspected source module baselines are native/AnnoFrame.food05.dll,
+native/AnnoScene.source.dll and native/AnnoWelt.source.dll. Rebuilding payloads
+requires a supported marked game copy containing those baseline modules plus the exact inspected EXE and
+other required source files. From this package directory:
+
+  python -B developer/build_world_payload.py --source-root developer/source --game-dir PATH_TO_BASELINE_COPY
+  python -B developer/test_combined_installer.py
+  python -B -m unittest discover -s support -p test_world_transactions.py -v
+  python -B developer/pack_development.py
+
+The snapshot script writes only this package. It verifies the rebuilt runtime's
+output SHA-256 and disabled-backend build metadata, fingerprints all baseline
+modules, then generates Frame, Scene and Welt payload copies and validates the
+15 data-only pirate alias copies. It never patches
+the source module or game directory. Keep source/evidence stable between the
+runtime rebuild, tests and final snapshot; SOURCE_BASELINES.json lists exactly
+which copies accompany the packaged binary.
+Compiler caches, intermediate object files and the current process activation
+record are excluded from the source snapshot/archive. The activation record is
+created locally by a successful activation and is not reusable in another
+process.
+
+The tests in this development workspace copy actual full source inputs from
+the original game location; they are not a portable substitute for a game
+installation or a real in-game run. Supply the appropriate source installation
+layout when reproducing those workspace tests. The generated archive retains
+the explicit UNFINISHED status and copy-only installer restrictions.

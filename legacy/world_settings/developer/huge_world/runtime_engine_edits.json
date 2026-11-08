@@ -1,0 +1,1361 @@
+{
+  "profile": "history-amd64-world-ship-render-and-recenter-v4",
+  "module": "AnnoWelt.dll",
+  "original_welt_sha256": "ae772ab0d06b9f4d0759197fea10affe379eb927c0609f805427e4de532f7bd9",
+  "dev7_welt_sha256": "059ecd1dcb2139b350f50a2805d811eff89e61cead2733ca9aedb6da83058319",
+  "patched_welt_sha256": "8a6f73e1f015e30685063dc3418305e6b3a0bf51f9fe49d6074c296fc1e33aa8",
+  "grid_operational_and_metadata_instruction_count": 104,
+  "navigation_regions": 8,
+  "visibility_regions": 47,
+  "visibility_layout": {
+    "component": "Visibility helper plus native ca2f0 producer stack/caches and cleanup/unwind closure",
+    "source_sha256": "bc4de21e6c92ab5a94d9fc50d25f0609d9e1cdb2ff119c29238d3354f978fb29",
+    "output_sha256": "8a6f73e1f015e30685063dc3418305e6b3a0bf51f9fe49d6074c296fc1e33aa8",
+    "idempotent": false,
+    "architecture": "AMD64 PE32+",
+    "repair_plan_sha256": "5e6e77be9d91e2aacf628d507aec059ee9b3170b0e319efe9b18f06ecad0835c",
+    "region_count": 47,
+    "new_stack_frame_bytes": 920808,
+    "stack_growth_bytes": 41856,
+    "new_visibility_mask_bytes": 2048,
+    "new_matrix_columns": 128,
+    "visible_record_capacity": 8192,
+    "matrix_zero_is_unassigned": true,
+    "matching_cpp_cleanup_and_native_unwind": true,
+    "game_executed": false,
+    "activation_requirement": "Compose all helper, producer, cleanup and unwind changes before restarting a test game. Never apply a partial repair or hot-patch an existing World."
+  },
+  "engine_instruction_count": 173,
+  "edits": [
+    {
+      "rva": 9544,
+      "before": "b968700000",
+      "after": "b900000200",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 28449,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 37279,
+      "before": "420fb68c0040020000",
+      "after": "420fb68c0000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 96741,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 97832,
+      "before": "420fb68c3840020000",
+      "after": "420fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 98114,
+      "before": "420fb68c3840020000",
+      "after": "420fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 98401,
+      "before": "420fb68c3840020000",
+      "after": "420fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 98699,
+      "before": "420fb68c3840020000",
+      "after": "420fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 100307,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 105481,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 108138,
+      "before": "0fb69c0840020000",
+      "after": "0fb69c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 114338,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 135045,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 149343,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 149572,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 173533,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 197319,
+      "before": "420fb68c0040020000",
+      "after": "420fb68c0000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 425952,
+      "before": "40574883ec20418bc0448bca9983e207448d0402418bc19941c1f80383e20741",
+      "after": "40574883ec208bc29983e20703c2c1f803418bd0c1fa1f83e2074103d0c1fa03",
+      "category": "shared_accessor",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 425984,
+      "before": "c1e00403c2c1f8034103c04898488d3cc1488b44c1204885c07532488b4918ba",
+      "after": "c1e20403c24898488d3cc14c8d150ecf08004c3911750b4863d2488dbcd7f809",
+      "category": "shared_accessor",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 426016,
+      "before": "0002000048895c2430e8327cffff33d24889472041b800020000488bc8488bd8",
+      "after": "0000909048895c2430488b47204885c07522488b4918ba00020000e8207cffff",
+      "category": "shared_accessor",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 426048,
+      "before": "e8a5d80700488bc3488b5c24304883c4205fc3cccccccccccccccccccccccccc",
+      "after": "48894720488bc833d241b800020000e896d80700488b5c24304883c4205fc3cc",
+      "category": "shared_accessor",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 437067,
+      "before": "0f1f440000410fb641022c803c07774a488d542420498d4d10e847450000488b",
+      "after": "bdff030000410fb641022c803c07774a85ed0f84c8000000488d542420498d4d",
+      "category": "backtrack_bound",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 437099,
+      "before": "4c2420440fb744242a0fb7542428428d04c24c8d0c810fb781000100006603c2",
+      "after": "10e83f450000488b4c2420440fb744242a0fb7542428428d04c24c8d0c818b81",
+      "category": "backtrack_bound",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 437131,
+      "before": "664189070fb78102010000664103c066418947024983c704ebab",
+      "after": "0001000041c1e0104103c06603c24189074983c704ffcdebac90",
+      "category": "backtrack_bound",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 437269,
+      "before": "83e20703c2c1f8034c63c88d41079983e20703c2c1f8034585c07e3685c07e32",
+      "after": "498d8d0040000033d241b800200000e8c1ac0700eb3c0f28b424401000000f28",
+      "category": "fine_clear_and_backtrack_failure",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 437301,
+      "before": "498be98bf848c1e503498d9d083600006666660f1f8400000000004c8bc533d2",
+      "after": "bc2430100000b8ffffffff4881c450100000415f415d415c5f5e5d5bc3909090",
+      "category": "fine_clear_and_backtrack_failure",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 437333,
+      "before": "488bcbe88dac07004883eb804883ef0175e9",
+      "after": "909090909090909090909090909090909090",
+      "category": "fine_clear_and_backtrack_failure",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 443227,
+      "before": "ba483e0000",
+      "after": "ba00600000",
+      "category": "object_lifetime",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 563915,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 564456,
+      "before": "420fb68c1040020000",
+      "after": "420fb68c1000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 564728,
+      "before": "420fb68c1040020000",
+      "after": "420fb68c1000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 565574,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 567385,
+      "before": "420fb68c1040020000",
+      "after": "420fb68c1000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 569312,
+      "before": "0fb68c3840020000",
+      "after": "0fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 575443,
+      "before": "420fb68c1040020000",
+      "after": "420fb68c1000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 576397,
+      "before": "420fb68c1040020000",
+      "after": "420fb68c1000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 577334,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 577631,
+      "before": "420fb68c0040020000",
+      "after": "420fb68c0000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 585992,
+      "before": "420fb68c1040020000",
+      "after": "420fb68c1000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 586191,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 596684,
+      "before": "420fb68c1840020000",
+      "after": "420fb68c1800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 600563,
+      "before": "420fb68c1040020000",
+      "after": "420fb68c1000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 643537,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 645226,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 645780,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 758313,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 777989,
+      "before": "420fb68c3040020000",
+      "after": "420fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 778195,
+      "before": "0fb68c1840020000",
+      "after": "0fb68c1800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 788464,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 789213,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 789903,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 790361,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 794903,
+      "before": "420fb68c0840020000",
+      "after": "420fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 821688,
+      "before": "498dad40020000",
+      "after": "498dad00000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 822109,
+      "before": "0fb68c0840020000",
+      "after": "0fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 822304,
+      "before": "0fb68c0840020000",
+      "after": "0fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 822532,
+      "before": "0fb68c0840020000",
+      "after": "0fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 822760,
+      "before": "0fb68c0840020000",
+      "after": "0fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 827281,
+      "before": "8d0c48",
+      "after": "8d0c88",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 827377,
+      "before": "4e8d0cc74d2bd8bb010000000f1f00",
+      "after": "4d2bd84f8d0c004e8d0ccf31dbffc3",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 827436,
+      "before": "4983c108",
+      "after": "4983c110",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828176,
+      "before": "488dac249897f2ff",
+      "after": "488dac2418f4f1ff",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828184,
+      "before": "b868690d00",
+      "after": "b8e80c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828211,
+      "before": "4c8dbd60680400",
+      "after": "4c8dbde00b0500",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828381,
+      "before": "41b800020000",
+      "after": "41b800080000",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828507,
+      "before": "41b8a0020000",
+      "after": "41b820040100",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828513,
+      "before": "488d8dc0010000",
+      "after": "488d8dc0070000",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828633,
+      "before": "4883f802",
+      "after": "4883f804",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828677,
+      "before": "48c7c0a9ffffff",
+      "after": "48c7c001000000",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828684,
+      "before": "482b85c8680d00",
+      "after": "482b85480c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828861,
+      "before": "440fb6ac3040020000",
+      "after": "440fb6ac3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 828990,
+      "before": "488b8db8680d00",
+      "after": "488b8d380c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829190,
+      "before": "488bb5b0680d00",
+      "after": "488bb5300c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829230,
+      "before": "4a8b94cdc8010000",
+      "after": "4a8b94cdc8070000",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829289,
+      "before": "4a8b94cdc0010000",
+      "after": "4a8b94cdc0070000",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829412,
+      "before": "89948d60040000",
+      "after": "89948de00b0000",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829419,
+      "before": "4a899ccdc8010000",
+      "after": "4a899ccdc8070000",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829538,
+      "before": "488b8db8680d00",
+      "after": "488b8d380c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829614,
+      "before": "8d0450",
+      "after": "8d0490",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829707,
+      "before": "4183c202",
+      "after": "4183c204",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829716,
+      "before": "8344246850",
+      "after": "836c246880",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829740,
+      "before": "488dbd60680000",
+      "after": "488dbde00b0100",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829747,
+      "before": "488d8560680400",
+      "after": "488d85e00b0500",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829761,
+      "before": "4c8bb5b0680d00",
+      "after": "4c8bb5300c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829777,
+      "before": "488db578680400",
+      "after": "488db5f80b0500",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829784,
+      "before": "488b9dc8680d00",
+      "after": "488b9d480c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829808,
+      "before": "428d0440",
+      "after": "428d0480",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829833,
+      "before": "438d0480c1e004",
+      "after": "4489c0c1e00790",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829843,
+      "before": "8b8c8560040000",
+      "after": "8b8c85e00b0000",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829850,
+      "before": "81f900200000",
+      "after": "ffc980fd2090",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 829856,
+      "before": "0f837a010000",
+      "after": "0f839a000000",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 830418,
+      "before": "488b9db0680d00",
+      "after": "488b9d300c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 830535,
+      "before": "488d8560680000",
+      "after": "488d85e00b0100",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 830593,
+      "before": "488b85c8680d00",
+      "after": "488b85480c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 830645,
+      "before": "488b8dc8680d00",
+      "after": "488b8d480c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 830920,
+      "before": "4c8bb5b0680d00",
+      "after": "4c8bb5300c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 830966,
+      "before": "488bb5c8680d00",
+      "after": "488bb5480c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 830983,
+      "before": "488d8560680000",
+      "after": "488d85e00b0100",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 831014,
+      "before": "488985b0680d00",
+      "after": "488985300c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 831038,
+      "before": "488d8560680000",
+      "after": "488d85e00b0100",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 831073,
+      "before": "488d8d60680000",
+      "after": "488d8de00b0100",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 831133,
+      "before": "488b85b8680d00",
+      "after": "488b85380c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 831234,
+      "before": "488b85c0680d00",
+      "after": "488b85400c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 831287,
+      "before": "4881c468690d00",
+      "after": "4881c4e80c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 845463,
+      "before": "0fb68c1840020000",
+      "after": "0fb68c1800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 845558,
+      "before": "0fb68c1840020000",
+      "after": "0fb68c1800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 846457,
+      "before": "4088b41840020000",
+      "after": "4088b41800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 852166,
+      "before": "0fb6840840020000",
+      "after": "0fb6840800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 852226,
+      "before": "4881c140020000",
+      "after": "4881c100000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 852233,
+      "before": "41b800640000",
+      "after": "41b800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 852483,
+      "before": "488d9540020000",
+      "after": "488d9500000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 853432,
+      "before": "498d8d40020000",
+      "after": "498d8d00000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 853444,
+      "before": "41b800640000",
+      "after": "41b800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 853726,
+      "before": "4981c040020000",
+      "after": "4981c000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 854780,
+      "before": "498d8d40020000",
+      "after": "498d8d00000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 854792,
+      "before": "41b800640000",
+      "after": "41b800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 855085,
+      "before": "4981c040020000",
+      "after": "4981c000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 859577,
+      "before": "ba006f0000",
+      "after": "ba00000200",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 860243,
+      "before": "488d8f40020000",
+      "after": "488d8f00000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 860255,
+      "before": "41b800640000",
+      "after": "41b800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 860973,
+      "before": "0fb68c0840020000",
+      "after": "0fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 861165,
+      "before": "0fb68c0840020000",
+      "after": "0fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 861343,
+      "before": "0fb68c0840020000",
+      "after": "0fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 863049,
+      "before": "420fb68c3840020000",
+      "after": "420fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 866071,
+      "before": "420fb68c0040020000",
+      "after": "420fb68c0000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 867732,
+      "before": "0fb68c3840020000",
+      "after": "0fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 868036,
+      "before": "0fb68c1840020000",
+      "after": "0fb68c1800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 868669,
+      "before": "420fb68c1040020000",
+      "after": "420fb68c1000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 869521,
+      "before": "420fb68c3840020000",
+      "after": "420fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 870236,
+      "before": "0fb68c1840020000",
+      "after": "0fb68c1800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 871928,
+      "before": "0fb68c1840020000",
+      "after": "0fb68c1800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 875278,
+      "before": "0fb68c3040020000",
+      "after": "0fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 875565,
+      "before": "0fb68c3040020000",
+      "after": "0fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 875654,
+      "before": "0fb68c3040020000",
+      "after": "0fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 888500,
+      "before": "420fb68c3040020000",
+      "after": "420fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 895940,
+      "before": "0fb68c1840020000",
+      "after": "0fb68c1800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 896360,
+      "before": "0fb68c3040020000",
+      "after": "0fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 896804,
+      "before": "0fb68c3040020000",
+      "after": "0fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 900510,
+      "before": "b9483e0000",
+      "after": "b900600000",
+      "category": "object_lifetime",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 901729,
+      "before": "420fb68c3040020000",
+      "after": "420fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 902100,
+      "before": "420fb68c3040020000",
+      "after": "420fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 902952,
+      "before": "420fb6943140020000",
+      "after": "420fb6943100000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 903193,
+      "before": "420fb6943140020000",
+      "after": "420fb6943100000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 903440,
+      "before": "420fb68c3040020000",
+      "after": "420fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 903700,
+      "before": "420fb68c3040020000",
+      "after": "420fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 903961,
+      "before": "420fb6943140020000",
+      "after": "420fb6943100000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 904217,
+      "before": "420fb68c3040020000",
+      "after": "420fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 904470,
+      "before": "420fb68c3040020000",
+      "after": "420fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 904721,
+      "before": "420fb68c3040020000",
+      "after": "420fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 904987,
+      "before": "420fb68c3040020000",
+      "after": "420fb68c3000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 906016,
+      "before": "0fb68c1040020000",
+      "after": "0fb68c1000000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 906348,
+      "before": "0fb68c0840020000",
+      "after": "0fb68c0800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 907929,
+      "before": "0fb68c3840020000",
+      "after": "0fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 908057,
+      "before": "0fb68c3840020000",
+      "after": "0fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 908247,
+      "before": "0fb68c3840020000",
+      "after": "0fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 908393,
+      "before": "0fb68c3840020000",
+      "after": "0fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 916484,
+      "before": "0fb68c3840020000",
+      "after": "0fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 918912,
+      "before": "420fb68c3840020000",
+      "after": "420fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 919381,
+      "before": "0fb68c3840020000",
+      "after": "0fb68c3800000100",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 928829,
+      "before": "ba68700000",
+      "after": "ba00000200",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 942921,
+      "before": "ba68700000",
+      "after": "ba00000200",
+      "category": "world_grid",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 953310,
+      "before": "488b8db0690d00",
+      "after": "488b8d300d0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 953577,
+      "before": "ba483e0000",
+      "after": "ba00600000",
+      "category": "object_lifetime",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 1176374,
+      "before": "68690d00",
+      "after": "e80c0e00",
+      "category": "visibility_layout",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 1359500,
+      "before": "4d800600",
+      "after": "59800600",
+      "category": "unwind",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 1359508,
+      "before": "4d80060053800600",
+      "after": "598006005f800600",
+      "category": "unwind",
+      "module": "AnnoWelt.dll"
+    },
+    {
+      "rva": 115702,
+      "before": "f30f10055aff0800",
+      "after": "e855100800909090",
+      "category": "huge_centered_depth_bias_load",
+      "module": "AnnoFrame.dll"
+    },
+    {
+      "rva": 116688,
+      "before": "f30f100580fb0800",
+      "after": "e87b0c0800909090",
+      "category": "huge_centered_depth_bias_load",
+      "module": "AnnoFrame.dll"
+    },
+    {
+      "rva": 644176,
+      "before": "000000000000000000000000000000000000000000000000000000",
+      "after": "66490f6ec34c8b5f184d85db74474181bbd801000000080000753a",
+      "category": "huge_centered_depth_leaf_code",
+      "module": "AnnoFrame.dll"
+    },
+    {
+      "rva": 644203,
+      "before": "0000000000000000000000000000000000000000000000000000",
+      "after": "4181bbdc01000000080000752d66490f7ec3f30f1087a8010c00",
+      "category": "huge_centered_depth_leaf_code",
+      "module": "AnnoFrame.dll"
+    },
+    {
+      "rva": 644229,
+      "before": "0000000000000000000000000000000000000000000000000000000000000000",
+      "after": "f30f5887c8010c00f30f59052b0000000f570534000000f30f5805b4ee0000c3",
+      "category": "huge_centered_depth_leaf_code",
+      "module": "AnnoFrame.dll"
+    },
+    {
+      "rva": 644261,
+      "before": "000000000000000000000000000000000000000000000000000000",
+      "after": "66490f7ec3f30f1005a6ee0000c390909090909090909090909090",
+      "category": "huge_centered_depth_leaf_code",
+      "module": "AnnoFrame.dll"
+    },
+    {
+      "rva": 644288,
+      "before": "0000000000000000000000000000000000000000000000000000000000000000",
+      "after": "0000804400000000000000000000000000000080000000000000000000000000",
+      "category": "huge_centered_depth_constants",
+      "module": "AnnoFrame.dll"
+    }
+  ],
+  "disk_only_exception_edits": [
+    {
+      "rva": 1454492,
+      "rva_hex": "0x16319c",
+      "before": "4d800600",
+      "after": "59800600",
+      "length": 4,
+      "category": "active_copied_unwind",
+      "reason": "Dev7 active merged exception directory copies original records into .wsaildr. Disk profile must update this active copy too; original-loaded runtime has only the common records."
+    },
+    {
+      "rva": 1454500,
+      "rva_hex": "0x1631a4",
+      "before": "4d80060053800600",
+      "after": "598006005f800600",
+      "length": 8,
+      "category": "active_copied_unwind",
+      "reason": "Dev7 active merged exception directory copies original records into .wsaildr. Disk profile must update this active copy too; original-loaded runtime has only the common records."
+    }
+  ],
+  "activation": "All exact World and Frame edits and nine existing hooks commit in one guarded paused transaction before World construction. All known game threads remain paused throughout byte publication, cache flush and any rollback. Canonical module/RVA order has no live partial-execution interval. The copied World updates its duplicated active exception records; the copied Frame declares existing final-page helper code. Original loaded module file hashes must match inspected Food baselines.",
+  "modules": {
+    "AnnoWelt.dll": {
+      "source_sha256": "ae772ab0d06b9f4d0759197fea10affe379eb927c0609f805427e4de532f7bd9",
+      "copied_input_sha256": "059ecd1dcb2139b350f50a2805d811eff89e61cead2733ca9aedb6da83058319",
+      "patched_sha256": "8a6f73e1f015e30685063dc3418305e6b3a0bf51f9fe49d6074c296fc1e33aa8"
+    },
+    "AnnoFrame.dll": {
+      "source_sha256": "046b5ad6f351dfe867ed38ce29fb50a594485b43a32ee90adadc48e850466baf",
+      "copied_input_sha256": "dfe71e26feb210bb1c400c338d338a71b1b3026c1e9b2e1ddf06a6378a1d5f86",
+      "patched_sha256": "59a4856b2551d12990501680511ab0684348c4214476ed398d17e1a99e46c4fb"
+    }
+  },
+  "world_instruction_count": 166,
+  "frame_instruction_count": 7,
+  "depth_layout": {
+    "schema": 2,
+    "status": "EXPERIMENTAL_NOT_APPROVED",
+    "module": "AnnoFrame.dll",
+    "profile": "history-amd64-world-centered-depth-bias-v1",
+    "source_profile": "world_overlay166",
+    "source_sha256": "dfe71e26feb210bb1c400c338d338a71b1b3026c1e9b2e1ddf06a6378a1d5f86",
+    "output_sha256": "59a4856b2551d12990501680511ab0684348c4214476ed398d17e1a99e46c4fb",
+    "runtime_edits": [
+      {
+        "rva": 644176,
+        "before": "000000000000000000000000000000000000000000000000000000",
+        "after": "66490f6ec34c8b5f184d85db74474181bbd801000000080000753a",
+        "category": "huge_centered_depth_leaf_code"
+      },
+      {
+        "rva": 644203,
+        "before": "0000000000000000000000000000000000000000000000000000",
+        "after": "4181bbdc01000000080000752d66490f7ec3f30f1087a8010c00",
+        "category": "huge_centered_depth_leaf_code"
+      },
+      {
+        "rva": 644229,
+        "before": "0000000000000000000000000000000000000000000000000000000000000000",
+        "after": "f30f5887c8010c00f30f59052b0000000f570534000000f30f5805b4ee0000c3",
+        "category": "huge_centered_depth_leaf_code"
+      },
+      {
+        "rva": 644261,
+        "before": "000000000000000000000000000000000000000000000000000000",
+        "after": "66490f7ec3f30f1005a6ee0000c390909090909090909090909090",
+        "category": "huge_centered_depth_leaf_code"
+      },
+      {
+        "rva": 644288,
+        "before": "0000000000000000000000000000000000000000000000000000000000000000",
+        "after": "0000804400000000000000000000000000000080000000000000000000000000",
+        "category": "huge_centered_depth_constants"
+      },
+      {
+        "rva": 115702,
+        "before": "f30f10055aff0800",
+        "after": "e855100800909090",
+        "category": "huge_centered_depth_bias_load"
+      },
+      {
+        "rva": 116688,
+        "before": "f30f100580fb0800",
+        "after": "e87b0c0800909090",
+        "category": "huge_centered_depth_bias_load"
+      }
+    ],
+    "runtime_edit_count": 7,
+    "disk_only_metadata_edits": [
+      {
+        "rva": 568,
+        "file_offset": 568,
+        "before": "4cc40900",
+        "after": "e0c40900",
+        "category": "declare_existing_page_bias_helper"
+      }
+    ],
+    "helper_range": [
+      644176,
+      644320
+    ],
+    "original_normalization_and_both_scalar_consumers_unchanged": true,
+    "both_state4_bias_loads_redirected": true,
+    "state6_native_fixed_bias_unchanged": true,
+    "Huge_bias_formula": "0.5f - 1024.0f*(camera_main_depthX+camera_main_depthY)",
+    "legacy_or_null_world_bias": "exact native0.5f",
+    "helper_no_stack_adjustment_or_nonvolatile_changes": true,
+    "original_unwind_exception_tables_unchanged": true,
+    "actual_repaired_game_verified": false
+  },
+  "disk_only_frame_edits": [
+    {
+      "rva": 568,
+      "file_offset": 568,
+      "before": "4cc40900",
+      "after": "e0c40900",
+      "category": "declare_existing_page_bias_helper"
+    }
+  ]
+}

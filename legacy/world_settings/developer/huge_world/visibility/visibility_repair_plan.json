@@ -1,0 +1,712 @@
+{
+  "schema": 1,
+  "module": "AnnoWelt.dll",
+  "architecture": "AMD64 PE32+",
+  "source_original_sha256": "ae772ab0d06b9f4d0759197fea10affe379eb927c0609f805427e4de532f7bd9",
+  "component": "Visibility helper plus native ca2f0 producer stack/caches and cleanup/unwind closure",
+  "old_stack_frame": 878952,
+  "new_stack_frame": 920808,
+  "stack_growth_bytes": 41856,
+  "rbp_offset_from_rsp": 256,
+  "old_visibility_mask_bytes": 512,
+  "new_visibility_mask_bytes": 2048,
+  "visibility_mask_rbp_displacement": -64,
+  "old_pointer_cache_slots": 84,
+  "new_pointer_cache_slots": 132,
+  "old_matrix_columns": 80,
+  "new_matrix_columns": 128,
+  "old_pointer_cache_rbp": 448,
+  "new_pointer_cache_rbp": 1984,
+  "old_matrix_rbp": 1120,
+  "new_matrix_rbp": 3040,
+  "old_cached_pointers_rbp": 26720,
+  "new_cached_pointers_rbp": 68576,
+  "old_previous_records_rbp": 288864,
+  "new_previous_records_rbp": 330720,
+  "visible_record_capacity": 8192,
+  "record_bytes": 88,
+  "previous_record_bytes": 72,
+  "matrix_zero_is_unassigned": true,
+  "matrix_store_index_bias": 1,
+  "reachable_matrix_values": [
+    0,
+    8192
+  ],
+  "native_unwind_info_rva": 1176368,
+  "native_frame_alloc_unwind_rva": 1176374,
+  "native_cpp_funcinfo_rva": 1060432,
+  "native_cpp_unwind_help_offset": 176,
+  "native_cpp_cleanup_funclets": [
+    953264,
+    953296
+  ],
+  "native_cpp_shifted_cleanup_instruction": 953310,
+  "instruction_or_metadata_region_count": 47,
+  "edits": [
+    {
+      "rva": 827281,
+      "before": "8d0c48",
+      "after": "8d0c88",
+      "length": 3,
+      "role": "Visibility helper: leaf DWORD row index changes y*2 to y*4"
+    },
+    {
+      "rva": 827377,
+      "before": "4e8d0cc74d2bd8bb010000000f1f00",
+      "after": "4d2bd84f8d0c004e8d0ccf31dbffc3",
+      "length": 15,
+      "role": "Visibility helper: fully-inside first row pointer changes mask+y*8 to mask+y*16; loop labels retained"
+    },
+    {
+      "rva": 827436,
+      "before": "4983c108",
+      "after": "4983c110",
+      "length": 4,
+      "role": "Visibility helper: fully-inside next row advances16 bytes"
+    },
+    {
+      "rva": 828176,
+      "before": "488dac249897f2ff",
+      "after": "488dac2418f4f1ff",
+      "length": 8,
+      "role": "Keep native RBP at new RSP+0x100"
+    },
+    {
+      "rva": 828184,
+      "before": "b868690d00",
+      "after": "b8e80c0e00",
+      "length": 5,
+      "role": "Native chkstk requested stack allocation"
+    },
+    {
+      "rva": 828211,
+      "before": "4c8dbd60680400",
+      "after": "4c8dbde00b0500",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 828381,
+      "before": "41b800020000",
+      "after": "41b800080000",
+      "length": 6,
+      "role": "Clear128x128 one-bit visibility mask (2048 bytes)"
+    },
+    {
+      "rva": 828507,
+      "before": "41b8a0020000",
+      "after": "41b820040100",
+      "length": 6,
+      "role": "Zero128 column pointers plus four margins and the full128x128 index matrix"
+    },
+    {
+      "rva": 828513,
+      "before": "488d8dc0010000",
+      "after": "488d8dc0070000",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 828633,
+      "before": "4883f802",
+      "after": "4883f804",
+      "length": 4,
+      "role": "Check all four DWORDs in a128-block visibility row"
+    },
+    {
+      "rva": 828677,
+      "before": "48c7c0a9ffffff",
+      "after": "48c7c001000000",
+      "length": 7,
+      "role": "Encode matrix index as record index plus one; zero is an unassigned slot"
+    },
+    {
+      "rva": 828684,
+      "before": "482b85c8680d00",
+      "after": "482b85480c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 828990,
+      "before": "488b8db8680d00",
+      "after": "488b8d380c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829190,
+      "before": "488bb5b0680d00",
+      "after": "488bb5300c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829230,
+      "before": "4a8b94cdc8010000",
+      "after": "4a8b94cdc8070000",
+      "length": 8,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829289,
+      "before": "4a8b94cdc0010000",
+      "after": "4a8b94cdc0070000",
+      "length": 8,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829412,
+      "before": "89948d60040000",
+      "after": "89948de00b0000",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829419,
+      "before": "4a899ccdc8010000",
+      "after": "4a899ccdc8070000",
+      "length": 8,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829538,
+      "before": "488b8db8680d00",
+      "after": "488b8d380c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829614,
+      "before": "8d0450",
+      "after": "8d0490",
+      "length": 3,
+      "role": "Visibility clear index x/32+y*4"
+    },
+    {
+      "rva": 829707,
+      "before": "4183c202",
+      "after": "4183c204",
+      "length": 4,
+      "role": "Advance four DWORDs per visibility row"
+    },
+    {
+      "rva": 829716,
+      "before": "8344246850",
+      "after": "836c246880",
+      "length": 5,
+      "role": "Matrix row stride128, encoded as subtract signed -128"
+    },
+    {
+      "rva": 829740,
+      "before": "488dbd60680000",
+      "after": "488dbde00b0100",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829747,
+      "before": "488d8560680400",
+      "after": "488d85e00b0500",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829761,
+      "before": "4c8bb5b0680d00",
+      "after": "4c8bb5300c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829777,
+      "before": "488db578680400",
+      "after": "488db5f80b0500",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829784,
+      "before": "488b9dc8680d00",
+      "after": "488b9d480c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829808,
+      "before": "428d0440",
+      "after": "428d0480",
+      "length": 4,
+      "role": "Previous-record visibility index x/32+y*4"
+    },
+    {
+      "rva": 829833,
+      "before": "438d0480c1e004",
+      "after": "4489c0c1e00790",
+      "length": 7,
+      "role": "Previous-record matrix row index y*128"
+    },
+    {
+      "rva": 829843,
+      "before": "8b8c8560040000",
+      "after": "8b8c85e00b0000",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 829850,
+      "before": "81f900200000",
+      "after": "ffc980fd2090",
+      "length": 6,
+      "role": "Decode matrix index, reject zero/unassigned; reachable raw values are0 or1..8192"
+    },
+    {
+      "rva": 829856,
+      "before": "0f837a010000",
+      "after": "0f839a000000",
+      "length": 6,
+      "role": "Unassigned capped cell uses existing not-visible cache recycling path, then continues other records"
+    },
+    {
+      "rva": 830418,
+      "before": "488b9db0680d00",
+      "after": "488b9d300c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 830535,
+      "before": "488d8560680000",
+      "after": "488d85e00b0100",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 830593,
+      "before": "488b85c8680d00",
+      "after": "488b85480c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 830645,
+      "before": "488b8dc8680d00",
+      "after": "488b8d480c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 830920,
+      "before": "4c8bb5b0680d00",
+      "after": "4c8bb5300c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 830966,
+      "before": "488bb5c8680d00",
+      "after": "488bb5480c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 830983,
+      "before": "488d8560680000",
+      "after": "488d85e00b0100",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 831014,
+      "before": "488985b0680d00",
+      "after": "488985300c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 831038,
+      "before": "488d8560680000",
+      "after": "488d85e00b0100",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 831073,
+      "before": "488d8d60680000",
+      "after": "488d8de00b0100",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 831133,
+      "before": "488b85b8680d00",
+      "after": "488b85380c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 831234,
+      "before": "488b85c0680d00",
+      "after": "488b85400c0e00",
+      "length": 7,
+      "role": "Move native stack array/parameter reference for enlarged mask and128-column matrix"
+    },
+    {
+      "rva": 831287,
+      "before": "4881c468690d00",
+      "after": "4881c4e80c0e00",
+      "length": 7,
+      "role": "Matching native frame epilogue deallocation"
+    },
+    {
+      "rva": 953310,
+      "before": "488b8db0690d00",
+      "after": "488b8d300d0e00",
+      "length": 7,
+      "role": "C++ second cleanup funclet reaches unchanged caller-home pointer from new establisher RSP"
+    },
+    {
+      "rva": 1176374,
+      "before": "68690d00",
+      "after": "e80c0e00",
+      "length": 4,
+      "role": "Matching native ALLOC_LARGE unwind metadata; code/handler addresses unchanged"
+    }
+  ],
+  "stack_reference_inventory": [
+    {
+      "rva": "0xca325",
+      "assembly": "mov qword ptr [rbp - 0x50], 0xfffffffffffffffe",
+      "old_displacement": "-0x50",
+      "new_displacement": "-0x50",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca333",
+      "assembly": "lea r15, [rbp + 0x46860]",
+      "old_displacement": "0x46860",
+      "new_displacement": "0x50be0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca3e3",
+      "assembly": "lea rcx, [rbp - 0x40]",
+      "old_displacement": "-0x40",
+      "new_displacement": "-0x40",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca43d",
+      "assembly": "lea r9, [rbp - 0x40]",
+      "old_displacement": "-0x40",
+      "new_displacement": "-0x40",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca461",
+      "assembly": "lea rcx, [rbp + 0x1c0]",
+      "old_displacement": "0x1c0",
+      "new_displacement": "0x7c0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca4c0",
+      "assembly": "lea rcx, [rbp - 0x40]",
+      "old_displacement": "-0x40",
+      "new_displacement": "-0x40",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca50c",
+      "assembly": "sub rax, qword ptr [rbp + 0xd68c8]",
+      "old_displacement": "0xd68c8",
+      "new_displacement": "0xe0c48",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca545",
+      "assembly": "mov ecx, dword ptr [rbp + rax*4 - 0x40]",
+      "old_displacement": "-0x40",
+      "new_displacement": "-0x40",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca60a",
+      "assembly": "movss dword ptr [rbp - 0x70], xmm0",
+      "old_displacement": "-0x70",
+      "new_displacement": "-0x70",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca60f",
+      "assembly": "mov dword ptr [rbp - 0x6c], 0",
+      "old_displacement": "-0x6c",
+      "new_displacement": "-0x6c",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca61e",
+      "assembly": "movss dword ptr [rbp - 0x68], xmm1",
+      "old_displacement": "-0x68",
+      "new_displacement": "-0x68",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca623",
+      "assembly": "mov dword ptr [rbp - 0x80], 0x41000000",
+      "old_displacement": "-0x80",
+      "new_displacement": "-0x80",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca62a",
+      "assembly": "movss dword ptr [rbp - 0x7c], xmm2",
+      "old_displacement": "-0x7c",
+      "new_displacement": "-0x7c",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca62f",
+      "assembly": "mov dword ptr [rbp - 0x78], 0x41000000",
+      "old_displacement": "-0x78",
+      "new_displacement": "-0x78",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca636",
+      "assembly": "lea r8, [rbp - 0x80]",
+      "old_displacement": "-0x80",
+      "new_displacement": "-0x80",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca63a",
+      "assembly": "lea rdx, [rbp - 0x70]",
+      "old_displacement": "-0x70",
+      "new_displacement": "-0x70",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca63e",
+      "assembly": "mov rcx, qword ptr [rbp + 0xd68b8]",
+      "old_displacement": "0xd68b8",
+      "new_displacement": "0xe0c38",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca706",
+      "assembly": "mov rsi, qword ptr [rbp + 0xd68b0]",
+      "old_displacement": "0xd68b0",
+      "new_displacement": "0xe0c30",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca72e",
+      "assembly": "mov rdx, qword ptr [rbp + r9*8 + 0x1c8]",
+      "old_displacement": "0x1c8",
+      "new_displacement": "0x7c8",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca769",
+      "assembly": "mov rdx, qword ptr [rbp + r9*8 + 0x1c0]",
+      "old_displacement": "0x1c0",
+      "new_displacement": "0x7c0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca7e4",
+      "assembly": "mov dword ptr [rbp + rcx*4 + 0x460], edx",
+      "old_displacement": "0x460",
+      "new_displacement": "0xbe0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca7eb",
+      "assembly": "mov qword ptr [rbp + r9*8 + 0x1c8], rbx",
+      "old_displacement": "0x1c8",
+      "new_displacement": "0x7c8",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca844",
+      "assembly": "mov dword ptr [rbp - 0x60], 0x41000000",
+      "old_displacement": "-0x60",
+      "new_displacement": "-0x60",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca84b",
+      "assembly": "mov dword ptr [rbp - 0x5c], 0x409dc28f",
+      "old_displacement": "-0x5c",
+      "new_displacement": "-0x5c",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca852",
+      "assembly": "mov dword ptr [rbp - 0x58], 0x41000000",
+      "old_displacement": "-0x58",
+      "new_displacement": "-0x58",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca859",
+      "assembly": "lea r8, [rbp - 0x60]",
+      "old_displacement": "-0x60",
+      "new_displacement": "-0x60",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca862",
+      "assembly": "mov rcx, qword ptr [rbp + 0xd68b8]",
+      "old_displacement": "0xd68b8",
+      "new_displacement": "0xe0c38",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca8c0",
+      "assembly": "and dword ptr [rbp + rdx*4 - 0x40], eax",
+      "old_displacement": "-0x40",
+      "new_displacement": "-0x40",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca92c",
+      "assembly": "lea rdi, [rbp + 0x6860]",
+      "old_displacement": "0x6860",
+      "new_displacement": "0x10be0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca933",
+      "assembly": "lea rax, [rbp + 0x46860]",
+      "old_displacement": "0x46860",
+      "new_displacement": "0x50be0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca941",
+      "assembly": "mov r14, qword ptr [rbp + 0xd68b0]",
+      "old_displacement": "0xd68b0",
+      "new_displacement": "0xe0c30",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca951",
+      "assembly": "lea rsi, [rbp + 0x46878]",
+      "old_displacement": "0x46878",
+      "new_displacement": "0x50bf8",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca958",
+      "assembly": "mov rbx, qword ptr [rbp + 0xd68c8]",
+      "old_displacement": "0xd68c8",
+      "new_displacement": "0xe0c48",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xca97c",
+      "assembly": "mov eax, dword ptr [rbp + rax*4 - 0x40]",
+      "old_displacement": "-0x40",
+      "new_displacement": "-0x40",
+      "encoded_bytes": 1
+    },
+    {
+      "rva": "0xca993",
+      "assembly": "mov ecx, dword ptr [rbp + rax*4 + 0x460]",
+      "old_displacement": "0x460",
+      "new_displacement": "0xbe0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcabd2",
+      "assembly": "mov rbx, qword ptr [rbp + 0xd68b0]",
+      "old_displacement": "0xd68b0",
+      "new_displacement": "0xe0c30",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcac47",
+      "assembly": "lea rax, [rbp + 0x6860]",
+      "old_displacement": "0x6860",
+      "new_displacement": "0x10be0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcac81",
+      "assembly": "mov rax, qword ptr [rbp + 0xd68c8]",
+      "old_displacement": "0xd68c8",
+      "new_displacement": "0xe0c48",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcacb5",
+      "assembly": "mov rcx, qword ptr [rbp + 0xd68c8]",
+      "old_displacement": "0xd68c8",
+      "new_displacement": "0xe0c48",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcadc8",
+      "assembly": "mov r14, qword ptr [rbp + 0xd68b0]",
+      "old_displacement": "0xd68b0",
+      "new_displacement": "0xe0c30",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcadf6",
+      "assembly": "mov rsi, qword ptr [rbp + 0xd68c8]",
+      "old_displacement": "0xd68c8",
+      "new_displacement": "0xe0c48",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcae07",
+      "assembly": "lea rax, [rbp + 0x6860]",
+      "old_displacement": "0x6860",
+      "new_displacement": "0x10be0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcae26",
+      "assembly": "mov qword ptr [rbp + 0xd68b0], rax",
+      "old_displacement": "0xd68b0",
+      "new_displacement": "0xe0c30",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcae3e",
+      "assembly": "lea rax, [rbp + 0x6860]",
+      "old_displacement": "0x6860",
+      "new_displacement": "0x10be0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcae61",
+      "assembly": "lea rcx, [rbp + 0x6860]",
+      "old_displacement": "0x6860",
+      "new_displacement": "0x10be0",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcae9d",
+      "assembly": "mov rax, qword ptr [rbp + 0xd68b8]",
+      "old_displacement": "0xd68b8",
+      "new_displacement": "0xe0c38",
+      "encoded_bytes": 4
+    },
+    {
+      "rva": "0xcaf02",
+      "assembly": "mov rax, qword ptr [rbp + 0xd68c0]",
+      "old_displacement": "0xd68c0",
+      "new_displacement": "0xe0c40",
+      "encoded_bytes": 4
+    }
+  ],
+  "helper_plan_sha256": "15b06b09381ff603278afa41d638e2e4a523dd0b1aefcb8adf46bb35af0afa2c",
+  "generator_sha256": "c7a68680832a22e5d6b7243618843d74b614d9b4bc3c97addba8977e85aca980",
+  "game_executed": false,
+  "game_or_copy_or_release_or_process_modified": false,
+  "activation_requirement": "Compose all helper, producer, cleanup and unwind changes before restarting a test game. Never apply a partial repair or hot-patch an existing World."
+}

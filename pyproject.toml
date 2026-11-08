@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anno1503-grand-overhaul"
+version = "0.1.0"
+description = "Modular overhaul development for Anno 1503 History Edition"
+requires-python = ">=3.10"
+authors = [{name = "GOjayson"}]
+dependencies = []
+
+[project.scripts]
+anno1503-overhaul = "anno1503_overhaul.__main__:main"
+
+[project.gui-scripts]
+anno1503-feature-selector = "anno1503_overhaul.selector:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

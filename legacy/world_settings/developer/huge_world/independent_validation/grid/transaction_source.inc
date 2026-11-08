@@ -1,0 +1,2 @@
+#define WS_RUNTIME_BLOBS_HEADER "C:/Program Files (x86)/Ubisoft/Ubisoft Game Launcher/games/Anno 1503 - History Edition/WorldSettings_Work/anno1503_food_world_dev8/developer/source/runtime_dev3/runtime_test_blobs.h"
+#include "C:/Program Files (x86)/Ubisoft/Ubisoft Game Launcher/games/Anno 1503 - History Edition/WorldSettings_Work/anno1503_food_world_dev8/developer/source/engine_resume/ai_loader/install_test_hooks.c"

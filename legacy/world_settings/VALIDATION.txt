@@ -1,0 +1,82 @@
+0.11.0-dev.1 EXPERIMENTAL ENGINE VALIDATION
+
+Current runtime: 2f9d1156f3ac53d92a900e41c38a169138c2b4ac7145f2dc92b93c48736cf089
+Current profile: history-amd64-world-ship-render-and-recenter-v4
+Executed live specification: f3611c2fc7a6517728d4ad85451b82e4711f5917148d9370d4dbab8e7864a2bd
+Later packaging metadata is not another game run. The executed specification
+and exact diagnostics are retained with the live evidence.
+
+ACTUAL ANNO RUNS
+The corrected engine loaded h12. Root inspection covered the previously
+failing centre, far-side terrain, coastlines, four rotations and zoom changes.
+The user confirmed the map looked correct and saved h12r. All24 islands,
+terrain, crops and mineral locations/availability and human fleet data match.
+The older-runtime h12 to h12r comparison did NOT pass strict total ship
+continuity: one old ordinary-AI ship disappeared, special ships were added,
+and AI cargo changed while cities appeared. Progression is consistent with
+some changes but the cause is unproven. This scoped migration is retained
+separately and is not counted as a strict migration or same-runtime reload.
+
+Fresh h13: generated inside Anno using Huge2048, Mixed islands,24 islands,
+spacing16, AI3, Medium stock preset,30,000 money, War fleet, Hard AI,
+Medium plant/mineral fertility, all eight cultures, Pirates and Venetians.
+The actual captured money was30,000. The user reported the world looked
+correct and saved h13. The original native save matches every preview island,
+full HEIGHT terrain, coastline, crop and mineral assignment. Land spans
+1989x2002 tiles across all four quadrants. Native ownership checks verify
+all eight cultures, ordinary AI IDs1..3 and both special factions, including
+the complete stock Venetian town. Fresh-generation controller checks passed.
+
+Fresh process h13r: activated the same engine at the first main menu, loaded
+h13, resumed and saved h13r through Anno. The unchanged strict comparator
+passed for all24 islands, terrain, climate, crops, mineral availability and
+saved ship IDs, owners, classes, cannons and cargo. Native coordinates may
+advance during gameplay. All three ordinary AI controllers were active;
+their registered ships moved beyond the old1024 boundary in paired samples.
+Rendered ships and mountain/forest/coast terrain were inspected after reload.
+
+Legacy regression loads: original s10(256/8 islands), m10(512/24) and
+b10(1024/24) loaded and rendered successfully in this same patched process.
+All173 engine edits, complete65536-byte native allocated grids, world-size
+row strides and original-save island geometry passed read-only inspection.
+These are bounded load/render regressions; the original saves were not
+overwritten and no full smaller-world gameplay session is claimed.
+
+AUTOMATED CHECKS
+Independent native instruction fixtures cover island lookup, ship-navigation
+capacity, visibility/cache bounds, native Windows unwind and cleanup paths,
+transaction rollback and unsupported/partial patch rejection. The current
+Frame repair retains original depth precision and state6 coefficients.
+Camera/both-renderer, mesh, sprite depth and native coastal pixel checks pass.
+A translated floating-point supplement records3 pixel-decision differences
+among648 comparisons; exact translated bitmap equality is not claimed.
+
+Current runtime fixtures passed720 valid settings,20 invalid settings,
+180 independence cases,11,520 fertility cases,180 staged previews and40
+full runtime scenes(including14 Huge scenes). These are automated generation
+checks and do not establish native gameplay. Final combined-installer and
+infrastructure reports bind the final packaged specification separately.
+
+RESTORATION AND PRESERVATION
+The accepted v4 restorer returned the marked game copy to combined Food0.5,
+restored its exact Food Frame/World DLLs and removed19 matching introduced
+files. All108 existing backup files were retained; only the current manifest
+status changed to restored. The final install/check has its own report.
+Original game executables, gameplay payloads, prior releases and user saves
+are checked separately against preserved hashes. Anno's native four-byte
+play-time counter update is recorded explicitly, never treated as an installer
+payload change. No user saves are distributed in this package.
+
+EARLIER FAILURES AND LIMITS
+119-edit h11: terrain strips/holes and world border failure.
+166-edit v2: repaired those views, but fresh h12 exposed a centre stripe.
+173-edit v3 half-depth: removed the crossing but caused shoreline bands.
+These are preserved as failures, not current passes. V4 recentres rendering
+without halving the native precision; actual h12 repair and fresh h13/reload
+are separate accepted observations.
+
+Long-session stability/performance, completed trade/combat, harvest/mining
+access, all option combinations and Food production remain unverified for
+this engine revision. Original Food gameplay changes are preserved byte for
+byte. AI0..3 is the supported stock placeholder bound, not a proven universal
+engine maximum. Huge2048 is experimental;4096 is refused.

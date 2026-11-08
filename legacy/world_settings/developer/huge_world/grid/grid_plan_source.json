@@ -1,0 +1,1228 @@
+{
+  "scope": "Classify the current read-only grid inventory into an investigation plan.\n\nNo replacement DLL or applied instruction patch is produced. The relocation\nplan is a bounded candidate set, not a proof that every possible indirect or\ncross-module access has been found.\n",
+  "module_sha256": "ae772ab0d06b9f4d0759197fea10affe379eb927c0609f805427e4de532f7bd9",
+  "architecture": "AMD64 PE32+",
+  "bounds": {
+    "old_grid_offset": "0x240",
+    "old_grid_bytes": 25600,
+    "following_pointer_table": "0x6640",
+    "base_world_bytes": "0x6f00",
+    "observed_server_world_allocation": "0x7068",
+    "huge_lookup_cells": 65536,
+    "unchanged_cell_size": 8,
+    "unchanged_max_island_id_byte": 255
+  },
+  "grid_base_reference_count": 96,
+  "direct_byte_reads": 87,
+  "indirect_iterator_byte_read": {
+    "base_rva": "0xc89b8",
+    "read_rva": "0xc8a90",
+    "table_rva": "0xc8ac3"
+  },
+  "grid_relocation_candidates": [
+    {
+      "rva": "0x6f21",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x919f",
+      "native_instruction": "420fb68c0040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r8 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x179e5",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x17e28",
+      "native_instruction": "420fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r15 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x17f42",
+      "native_instruction": "420fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r15 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x18061",
+      "native_instruction": "420fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r15 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x1818b",
+      "native_instruction": "420fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r15 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x187d3",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x19c09",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x1a66a",
+      "native_instruction": "0fb69c0840020000",
+      "assembly": "movzx ebx, byte ptr [rax + rcx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x1bea2",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x20f85",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x2475f",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x24844",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x2a5dd",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x302c7",
+      "native_instruction": "420fb68c0040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r8 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x89acb",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x89ce8",
+      "native_instruction": "420fb68c1040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r10 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x89df8",
+      "native_instruction": "420fb68c1040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r10 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x8a146",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x8a859",
+      "native_instruction": "420fb68c1040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r10 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x8afe0",
+      "native_instruction": "0fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rdi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x8c7d3",
+      "native_instruction": "420fb68c1040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r10 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x8cb8d",
+      "native_instruction": "420fb68c1040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r10 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x8cf36",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x8d05f",
+      "native_instruction": "420fb68c0040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r8 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x8f108",
+      "native_instruction": "420fb68c1040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r10 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x8f1cf",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x91acc",
+      "native_instruction": "420fb68c1840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r11 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x929f3",
+      "native_instruction": "420fb68c1040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r10 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x9d1d1",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x9d86a",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0x9da94",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xb9229",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xbdf05",
+      "native_instruction": "420fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xbdfd3",
+      "native_instruction": "0fb68c1840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rbx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xc07f0",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xc0add",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xc0d8f",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xc0f59",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xc2117",
+      "native_instruction": "420fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r9 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xc8b5d",
+      "native_instruction": "0fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rcx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xc8c20",
+      "native_instruction": "0fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rcx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xc8d04",
+      "native_instruction": "0fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rcx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xc8de8",
+      "native_instruction": "0fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rcx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xca5bd",
+      "native_instruction": "440fb6ac3040020000",
+      "assembly": "movzx r13d, byte ptr [rax + rsi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xce697",
+      "native_instruction": "0fb68c1840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rbx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xce6f6",
+      "native_instruction": "0fb68c1840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rbx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd00c6",
+      "native_instruction": "0fb6840840020000",
+      "assembly": "movzx eax, byte ptr [rax + rcx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd232d",
+      "native_instruction": "0fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rcx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd23ed",
+      "native_instruction": "0fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rcx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd249f",
+      "native_instruction": "0fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rcx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd2b49",
+      "native_instruction": "420fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r15 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd3717",
+      "native_instruction": "420fb68c0040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r8 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd3d94",
+      "native_instruction": "0fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rdi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd3ec4",
+      "native_instruction": "0fb68c1840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rbx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd413d",
+      "native_instruction": "420fb68c1040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r10 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd4491",
+      "native_instruction": "420fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r15 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd475c",
+      "native_instruction": "0fb68c1840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rbx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd4df8",
+      "native_instruction": "0fb68c1840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rbx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd5b0e",
+      "native_instruction": "0fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + rsi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd5c2d",
+      "native_instruction": "0fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + rsi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd5c86",
+      "native_instruction": "0fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + rsi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd8eb4",
+      "native_instruction": "420fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdabc4",
+      "native_instruction": "0fb68c1840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rbx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdad68",
+      "native_instruction": "0fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + rsi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdaf24",
+      "native_instruction": "0fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + rsi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdc261",
+      "native_instruction": "420fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdc3d4",
+      "native_instruction": "420fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdc728",
+      "native_instruction": "420fb6943140020000",
+      "assembly": "movzx edx, byte ptr [rcx + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdc819",
+      "native_instruction": "420fb6943140020000",
+      "assembly": "movzx edx, byte ptr [rcx + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdc910",
+      "native_instruction": "420fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdca14",
+      "native_instruction": "420fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdcb19",
+      "native_instruction": "420fb6943140020000",
+      "assembly": "movzx edx, byte ptr [rcx + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdcc19",
+      "native_instruction": "420fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdcd16",
+      "native_instruction": "420fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdce11",
+      "native_instruction": "420fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdcf1b",
+      "native_instruction": "420fb68c3040020000",
+      "assembly": "movzx ecx, byte ptr [rax + r14 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdd320",
+      "native_instruction": "0fb68c1040020000",
+      "assembly": "movzx ecx, byte ptr [rax + rdx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdd46c",
+      "native_instruction": "0fb68c0840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rcx + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdda99",
+      "native_instruction": "0fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rdi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xddb19",
+      "native_instruction": "0fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rdi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xddbd7",
+      "native_instruction": "0fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rdi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xddc69",
+      "native_instruction": "0fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rdi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xdfc04",
+      "native_instruction": "0fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rdi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xe0580",
+      "native_instruction": "420fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + r15 + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 5,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xe0755",
+      "native_instruction": "0fb68c3840020000",
+      "assembly": "movzx ecx, byte ptr [rax + rdi + 0x240]",
+      "role": "direct one-byte island lookup read",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xc89b8",
+      "native_instruction": "498dad40020000",
+      "assembly": "lea rbp, [r13 + 0x240]",
+      "role": "rectangular lookup iterator base",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 3,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xcea79",
+      "native_instruction": "4088b41840020000",
+      "assembly": "mov byte ptr [rax + rbx + 0x240], sil",
+      "role": "island insertion byte write",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 4,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd0102",
+      "native_instruction": "4881c140020000",
+      "assembly": "add rcx, 0x240",
+      "role": "lookup rebuild clear base",
+      "encoded_operand_kind": "immediate",
+      "encoded_operand_offset": 3,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd0203",
+      "native_instruction": "488d9540020000",
+      "assembly": "lea rdx, [rbp + 0x240]",
+      "role": "lookup rebuild fill base",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 3,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd05b8",
+      "native_instruction": "498d8d40020000",
+      "assembly": "lea rcx, [r13 + 0x240]",
+      "role": "island removal clear base",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 3,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd06de",
+      "native_instruction": "4981c040020000",
+      "assembly": "add r8, 0x240",
+      "role": "island removal refill base",
+      "encoded_operand_kind": "immediate",
+      "encoded_operand_offset": 3,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd0afc",
+      "native_instruction": "498d8d40020000",
+      "assembly": "lea rcx, [r13 + 0x240]",
+      "role": "alternate removal clear base",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 3,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd0c2d",
+      "native_instruction": "4981c040020000",
+      "assembly": "add r8, 0x240",
+      "role": "alternate removal refill base",
+      "encoded_operand_kind": "immediate",
+      "encoded_operand_offset": 3,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    },
+    {
+      "rva": "0xd2053",
+      "native_instruction": "488d8f40020000",
+      "assembly": "lea rcx, [rdi + 0x240]",
+      "role": "world constructor clear base",
+      "encoded_operand_kind": "displacement",
+      "encoded_operand_offset": 3,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x240"
+    }
+  ],
+  "clear_lengths": [
+    {
+      "rva": "0xd0109",
+      "native_instruction": "41b800640000",
+      "assembly": "mov r8d, 0x6400",
+      "role": "lookup clear length",
+      "encoded_operand_kind": "immediate",
+      "encoded_operand_offset": 2,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x6400"
+    },
+    {
+      "rva": "0xd05c4",
+      "native_instruction": "41b800640000",
+      "assembly": "mov r8d, 0x6400",
+      "role": "lookup clear length",
+      "encoded_operand_kind": "immediate",
+      "encoded_operand_offset": 2,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x6400"
+    },
+    {
+      "rva": "0xd0b08",
+      "native_instruction": "41b800640000",
+      "assembly": "mov r8d, 0x6400",
+      "role": "lookup clear length",
+      "encoded_operand_kind": "immediate",
+      "encoded_operand_offset": 2,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x6400"
+    },
+    {
+      "rva": "0xd205f",
+      "native_instruction": "41b800640000",
+      "assembly": "mov r8d, 0x6400",
+      "role": "lookup clear length",
+      "encoded_operand_kind": "immediate",
+      "encoded_operand_offset": 2,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x6400"
+    }
+  ],
+  "allocation": {
+    "rva": "0x2548",
+    "native_instruction": "b968700000",
+    "assembly": "mov ecx, 0x7068",
+    "role": "exported world-server factory allocation",
+    "encoded_operand_kind": "immediate",
+    "encoded_operand_offset": 1,
+    "encoded_operand_bytes": 4,
+    "expected_operand": "0x7068"
+  },
+  "sized_delete_metadata": [
+    {
+      "rva": "0xd1db9",
+      "native_instruction": "ba006f0000",
+      "assembly": "mov edx, 0x6f00",
+      "role": "base deleting destructor",
+      "encoded_operand_kind": "immediate",
+      "encoded_operand_offset": 1,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x6f00"
+    },
+    {
+      "rva": "0xe2c3d",
+      "native_instruction": "ba68700000",
+      "assembly": "mov edx, 0x7068",
+      "role": "server deleting destructor",
+      "encoded_operand_kind": "immediate",
+      "encoded_operand_offset": 1,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x7068"
+    },
+    {
+      "rva": "0xe6349",
+      "native_instruction": "ba68700000",
+      "assembly": "mov edx, 0x7068",
+      "role": "factory exception cleanup",
+      "encoded_operand_kind": "immediate",
+      "encoded_operand_offset": 1,
+      "encoded_operand_bytes": 4,
+      "expected_operand": "0x7068"
+    }
+  ],
+  "reference_assurance": {
+    "exception_table_functions": 3827,
+    "linear_text_instructions": 276798,
+    "direct_240_or_6640_candidates": 287,
+    "byte240_candidates": 92,
+    "classified_byte_grid_reads": 87,
+    "classified_byte_grid_store": 1,
+    "excluded_byte240": [
+      {
+        "rva": "0x64653",
+        "reason": "stack array"
+      },
+      {
+        "rva": "0x6bfa3",
+        "reason": "stack array"
+      },
+      {
+        "rva": "0xa7c8e",
+        "reason": "small object flag field; no world-width/grid-pointer provenance"
+      },
+      {
+        "rva": "0xa84fa",
+        "reason": "small object flag field; no world-width/grid-pointer provenance"
+      }
+    ],
+    "additional_non_world_base_examples": [
+      {
+        "rva": "0xc4a28",
+        "reason": "small linked-container chain constructor also writes qword+0x240 and next+0x268"
+      },
+      {
+        "rva": "0xb7b8e",
+        "reason": "series of serialized small vector members at+0x210,+0x240,+0x270,+0x2a0,+0x300"
+      }
+    ],
+    "leaf_reads_not_in_pdata": [
+      "0xc8de8",
+      "0xd00c6"
+    ],
+    "base_constructor_direct_calls": [
+      "0x255f"
+    ],
+    "base_constructor_rip_address_references": [],
+    "base_constructor_absolute_pointer_references": [],
+    "base_constructor_exported": false,
+    "world_factory_export": "CreateAnnoWeltInstance",
+    "kind1_server_only_in_observed_factory": true,
+    "all_possible_computed_or_cross_module_references_proven": false
+  },
+  "current_dev7_compatibility": {
+    "native_welt_payload_sha256": "059ecd1dcb2139b350f50a2805d811eff89e61cead2733ca9aedb6da83058319",
+    "all101candidate_instruction_preimages_match": true,
+    "optional3delete_metadata_preimages_match": true,
+    "verified_instruction_count": 104,
+    "overlap_with_current_welt_hook_sites": false,
+    "current_welt_hooks": [
+      {
+        "rva": "0xc714d",
+        "length": 6
+      },
+      {
+        "rva": "0xdf460",
+        "length": 6
+      }
+    ],
+    "other7hooks_in_other_modules_untouched_by_this_candidate_set": true,
+    "warning": "Non-overlap is not a proof that future runtime guards accept a changed module. Activation module fingerprints, payload metadata and installer restoration tests would need a new revision."
+  },
+  "lifetime": {
+    "native_clear_value": 255,
+    "grid_rebuilt_on_insert_remove_and_world_reset": true,
+    "constructor": "0xd1de0",
+    "base_destructor": "0xd1c60",
+    "server_destructor": "0xe2b80",
+    "server_reset": "0xe2990",
+    "grid_allocation_separate": false,
+    "sized_delete_chain": [
+      "0xe46f8",
+      "0xe5470",
+      "0xe58f6",
+      "IAT0xea1c0:CRT free"
+    ],
+    "sized_delete_edx_argument_ignored_by_observed_chain": true,
+    "no_observed_full_world_memcpy": true,
+    "no_observed_grid_serialization_proof_in_this_lane": true
+  },
+  "designs": {
+    "appended_grid": {
+      "recommendation": "Preferred investigation route for this lookup blocker",
+      "reason": "Retain every existing field offset and8tile geometry; enlarge the one observed allocation and relocate all visible grid bases without per-query sidecar calls.",
+      "illustrative_safe_gap_offset": "0x10000",
+      "illustrative_total_allocation": "0x20000",
+      "capacity_bytes": 65536,
+      "instruction_candidate_count": 101,
+      "includes_grid_base_refs": 96,
+      "includes_clear_sizes": 4,
+      "includes_factory_allocation": 1,
+      "sized_delete_metadata_candidates": 3,
+      "warning": "The101 sites are not a complete world-size patch; secondary navigation arrays, other modules and unexpected allocators must be audited independently."
+    },
+    "sidecar": {
+      "feasible": true,
+      "tradeoff": "Avoid object allocation change but all inlined references still need redirection and sidecar lookup/lifetime/concurrency/error handling; central getter detours alone are insufficient."
+    },
+    "move_original_tail": {
+      "recommendation": "Avoid",
+      "tradeoff": "Enlarging the inline array in place shifts original+0x6640..server-tail fields and all103 indexed pointer-table references plus many scalar fields, breaking ABI assumptions."
+    },
+    "coarse16": {
+      "capacity_cells": 16384,
+      "capacity_fits_old_grid": true,
+      "all444_template_extents_multiples_of16": true,
+      "template_extent_pairs": [
+        [
+          64,
+          64
+        ],
+        [
+          80,
+          80
+        ],
+        [
+          128,
+          128
+        ],
+        [
+          256,
+          256
+        ]
+      ],
+      "stock_scene_count": 55,
+      "stock_island_links": 360,
+      "stock_links_not16aligned": 268,
+      "stock_links_not8aligned": 0,
+      "stock_alignment_report": "WorldSettings_Work\\huge_world_investigation\\persistence_render\\stock_link_alignment.json",
+      "stock_alignment_sha256": "bd47770f40dca998e1dfecb6177d816b3e09909a18a48770984d43d8d11450a7",
+      "recommendation": "Inferior for backward compatibility",
+      "tradeoff": "Stock links include8mod16origins. Global coarsening can alias islands/sea in onecell; Huge-only conditional shifts/masks/rounding must cover every reader/inserter/rebuilder. Appending preserves8tile semantics."
+    }
+  },
+  "unverified": [
+    "No2048 game was run or load/save tested.",
+    "No engine DLL or existing package was patched.",
+    "Pointer provenance and indirect aliases are bounded review, not formal whole-program proof.",
+    "Other modules can inline layout assumptions; their inventory is separate.",
+    "Secondary ship navigation and render/minimap/save loaders require independent review.",
+    "Futureimplementation must fail closed on unknown module fingerprints and preserve current Food/gameplay hooks."
+  ],
+  "evidence_sha256": {
+    "inventory_grid.py": "f85e854d447d20cb0b0f6e675201584d98ca3a1ab17fcb49cface94460570499",
+    "candidate_inventory.json": "cf455cbfe95e4de530be4c5ae4377c889d4c44666d47693912e33defd40791d9",
+    "candidate_functions.asm": "7ea208592a0a68738a5c54eb4afceffbfcdd3ab554eee2816d0a7e6741c2a75d",
+    "scan_text.py": "c4627e2afb9247c21e96abe7edf3f7e122e804b477367018b9d9b0761d28ccdd",
+    "text_inventory.json": "5ca32fa1a7a503d3ba492136742ccb95e2fbcd96b72a41bc493db3951df616cd",
+    "lifetime_functions.asm": "f66d398e22cacab058273d88d1be285c59b1a99bad551575eebb220afaacb60c",
+    "extra_ranges.asm": "25103f75b9ce6347e839e921045234b32ce01aa5873607fcd21126a942cd5ac7",
+    "classify_grid.py": "429dc89f2f8d725ddf320ead8d253f6e26865f3f145f101469526bc6f7fb448e"
+  },
+  "game_executed": false,
+  "game_or_copy_modified": false
+}

@@ -1,0 +1,31 @@
+{
+  "scope": "Data-only copied pirate ALIAS correction; manual transfer candidate explicitly excluded; actual game untested",
+  "files": {
+    "README.md": "475661ffdfea71df20f1fb3add83188b4482bbfce0b13c0b4ed4c9073a1aec15",
+    "alias_templates.py": "6c222fa15e3ac83ea9890b8a5dfc523a58b5d67737339ffbae5bb3f41afb59d7",
+    "alias_manifest.json": "a75cff4ac39fc633eaa090bd913628d6ed010f716ca0c0e57eb258cd9759bd14",
+    "alias_runtime/world_catalogue.h": "2fe8bc332dff7491aeefe54bb3c219a6342fd1a8859cc5498f7b7ebe964df221",
+    "native_alias_lookup.py": "4a5e4d677ef66b4de51f88aef5d133c3a8773e6789e9cfce3969a2de077af0ca",
+    "native_alias_results.json": "4ba0547bebf4b74d623a88890897569e48dd9e5d362e3fc04afb37a113bf8aa4",
+    "native_alias_lookup.asm": "357acd87a2e2fa577bded08f01ec85943c16b259c50a01cbef13e752827af953",
+    "test_alias_templates.py": "aa277f7839eed4f8194f3b3065bf3379b7ba88b6b41f7430ff412f942afd2550",
+    "alias_test_results.json": "34d9bfa13f244e79b90b1b17ebca6bf62b3c1c110de6033a5b83c8a6abe906f2",
+    "alias_file_path.asm": "93b93e132b700b6fdc2c0fd32f36b32474e7e4115fa29416d8de4fd3a38656e5",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_064x064_0009_0B_Pirat.scp": "d436d1a1174bdc35dc7a0cc76fc71a1039d6dc2b3e53ab0ddc7dfd0667c6845c",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_064x064_0011_3B_Piraten.scp": "a95ac1dbccc32540010b2a23e170dabfc91d2b06b3fc8356a4e9e9aba59da3ae",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_064x064_0012_3B_Piraten.scp": "0d1580231ce069dd4387a95a82cae33392be7cc5ce446dc8b244116c1796113e",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0001_4B_Piraten.scp": "a5de7fe021e73c609a54d5412b06aca0c31a2cc6f925939e264aa1edc7eb04a8",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0003_2B_Piraten.scp": "589aec1055202b621ef4a652a779550d004fdaa807b421d19cab77d0c1818858",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0005_1B_Piraten.scp": "678a6c0035e929948478c6fa7baaf0b3b4350c768bbcc8da867f8c6ba98c3b2a",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0012_1B_Piraten.scp": "775ba5480685967ac032e643a32b2b5f92373f2c0804e6488ff7e47efe9a8b87",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0015_1B_Piraten.scp": "e21d7df8a4f46227d24339d9a2782c500d1419da813bdebc509b0c46dbe6516f",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0020_1B_Piraten.scp": "d5e1c70a2d1705fd7b0c4804b6c59e2ed3b52dbb5080ee3e83d22757f9b1bb89",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0022_1BPiraten.scp": "c5ce23d37c778c78cf604e1a293293a0a0bc4401090d00f9e6b7d85971f2ea8e",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0068_2B_Piraten.scp": "04934651d43449e2f8994699beed37fff788840e393f873e3bfd104b84d74a65",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0069_1B_Piraten.scp": "796e5e8099b138c1e99bed571cb83ef306fe78cab3b1c328b745cf7f07541c55",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0072_2B_Piraten.scp": "0e98d6233264cb959c4219dfa4011bc42e75db77d4db7cf20935cc6b086d373f",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_128x128_0073_1B_Piraten.scp": "9c85bac68f999683f754f109d16a31fed337676678de760b188bfbb0118260bf",
+    "alias_payload\\WorldSettingsIslands\\Nord\\N_256x256_0014_2B_Piraten.scp": "fcc508db0ba3e930b0834dd33c53351141c82dacd978e5ac42e8e66e99bf73ce"
+  },
+  "game_runs": 0
+}

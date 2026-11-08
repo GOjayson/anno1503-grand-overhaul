@@ -1,0 +1,23 @@
+FOOD ARTWORK SOURCES
+
+Four new raster icons generated with the built-in image-generation tool.
+The existing generated Fish icon was used as a style reference only.
+Opaque output; no API/CLI fallback was used.
+The original generated images are retained in assets/source.
+Developer build_icons.py downsamples and quantizes the selected artwork;
+the installer maps the indexed art into each native destination palette.
+
+Shared prompt:
+Use case: stylized-concept. Asset type: final raster commodity icon for the 2002 strategy game Anno 1503, to be displayed at only 50 by 50 pixels. The attached fish icon is a STYLE REFERENCE ONLY: match its square aged brass bevel frame, mottled dark desaturated teal-green stone background, warm hand-painted old PC game rendering, upper-left lighting and crisp readable object silhouette. Generate a single complete square tile with exactly one thin continuous frame around its entire edge. The object should be prominent with simple bold shapes readable at tiny size. Keep the bottom-left corner relatively dark for the game's white stock-number overlay. No letters, numbers, words, labels, extra tiles, grid, interface mockup, watermarks, ornaments outside the frame, or modern flat vector styling. Opaque background. 
+
+game-meat
+Subject: one venison game-meat haunch, dark wine-red/brown meat on a short cream-colored bone, diagonal, broad fleshy haunch at lower left and bone end at upper right. It must read as hunted venison, visually distinct from a flat pink butcher's steak. No cow, antlers, live animal, blood splashes, platter or extra food.
+
+potatoes
+Subject: three chunky golden-brown potatoes in a compact triangular pile, with a few simple darker eyes and warm earthy highlights; one potato in front and two behind. Their round irregular shapes should be instantly recognizable. No sack, bowl, green leaves, cheese, bread or other food.
+
+bread
+Subject: one plump oval golden baked bread loaf, diagonal from lower left to upper right, with three large light diagonal score marks across the deep golden crust. Strong loaf silhouette and warm cream highlights. No cheese, fruit, wheat bundle, plate, sack, sliced meat or other food.
+
+butcher-meat
+Subject: a single thick raw rosy-pink butcher's steak or pork chop viewed at a slight top-down angle, with a bold curved cream-white fat rim and a small ivory round bone. Pink and cream silhouette should differ clearly from the dark brown venison haunch icon. No live animal, cow head, bread, vegetables, platter or blood splashes.

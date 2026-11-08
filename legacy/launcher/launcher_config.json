@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "package_relative": "../world_settings",
+  "package_spec_sha256": "f43d4a136a0625836889a1379a70ecb60c589aa34d7acdc9a75db5206e2b5fec",
+  "runtime_sha256": "2f9d1156f3ac53d92a900e41c38a169138c2b4ac7145f2dc92b93c48736cf089",
+  "engine_patch_count": 173,
+  "timeout_seconds": 300,
+  "repository_source_snapshot": true
+}

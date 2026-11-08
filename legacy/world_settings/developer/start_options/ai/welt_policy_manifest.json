@@ -1,0 +1,22 @@
+{
+  "scope": "Guard all tagged ordinary-CPU declarations at the actual native world endpoint.\n\nTransforms only an exact reviewed World Settings overlay copy; never originals.\nThe leaf gate runs before the native prologue or any relation side effect.\n",
+  "source": "WorldSettings_Work/anno1503_food_world_dev3_cityfix1/native/AnnoWelt.world.dll",
+  "source_sha256": "7b607854ab6689d16952b075651372aa794274699f3e014c55858b117bafe93b",
+  "output": "AnnoWelt.world-policy.dll",
+  "sha256": "059ecd1dcb2139b350f50a2805d811eff89e61cead2733ca9aedb6da83058319",
+  "hook_rva": 914528,
+  "resume_rva": 914534,
+  "gate_rva": 1435136,
+  "gate_end": 1435570,
+  "unwind_rva": 1435572,
+  "unwind_kind": "standalone leaf before original prologue",
+  "edits": [
+    {
+      "rva": 914528,
+      "preimage": "488bc4895010",
+      "patch": "e99bf1070090"
+    }
+  ],
+  "tag": "0x57530000",
+  "policy": "0 none; 1 every fourth; 2 every second; 3 all; new central type2/state3 only; existing war passes uncounted"
+}

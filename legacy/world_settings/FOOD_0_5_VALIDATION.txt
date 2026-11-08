@@ -1,0 +1,62 @@
+ANNO 1503 COMBINED FOOD MOD 0.5.0 - VALIDATION
+
+11 original-data tests cover:
+- Installation from seven supported inputs, including Combined 0.4.0/0.4.1.
+- Identical outputs, exact restore of files/definition regions, earlier active
+  backup preservation, complete rollback and preflight rejection of unknowns.
+- Distinct colour/grey food art at 50x50 and mixed 39x39/40x39 dimensions.
+- Unrelated sprites, three languages, source/runtime group counts retained.
+- Diet/building data identical to 0.3/0.4.1; total Food demand conserved.
+- PE checksums, sorted exception tables and nonleaf helper unwind records.
+- AnnoGame, AnnoWelt, AnnoFrame and both AI guards unchanged from 0.4.1.
+
+Category changes execute the game's native x64 instructions:
+- Original general chooser and city inventory constructors create the five
+  foods first, then other needs: 18 actual consumer items, without duplicates.
+- Corresponding raw/material constructors omit the three reclassified foods.
+- Each new consumer cell resolves its own graphic by good ID, rather than
+  indexing beyond the original consumer sprite group.
+- Native ship constructors, redraw, scroll-up/down, and selection of all 18
+  goods plus the empty option. Paging clamps at 0/4/8/12. The existing
+  16-entry object member array is not enlarged or overwritten: three readers
+  use an immutable, padded 20-cell list. Neighboring data stays intact.
+- Nine category constructors and the native per-good property writes execute.
+
+Price/market regression checks:
+- Reconstruct the delivered 0.4.1 View addition and execute its creator and
+  price updater. The actual native root renderer iterates gadgets in index
+  order: six text submissions are later covered by six opaque price frames.
+- The new creator puts all six text controls after all six frames. Execute
+  the actual root draw routine and tGadText drawing code through the font
+  submission boundary: six correct strings remain above their own frames.
+- 168 prices across seven climates/four world-price levels use the original
+  table formula. No fixed prices or mock function chooses the result.
+- Preview clearance, icon/frame/text bounds, footer, nonzero panel origin,
+  ordinary-market preview/positions/widths and hiding every added control.
+
+The previous 0.4.1 native purchase checks are retained:
+- 640 flag/getter cases; original two-good selector regression reproduced.
+- All six needs respect sale switches, stock, missing/zero demand, population
+  and worker cargo. All six execute the original worker purchase, stock debit,
+  carrying slot and native house receipt. No mock removes stock/chooses foods.
+- Original raw/material stock guard reproduced; repaired path debits stock.
+- Actual city accounting across 28 climate/price combinations, direct player
+  cash credit, clearing consumer sale counters and retaining unrelated ones.
+- Original click dispatch/local command validator: 12 off/on commands and six
+  red-cross draws. The actual 0.4.0 creator reproduces the unresolved cross.
+- 12 native network encodings; separate decoder count hook remains included.
+
+Allocation, object/spatial lookup, OS/imported formatting, resource loading
+and font/graphics submission boundaries are test doubles. The full Windows
+loader/renderer, resident pathfinding, long simulations, multiplayer sync and
+live save/reload were not executed. In-game confirmation remains required.
+Category membership is presentation-only; fixed simulation/AI array sizes,
+stock IDs and save layouts are retained. AI food planning remains unimplemented.
+
+Standalone ZIP checks cover vanilla and upgrades from the actual delivered
+0.4.0/0.4.1 ZIPs under a path with spaces/Unicode; check/install, verified
+reinstall no-op, diagnostics, exact restore and earlier backup preservation.
+
+Reproduction with the original inspection workspace:
+ANNO_FISH_INSPECTION_BASE=/path/to/inspections python3 -m unittest -v test_food_mod
+python3 developer/native_check.py /path/to/transformed-modules

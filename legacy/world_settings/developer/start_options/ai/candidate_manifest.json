@@ -1,0 +1,79 @@
+{
+  "scope": "Build two private AMD64 war-policy candidates on the approved Food AI payloads.\n\nOnly the six-byte native SPEZFLAG store is redirected in each AI DLL. All war\nrequests remain native and are filtered once at the central AnnoWelt endpoint.\nNo original game file or existing payload is modified.\n",
+  "tag": "0x57530000",
+  "native_flags_mask": "0x000000ff",
+  "mode_mask": "0x00000300",
+  "counter_mask": "0x0000fc00",
+  "cadence": [
+    0,
+    4,
+    2,
+    1
+  ],
+  "payloads": [
+    {
+      "module": "CompLogic.dll",
+      "source": "WorldSettings_Work\\anno1503_food_world_dev3_cityfix1\\native\\CompLogic.food-ai.dll",
+      "source_sha256": "e247ef8b755354cb5c9b2ff21bf81a5dd25646ee2012ac8204162a54daa72d9d",
+      "output": "CompLogic.food-world-policy.dll",
+      "sha256": "0612873c32c95252144f4b4fd2bed45dddddc177303981833b673ddc4ed51453",
+      "native_declaration_helper_rva": 264048,
+      "native_declaration_call_rva": 264183,
+      "vtable_rva": 557352,
+      "setter_store_rva": 25922,
+      "preserver_rva": 728064,
+      "edits": [
+        {
+          "rva": 25922,
+          "preimage": "8986b80a0000",
+          "patch": "e9b9b60a0090"
+        }
+      ],
+      "unwind": [
+        {
+          "name": "preserve_policy_on_native_flag_updates",
+          "start": 728064,
+          "end": 728156,
+          "parent": [
+            24720,
+            26176,
+            568500
+          ],
+          "unwind": 728156
+        }
+      ]
+    },
+    {
+      "module": "CompLogicClassic.dll",
+      "source": "WorldSettings_Work\\anno1503_food_world_dev3_cityfix1\\native\\CompLogicClassic.food-ai.dll",
+      "source_sha256": "c2e101508bfb5aee0da3d4abd13f3281baccbf4762a26ff3f90f9e1fbc354556",
+      "output": "CompLogicClassic.food-world-policy.dll",
+      "sha256": "29d1759bd3beb39f9a5a3364946a24b36f8bb4fa546c6a999b6ca994aeeaab34",
+      "native_declaration_helper_rva": 253312,
+      "native_declaration_call_rva": 253447,
+      "vtable_rva": 544712,
+      "setter_store_rva": 18626,
+      "preserver_rva": 712192,
+      "edits": [
+        {
+          "rva": 18626,
+          "preimage": "8986b80a0000",
+          "patch": "e939950a0090"
+        }
+      ],
+      "unwind": [
+        {
+          "name": "preserve_policy_on_native_flag_updates",
+          "start": 712192,
+          "end": 712284,
+          "parent": [
+            16992,
+            18313,
+            554956
+          ],
+          "unwind": 712284
+        }
+      ]
+    }
+  ]
+}
