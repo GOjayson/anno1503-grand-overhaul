@@ -25,9 +25,11 @@ points to a local baseline store with complete `food_overhaul`,
 `world_settings` and `launcher` packages. The initial migration preserved that
 store under `.local/baselines/`. Food-only preparation uses reviewed public
 source and authored artwork and does not require the private World payloads.
-World-only also requires the separately built, pinned runtime profile under
-ignored `.local/runtime-profiles/world-only-v1/`. Its native build and local
-input requirements are described below.
+The expanded menu requires its separately built, pinned runtime profile under
+ignored `.local/runtime-profiles/options-world-only-<fingerprint>/` or
+`options-food-world-<fingerprint>/`, matching the Food selection. Historical
+runtime profiles remain preserved. Native build and local input requirements
+are described below.
 
 Click **Check installation** first. This validates feature dependencies, local
 mod inputs, game fingerprints and original-file recovery inputs and prepares a
@@ -83,9 +85,10 @@ The startup path depends on the selected native profile:
   and native host DLLs stay stock. Food is not required in that host. When the
   input installation has Food changes, the installer reads verified stock
   originals from its retained backups rather than carrying Food into the host.
-- **Food and World:** the preserved combined runtime keeps its existing exact
+- **Food and World:** the expanded combined runtime keeps the existing exact
   Food 0.5 source-installation and combined-copy compatibility contract. Its
-  working Food changes and old runtime remain intact.
+  working Food changes remain intact, and the historical runtime is preserved
+  separately.
 
 **Start with World Settings** uses normal Ubisoft authentication and the
 explicitly selected profile. For World-only, a verified fresh normal client
@@ -101,8 +104,53 @@ registration, installation paths and security settings are not edited.
 The selected host must then pass the fresh-process, main-menu, exact-module,
 complete-engine-profile and one-attempt activation guards. World size,
 fertility, islands, starting fleet and other world choices remain in the
-in-game menu. Consult [decoupling validation](DECOUPLING_VALIDATION.md) for the
-new stock-host profile's actual startup and gameplay acceptance status.
+in-game menu. Consult [World options validation](WORLD_OPTIONS_VALIDATION.md)
+for the expanded profile's actual startup, preset and native-save reload
+acceptance. The earlier stock-host observations remain in
+[decoupling validation](DECOUPLING_VALIDATION.md).
+
+## Configure a world inside Anno
+
+Starting a supported endless game opens the expanded World Settings screen.
+Use **World**, **Players**, **Starting options** and **Presets** to choose the
+world. The preview, displayed seed, regeneration and Start remain visible.
+
+**Map seed** accepts decimal values from 0 to 4294967295. **Copy seed** puts
+the displayed value on the clipboard. The same seed and the same settings,
+with the matching generator version, reproduce the map preview. Regeneration
+chooses another seed and clears an island selection from the preceding map.
+
+**Climate balance** favours temperate, tropical or polar islands while keeping
+the required cultures, climates and resources. **Layout style** selects even
+spacing, grouped archipelagos or a central ocean. Existing overlap, map-border,
+minimum-spacing and essential-resource checks still apply; an impossible
+configuration is blocked with an explanation.
+
+Under **Starting options**, choose a preferred climate or click ordinary land
+on the preview. The starting-island badge marks the chosen island. The fleet
+starts in checked water nearby; the player builds the settlement normally.
+Native, pirate and Venetian islands cannot be selected as starting islands.
+Use **Use automatic starting position** to clear both preferences.
+
+Select **Custom cargo on every trade ship** to enter tools, wood and food in
+tons. Each good occupies separate 50-ton holds. Small trade ships have four
+holds and big trade ships have eight, so the same custom cargo must fit every
+trade ship in the selected fleet. Warships retain their cannon equipment.
+Leaving this option unchecked keeps the fleet's existing supplies.
+**Enable disasters** controls the inspected native endless-game disaster
+option separately from Pirates and Venetians.
+
+On **Presets**, enter a name and choose **Save current settings** after the
+preview is ready. Choose an existing preset and **Load selected preset** to
+restore every world option and its seed. Replacing a named preset requires an
+in-game confirmation. Presets use versioned, bounded text files in the managed
+copy's `WorldSettingsPresets/` folder. They remain during restoration and are
+refused when their generator fingerprint differs. Feature-profile files still
+contain installer choices only.
+
+The expanded menu has its own [validation record](WORLD_OPTIONS_VALIDATION.md).
+Seed reproducibility covers generation choices and the preview; AI decisions
+and a played world's later events can differ.
 
 ## Prepared local packages
 
@@ -124,10 +172,25 @@ The World-only recipe reuses that corpus as verified input, not as executable
 provider code or as a Food installation. It additionally retains stock native
 inputs for independent recipe verification and uses:
 
-| World-only artifact | SHA-256 |
+| Preserved World-only artifact | SHA-256 |
 | --- | --- |
 | Canonical runtime | `4ede7aefddeb78319328f9de7e4597e49d6d1652739539c29afe5439024a86e9` |
 | Stock-bound engine plan | `71940166c7131f78d1b5efd68c1e6dff0299ea8d3334ed811420da4a53fa1f4e` |
+
+The current installer prepares the separate expanded-menu package kind for
+both profiles. It retains and verifies the frozen corpus, then binds the new
+runtime, generator identity and 96-byte settings/5232-byte preview schema.
+Its reviewed canonical runtimes are:
+
+| Expanded-menu native profile | SHA-256 |
+| --- | --- |
+| World only | `f7a070e6825a9269e61d2f504e0e855f38002be13ad5befedcf87bd5081f8b14` |
+| Food and World | `23b2b69956d70e900cb0fa0aa079fdc5b7f00215b74c853c276ac90633fb837f` |
+
+The advanced generator fingerprint is
+`ws4-443c04febaf41fe2328c0084ad379232a6e7d6a6b049c70707f587d768cccf1a`.
+Changing authored native generator source requires another reviewed build and
+matching package/preset identity. Historical validators and pins remain intact.
 
 World-only installs the runtime, private World-policy AI modules and island
 assets. It leaves the inspected stock host DLLs, Food definitions, archives and
@@ -147,17 +210,18 @@ Local preparation can also be invoked explicitly:
 
 ```console
 python tools/prepare_installer_package.py --food-only --source-game "PATH_TO_GAME" --copy-game "PATH_TO_COPY" --output .local/installer-packages/food
-python tools/build_world_only_runtime.py --vanilla-game "PATH_TO_VERIFIED_STOCK_COPY"
+python tools/build_world_options_runtime.py --profile world-only --game "PATH_TO_VERIFIED_STOCK_COPY" --publish
+python tools/build_world_options_runtime.py --profile food-world --game "PATH_TO_SUPPORTED_FOOD_SOURCE" --publish
 python tools/prepare_installer_package.py --world-only --baselines .local/baselines --source-game "PATH_TO_GAME" --copy-game "PATH_TO_COPY" --output .local/installer-packages/world-only
 python tools/prepare_installer_package.py --baselines .local/baselines --source-game "PATH_TO_FOOD_SOURCE" --copy-game "PATH_TO_COPY" --output .local/installer-packages/combined
 ```
 
 These commands prepare mod inputs; they do not install or launch the game.
-They refuse an existing output folder. The World-only native builder uses Zig
-0.16.0 and verified stock native inputs, checks the original 43 compiled-source
-fingerprints and native hook/engine/unwind preimages, then accepts only its
-reviewed canonical output. It preserves the imported source, previous builds
-and combined runtime. A public clone contains the Food
+They refuse an existing output folder. The expanded native builder uses Zig
+0.16.0 and the exact native inputs for the selected profile, checks the original
+43 compiled-source fingerprints and native hook/engine/unwind preimages, then
+publishes only its reviewed canonical output when requested. It preserves the
+imported source, previous builds and historical runtimes. A public clone contains the Food
 reconstruction source, but no licensed World payloads, complete game islands,
 private test corpus or compiler installation.
 
@@ -178,3 +242,5 @@ menu checks on the preserved combined profile. The independent profile's
 automatic startup, a new 1024 world, stock resident diets and native save reload
 after a fresh process. Extended gameplay, active ordinary AI and a new Huge
 World-only world were not exercised by that acceptance run.
+The seven expanded settings have separate source, fixture, compilation and
+actual-game evidence in [World options validation](WORLD_OPTIONS_VALIDATION.md).

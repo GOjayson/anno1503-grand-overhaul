@@ -116,8 +116,9 @@ def build_source_probe(package,spec):
 
 
 def _recipe(raw_frozen: bytes, stock: dict[str,bytes], frozen_payloads: dict[str,bytes],
-            runtime: bytes, source_game: str, copy_game: str, *, baselines=None) -> dict[str,bytes]:
-    runtime_sha, engine_sha, stock_hashes=_runtime_policy()
+            runtime: bytes, source_game: str, copy_game: str, *, baselines=None,
+            runtime_policy=None) -> dict[str,bytes]:
+    runtime_sha, engine_sha, stock_hashes=_runtime_policy() if runtime_policy is None else runtime_policy
     if set(stock)!=set(_STOCK_NAMES):
         raise common.PackageError('The complete stock World-only native inputs are missing.')
     for name,data in stock.items():

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anno1503-grand-overhaul"
-version = "0.3.0"
+version = "0.4.0.dev1"
 description = "Modular overhaul development for Anno 1503 History Edition"
 requires-python = ">=3.10"
 authors = [{name = "GOjayson"}]
@@ -19,3 +19,6 @@ anno1503-installer = "anno1503_overhaul.selector:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+anno1503_overhaul = ["native/world_options/*.h", "native/world_options/*.inc"]

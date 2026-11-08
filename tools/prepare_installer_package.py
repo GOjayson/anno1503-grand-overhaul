@@ -22,13 +22,12 @@ def main() -> int:
     try:
         if args.food_only:
             root = prepare_food_package(args.output, args.source_game, args.copy_game)
-        elif args.world_only:
-            if args.copy_game is None:
-                parser.error('--world-only requires --copy-game')
-            from anno1503_overhaul.world_only_package import prepare_world_only_package
-            root=prepare_world_only_package(args.baselines,args.output,args.source_game,args.copy_game)
         else:
-            root = prepare_package(args.baselines, args.output, args.source_game, args.copy_game)
+            if args.copy_game is None:
+                parser.error('World Settings requires --copy-game')
+            from anno1503_overhaul.world_options_package import prepare_options_package
+            root=prepare_options_package(args.baselines,args.output,args.source_game,args.copy_game,
+                                         food_enabled=not args.world_only)
         result = validate_package(root, args.source_game)
         print(json.dumps({"package": str(root), "verified_files": len(result["files"]),
                           "kind": result["kind"], "runtime_sha256": result.get("runtime_sha256"),

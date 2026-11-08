@@ -10,7 +10,7 @@ It does not support arbitrary combinations of future native modifications.
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Preserved combined 0.11.0-dev.1 and independent experimental stock-host profile | Food is optional; each selection needs its own exact local payload/runtime profile and marked copy; new World-only startup/gameplay evidence is tracked separately |
+| World Settings | Priority | Expanded in-game options 0.4.0-dev.1 for stock and Food hosts, with the historical runtimes retained | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; new options validation is tracked separately |
 | Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
 | Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
@@ -25,7 +25,34 @@ its prior backups are preserved as read-only inputs. See [installer details](INS
 Unavailable modules must not be enabled merely by editing a profile file.
 The UI should explain their status and the validator must enforce it too.
 
-## World Settings baseline
+## Expanded in-game World Settings
+
+Version 0.4.0-dev.1 adds the following settings to the in-game screen. The
+installer selects the feature combination; it does not configure individual
+worlds. Four menu pages keep these choices beside the persistent map preview.
+
+| Setting | Behavior and constraints |
+| --- | --- |
+| Map seed | Enter or copy an unsigned 32-bit seed, including zero. The same seed, generator fingerprint and settings reproduce the validated map preview. Regenerate chooses another displayed seed. |
+| Saved presets | Save/load all 23 world choices, including the seed and preferred island, using bounded named files inside the managed copy. A different generator fingerprint is refused. |
+| Starting position | Choose a climate or click an ordinary uninhabited island on the preview. Starting ships move to checked nearby water; native/special islands and unsafe coastal starts are refused. No settlement is built automatically. |
+| Starting cargo | Custom tools, wood and food apply to each trade ship. Each distinct stack uses a 50-ton hold; small trade ships have four holds and big trade ships have eight. The choice must fit every trade ship in the fleet. Warship cannon equipment is retained. |
+| Climate balance | Balanced, favour temperate (north/prairie), tropical (jungle/steppe) or polar (polar/tundra). Enabled cultures, all six climates and essential resources remain required. |
+| Layout style | Evenly spread, grouped archipelagos or a central ocean. Geometry, native placement grid, ship reserves, border bounds and minimum spacing remain validated. An impossible choice fails rather than changing layout style silently. |
+| Disasters | Enable/disable the inspected native endless-game disaster option while retaining the separately selected faction options. |
+
+Preset files are user data and are retained during restoration. Changing
+generation choices clears a stale preferred-island selection; loading a preset
+restores its seed, settings and selected index together. The preview remains
+the exact cached plan used by Start.
+
+Both new native profiles compiled reproducibly from reviewed staged changes.
+Native policy, serialization, parser and exact History Edition instruction
+fixtures passed. Actual in-game acceptance for this expanded menu is tracked
+in [World options validation](WORLD_OPTIONS_VALIDATION.md); earlier observations
+below remain bound to their original builds.
+
+## Preserved World Settings baseline
 
 The existing experimental implementation includes:
 
@@ -51,7 +78,7 @@ extended trade/combat, harvesting/mining access or long-session stability.
 Earlier failed Huge builds and the limited different-runtime save migration
 must remain distinguishable from accepted tests.
 
-## Independent World Settings profile
+## Preserved 0.3 independent World Settings profile
 
 Leaving Food unchecked selects a different native profile rather than merely
 hiding a checkbox. The managed copy remains the actual executable host and
@@ -129,8 +156,6 @@ unlocks must remain compatible with the selected Food and economy rules.
 
 ## Further World Settings candidates
 
-Useful follow-up candidates include reusable map seeds, saved presets,
-starting-area selection, custom cargo, climate balance, layout styles and
-disaster options. Deposit quantities/depletion, map visibility, trader and
-Pirate behavior, starting diplomacy and victory goals need their own native
-and save investigations. These are proposals rather than delivered settings.
+Deposit quantities/depletion, map visibility, trader and Pirate behavior,
+starting diplomacy and victory goals need their own native and save
+investigations. These remain proposals for subsequent settings.

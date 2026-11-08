@@ -116,11 +116,9 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
         output = _workspace() / ('package-' + uuid.uuid4().hex)
         if profile['features']['world_settings']:
             provider = baseline_dir if baseline_dir is not None else REPO / '.local' / 'baselines'
-            if profile['features']['food_overhaul']:
-                package = prepare_package(provider, output, source, copy_game=target)
-            else:
-                from .world_only_package import prepare_world_only_package
-                package = prepare_world_only_package(provider, output, source, target)
+            from .world_options_package import prepare_options_package
+            package = prepare_options_package(provider, output, source, target,
+                                               food_enabled=profile['features']['food_overhaul'])
         else:
             package = prepare_food_package(output, source, copy_game=target)
     package = checked_path(package)
@@ -128,8 +126,9 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
     if Path(metadata.get('copy_root') or '').resolve() != target:
         raise InstallerError('These prepared mod files belong to another modded copy. Prepare a package for this copy.')
     if profile['features']['world_settings']:
-        is_world_only = metadata['kind'] == 'anno1503-world-only-installer-package'
-        if is_world_only == profile['features']['food_overhaul']:
+        expected_food = (metadata['food_enabled'] if metadata['kind'] == 'anno1503-world-options-installer-package'
+                         else metadata['kind'] != 'anno1503-world-only-installer-package')
+        if expected_food != profile['features']['food_overhaul']:
             raise InstallerError('The prepared package has a different Food selection. Check the selected features again.')
     food = package / 'food'
     progress('Checking original-game recovery files…')

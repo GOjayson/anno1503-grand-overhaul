@@ -1,0 +1,90 @@
+"""Reviewed settings ABI and staged native transformations for World options.
+
+Historical compiled inputs are immutable. These transformations apply only to
+fresh staging dictionaries and are shared by the stock and Food host builds.
+"""
+from pathlib import Path
+import hashlib
+import json
+
+from .world_runtime_build import RuntimeBuildError
+
+
+ROOT = Path(__file__).resolve().parents[2]
+PRIVATE = 'developer/source/engine_resume/ai_food/experiment_runtime/'
+SETTINGS_SIZE = 96
+PREVIEW_SIZE = 5232
+FIELDS = ('mapSeed', 'startClimate', 'startIsland', 'cargoMode', 'cargoTools',
+          'cargoWood', 'cargoFood', 'climateBalance', 'layoutStyle', 'disasters')
+VERSION = '0.4.0-dev.1'
+
+
+def generator_id() -> str:
+    """Bind saved seeds/presets to the reviewed generator's public inputs."""
+    directory = ROOT / 'src/anno1503_overhaul'
+    paths = [directory / (name + '.py') for name in
+             ('world_options', 'world_options_planner', 'world_options_start', 'world_options_menu')]
+    paths += sorted((directory / 'native/world_options').glob('*.h'))
+    paths += sorted((directory / 'native/world_options').glob('*.inc'))
+    inputs = {path.relative_to(ROOT).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+              for path in paths}
+    inputs['frozen_compiled_sources'] = json.loads((ROOT / 'provenance/legacy_import.json').read_bytes())['compiled_source_sha256']
+    return 'ws4-' + hashlib.sha256(json.dumps(inputs, sort_keys=True).encode()).hexdigest()
+
+
+def replace(data: bytes, before: bytes, after: bytes, label: str, count: int = 1) -> bytes:
+    if b'\r\n' in data and b'\r\n' not in before:
+        before = before.replace(b'\n', b'\r\n')
+        after = after.replace(b'\n', b'\r\n')
+    if data.count(before) != count:
+        raise RuntimeBuildError('Advanced World Settings source differs: ' + label)
+    return data.replace(before, after, count)
+
+
+def authored(name: str) -> bytes:
+    path = ROOT / 'src/anno1503_overhaul/native/world_options' / name
+    if path.is_symlink() or path.parent.resolve() != path.parent or not path.is_file():
+        raise RuntimeBuildError('Missing reviewed World options source: ' + name)
+    return path.read_bytes()
+
+
+def apply_common(files: dict[str, bytes]) -> None:
+    header = PRIVATE + 'world_backend.h'
+    files[header] = replace(files[header], b' int32_t worldSize;',
+        b' int32_t worldSize;\n uint32_t mapSeed;\n'
+        b' int32_t startClimate,startIsland,cargoMode,cargoTools,cargoWood,cargoFood;\n'
+        b' int32_t climateBalance,layoutStyle,disasters;', 'settings extension')
+    files[header] = replace(files[header], b'#endif',
+        b'#include "advanced_settings.h"\n#endif', 'shared settings validation')
+    files[PRIVATE + 'advanced_settings.h'] = authored('advanced_settings.h')
+    preview = PRIVATE + 'preview_state.inc'
+    files[preview] = replace(files[preview], b'sizeof(WSWorldSettings)==56',
+                             b'sizeof(WSWorldSettings)==96', 'settings ABI assertion')
+    files[preview] = replace(files[preview], b'sizeof(WSPreviewSnapshot)==5192',
+                             b'sizeof(WSPreviewSnapshot)==5232', 'snapshot ABI assertion')
+    backend = PRIVATE + 'world_backend.c'
+    files[backend] = replace(files[backend], b' wsPreviewClear();\n planCount=0;',
+        b' wsPreviewClear();\n planCount=0;\n'
+        b' if(!wsAdvancedValidateSettings(s,error,cap))return 0;\n'
+        b' if(s->mapSeed!=seed){wsMessage(error,cap,"The displayed map seed differs from the generation request.");return 0;}',
+        'generation advanced validation')
+    menu = PRIVATE + 'WorldSettings.c'
+    files[menu] = replace(files[menu],
+        b'    if (!s || s->size != sizeof(*s)) {message(err,cap,"Invalid settings structure.");return 0;}',
+        b'    if (!wsAdvancedValidateSettings(s,err,cap)) return 0;', 'menu advanced validation')
+
+
+def apply_options(files: dict[str, bytes]) -> dict[str, bytes]:
+    """Return transformed source without changing the caller's frozen inputs."""
+    from .world_options_planner import apply_planner
+    from .world_options_start import apply_start
+    from .world_options_menu import apply_menu
+    result = dict(files)
+    apply_common(result)
+    apply_planner(result)
+    apply_start(result)
+    apply_menu(result)
+    name = PRIVATE + 'advanced_settings.h'
+    result[name] = replace(result[name], b'"pending-build"',
+                           ('"' + generator_id() + '"').encode(), 'generator fingerprint')
+    return result

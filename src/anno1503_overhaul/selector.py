@@ -101,7 +101,7 @@ def main():
             update_buttons()
 
     for key, description in (
-        ('world_settings', 'World size, preview, islands, fertility, starting options and opponents — inside Anno.'),
+        ('world_settings', 'World size, seeds, presets, previews, cargo, climate, layouts and opponents — inside Anno.'),
         ('food_overhaul', 'Food 0.5 and its existing gameplay changes.'),
     ):
         check = ttk.Checkbutton(group, text=catalog[key].name, variable=flags[key], command=refresh)

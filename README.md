@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Preserved combined baseline plus a separate experimental World-only stock-game profile; see its validation scope |
+| World Settings | Priority | Experimental 0.4.0-dev.1 adds seeds, presets, preferred starts, custom cargo, climate/layout choices and disasters to both native profiles; see its validation scope |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -32,8 +32,8 @@ copy, then select the feature checkboxes:
 1. **Food overhaul:** enable the Food 0.5 gameplay changes, or leave it unchecked
    to retain the stock food economy.
 2. **World Settings:** enable world configuration independently of Food. This
-   choice needs the complete preserved local mod inputs; World-only also needs
-   its separately pinned native runtime profile.
+   choice needs the complete preserved local mod inputs and the separately
+   pinned runtime for the selected Food/World combination.
 3. Click **Check installation**, review the destination and copy size, then
    click **Install selected features**.
 
@@ -51,16 +51,20 @@ A clean supported source needs no such recovery.
 World-only keeps the inspected stock food definitions, markets, archives, UI
 and native host DLLs. Its copied executable is the actual game host and world
 data root; Food changes in the input installation are not carried into that
-world. The preserved combined profile keeps its existing Food implementation
-and exact startup contract.
+world. The Food + World profile keeps the existing Food implementation and
+exact source-installation startup contract. The expanded menu uses separately
+reviewed new runtimes for both selections; historical runtime profiles remain
+available unchanged.
 
 **Start with World Settings** uses normal Ubisoft authentication and the
 selected profile's guarded launch path. World-only relays the verified normal
 client startup context to the identical managed copy in memory; it does not
-change installation registration or persist startup values. The new profile's
-live startup/gameplay validation is tracked separately in
+change installation registration or persist startup values. Earlier stock-host
+startup and gameplay observations are recorded separately in
 [decoupling validation](docs/DECOUPLING_VALIDATION.md). World options remain
 inside Anno; Huge saves still need the compatible runtime after restoration.
+New menu features and their current test scope are recorded separately in
+[World options validation](docs/WORLD_OPTIONS_VALIDATION.md).
 
 A public clone can prepare Food-only installation inputs. World Settings also
 requires a local payload provider containing the complete preserved
@@ -97,6 +101,34 @@ python -m anno1503_overhaul validate profiles/default.json
 Profiles contain feature flags only. Map size, islands, fertility, starting
 fleet and other world options remain in the game's World Settings screen.
 
+## In-game world options
+
+The menu has **World**, **Players**, **Starting options** and **Presets** pages,
+with the map preview and seed always visible. In addition to the existing
+world, island, fertility, fleet and opponent choices, it provides:
+
+- **Map seed:** enter a number from 0 to 4294967295, copy it, or regenerate to
+  choose another seed. The same seed and the same settings reproduce the map
+  preview with the same generator version.
+- **Saved presets:** save and load every world setting, including the seed and
+  preferred starting island, from inside the game.
+- **Starting position:** click an ordinary island on the preview or choose a
+  climate to start nearby. This positions the starting ships; it does not
+  automatically build a settlement.
+- **Starting cargo:** customise tools, wood and food on each trade ship, with
+  validation of separate 50-ton holds and the selected fleet's capacity.
+- **Climate balance:** favour temperate, tropical or polar islands while
+  retaining all six climates, enabled cultures and essential resources.
+- **Layout style:** evenly spread islands, grouped archipelagos or a central
+  ocean. Invalid combinations are blocked instead of overlapping islands.
+- **Disasters:** enable or disable the inspected native endless-game option.
+
+Presets belong to the managed game copy and remain when restoring original
+game files. They require the matching generator fingerprint. Seed reuse is a
+map-generation feature, not a promise that AI events or a played game will
+unfold identically. Compilation, native fixtures and actual game acceptance
+are distinguished in [the validation record](docs/WORLD_OPTIONS_VALIDATION.md).
+
 ## Source and local builds
 
 | Path | Contents |
@@ -122,7 +154,20 @@ binds its game paths explicitly and records the relocation as new integration.
 Historical live-test evidence stays bound to the frozen runtime; package
 preparation does not count as a new game run.
 
-The preserved combined World Settings runtime can be compiled into a new local candidate
+The expanded menu has a controlled builder for each native profile:
+
+```console
+python tools/build_world_options_runtime.py --profile world-only --game PATH_TO_VERIFIED_STOCK_COPY
+python tools/build_world_options_runtime.py --profile food-world --game PATH_TO_SUPPORTED_FOOD_SOURCE
+```
+
+It verifies the immutable imported inputs and exact History Edition native
+preimages before compiling in ignored local staging. Publishing a local
+runtime profile additionally requires `--publish` and the exact reviewed
+canonical runtime and generator fingerprints. Building or publishing a
+profile does not install it or launch Anno.
+
+The preserved combined World Settings runtime can still be compiled into a local candidate
 outside the game folder on Windows with the matching Zig 0.16.0 toolchain:
 
 ```console
@@ -133,10 +178,13 @@ The tools directory must contain `ziglang/zig.exe` and its libraries. An ignored
 `.local/toolchain/` installation is discovered automatically. The builder writes
 only beneath `.local/builds/` and does not install, launch or patch Anno. Full
 payload reconstruction from arbitrary new native builds and save compatibility
-need their own integration work. The combined installer accepts the reviewed
-frozen runtime rather than automatically accepting a rebuilt DLL.
+need their own integration work. Historical package validators accept their
+reviewed frozen runtimes rather than automatically accepting rebuilt DLLs.
+The current installer prepares the separate expanded-menu package and its
+exact selected-profile runtime.
 
-The independent stock-game runtime has a separate controlled builder:
+The preserved 0.3 independent stock-game runtime also retains its original
+controlled builder:
 
 ```console
 python tools/build_world_only_runtime.py --vanilla-game PATH_TO_VERIFIED_STOCK_COPY
