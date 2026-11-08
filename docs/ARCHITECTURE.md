@@ -10,12 +10,15 @@ There are two distinct layers:
 
 - `legacy/` preserves imported mod source and its relative layout. These are
   experimental baselines with existing installation and activation assumptions.
-- `src/anno1503_overhaul/` contains the new feature-profile foundation and its
-  selection interface. A valid profile records a supported selection; it does
-  not establish that a new combination can be installed or played.
+- `src/anno1503_overhaul/` contains the feature catalogue, profiles, local
+  package preparation, independent-copy installer and restoration platform.
+  A valid profile records a selection; installation also requires the exact
+  supported local inputs and native fingerprints.
 
-The new selector prepares profiles. A common modular installer and a new native
-runtime have not been delivered by this migration.
+The installer supports Food alone and Food with World Settings. World Settings
+continues to use the preserved experimental native runtime. The new work
+composes installation and restoration; it does not declare a new native runtime
+or certify unperformed gameplay. See [installer usage](INSTALLER.md).
 
 ## Repository and local workspace
 
@@ -24,7 +27,7 @@ runtime have not been delivered by this migration.
 | `legacy/world_settings/` | World Settings installer, activation helpers, native source, patch descriptions and developer source layout |
 | `legacy/food_overhaul/` | Food overhaul source, patch descriptions and authored artwork |
 | `legacy/launcher/` | Automatic launcher source and startup checks |
-| `src/anno1503_overhaul/` | New feature catalogue, profile validation and selection interface |
+| `src/anno1503_overhaul/` | Feature profiles, checked package recipes, copy creation, vanilla recovery, isolated preparation, common installation/restoration and UI |
 | `docs/` | Architecture, feature status, migration instructions and roadmap |
 | `.local/` | Ignored local copies of tested packages, game inputs, build output and private validation material |
 
@@ -68,16 +71,55 @@ Feature selection has two levels:
 The launcher should enable the approved feature set automatically. It should not
 turn the external profile editor into a replacement for the in-game world menu.
 
-A future shared installer should consume a fully resolved profile, validate
-local game inputs and prepare a complete change plan before writing anything.
-It should then publish a single guarded transaction with restoration metadata.
-Installation and restoration require a closed game. A feature selection that
-changes native code or save semantics takes effect on a fresh launch rather
-than being swapped underneath a running world.
+The shared installer resolves a profile, validates local inputs and prepares a
+reviewable plan before changing game files. It then creates or reuses a managed
+independent copy, establishes verified vanilla inputs and publishes one guarded
+transaction with restoration metadata. Installation and restoration require a
+closed game. Restore the managed copy before changing its feature set; native
+features are not swapped underneath a running world.
+
+## Current installer components
+
+`packages.py` owns reviewed local package recipes and validation. Food-only
+inputs come from public source, its patch specification and authored artwork.
+The combined package additionally imports only the exact 25 pinned frozen
+payloads from the local baseline provider. It retains the raw frozen World
+specification and generates a relocated specification plus launcher pins for
+the explicit source/copy pair. Provider Python is checked but never executed;
+the package's helpers derive from tracked, provenance-checked source.
+
+`filesystem.py` creates a separate writable copy using bounded game locations,
+with inventory checks, reparse refusal and path-bound managed-copy metadata.
+It does not copy historical backups or mod development workspaces into the new
+game tree. `vanilla.py` checks the complete reviewed Food native/data/archive/UI
+inputs and recovers original bytes from the source's existing known backups
+when necessary. It reads those backups without changing them. Unproven bytes
+and unknown archive changes are refused.
+
+`legacy_adapter.py` runs preparation in a fresh interpreter to keep legacy
+module imports isolated. The worker produces bounded before/after payloads;
+it does not invoke a legacy installer. The copied World helper defers its
+Food-native fingerprint check until Food preparation has produced an exact
+whole-file before/after proof. Only the frozen Food output is accepted, and
+an installed activation still requires the exact final fingerprint. This
+permits composition from vanilla without applying a separate Food transaction.
+Common installation reuses the reviewed
+transaction implementation under the separate `GrandOverhaul_Backup_v1`
+namespace. The journal owns the composed feature changes, whole-file backups,
+introduced files, rollback and restoration together. Restoration rechecks both
+current and original fingerprints and retains backup generations.
+
+`installer.py` coordinates package validation, source/copy checks, copy
+creation, recovery, composition and publication. The UI keeps **Check
+installation** separate from **Install selected features**; publication
+rechecks the prepared inputs. The UI's restore action affects managed copies
+only. Retained journal bytes and reviewed source specifications make recovery
+independent of a prepared package's continued availability.
 
 ## Shared platform responsibilities
 
-The common platform should own:
+The common platform owns the current supported paths and should extend them
+through these responsibilities:
 
 - Exact History Edition executable/module fingerprints and supported layouts.
 - Dependency and conflict resolution, including unavailable research features.
@@ -105,16 +147,17 @@ The public source enables review and further development, but legacy scripts
 may still expect native inputs, generated payloads or inspection workspaces
 that are not distributed in Git.
 
-Build adaptation must make those inputs explicit. New build and integration
-tools should accept a configured source-game path, independent test-copy path
-and local output directory. They must not infer an installed game from the
-repository's parent directory or silently fall back to the original game when
-a development copy is absent.
+Build and integration tools take explicit source-game, independent-copy and
+local-output paths. The modular installer does not infer an installed game
+from the repository's parent directory or fall back to the original game when
+a development copy is absent. Unknown build candidates are not made trusted
+merely by editing their local package manifests.
 
-Preserve the known build's fingerprints and evidence before refactoring. Once
-the adapted pipeline can reconstruct a local package, compare its native
-outputs and exercise installation/restoration on an isolated copy before
-calling it a replacement for the tested baseline.
+Preserve the known build's fingerprints and evidence before refactoring. The
+current installer imports the exact frozen World payloads; it does not claim
+to reconstruct every historical native artifact from a clean public clone.
+Any new native build needs output comparisons, isolated installation and
+restoration checks, then separate actual launch/gameplay evidence.
 
 ## Multiplayer and player capacity
 

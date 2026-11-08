@@ -16,18 +16,29 @@ and acceptance gates, not release dates or promised engine capabilities.
   input/build directories.
 - Prepare feature profiles with visible dependencies and unavailable modules.
 
-**Acceptance:** source and local baseline preservation are checked; portable
-platform tests pass; profile preparation is clearly separated from native
-installation and actual game tests. This migration does not claim a portable
-rebuild of all historical packages or a complete modular installer.
+**Delivered foundation:** source and local baseline preservation, feature
+profiles, portable checks and repository boundaries are in place. The modular
+installer now adds a supported Food-only and combined installation path. This
+does not claim a portable rebuild of every historical native package or new
+actual-game evidence for the installer integration.
 
 ## Priority: modular platform and existing features
 
-1. Adapt the legacy build flow to explicit local game inputs and output paths.
-2. Introduce shared patch ownership/composition, installation planning,
-   transaction journaling and exact restoration.
-3. Integrate the tested automatic startup behavior with the resolved feature
-   profile and supported native-build fingerprints.
+Current implementation includes explicit source/copy paths, a check-first
+interface with Food and World checkboxes, reviewed local package recipes,
+verified vanilla recovery on managed copies, a shared installation/restoration
+journal and the pinned automatic World launcher adapter. Food-only package
+preparation uses public source without private World payloads. The combined
+path retains its exact local payload and source-Food requirements.
+
+Remaining work:
+
+1. Broaden supported build/language coverage through inspected fingerprints
+   and real input checks rather than accepting unknown files.
+2. Extend reproducible native payload reconstruction so the current frozen
+   local baseline store is no longer required for the combined selection.
+3. Exercise the modular installer, automatic startup, gameplay and restoration
+   together in actual game runs; retain bounded historical evidence separately.
 4. Decouple World Settings from the Food baseline if independent selection is
    to be offered. Until then, keep Food as an explicit required dependency.
 5. Validate each supported selection on an isolated game copy. Record save

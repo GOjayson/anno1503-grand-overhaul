@@ -1,20 +1,26 @@
 # Feature catalogue
 
-The overhaul will offer optional modules before installation or launch, with
-world-specific choices remaining in the in-game World Settings menu. The
-current selector prepares and validates feature profiles. It does not yet
-install an arbitrary combination of native modifications.
+The overhaul offers feature checkboxes before installation, with world-specific
+choices remaining in the in-game World Settings menu. The modular installer
+checks and installs Food alone or Food with World Settings on an independent
+managed copy, and restores its managed files to the verified vanilla baseline.
+It does not support arbitrary combinations of future native modifications.
 
 ## Current and planned modules
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Imported experimental 0.11.0-dev.1 source and preserved local tested package | Requires the current Food 0.5.0 baseline and exact combined marked copy |
-| Food overhaul | Priority | Imported experimental 0.5.0 source and preserved local tested package | Keep its tested gameplay changes; standalone and combined AI evidence have different scope |
+| World Settings | Priority | Experimental 0.11.0-dev.1 with a local modular package/installer path | Requires Food, exact preserved local payloads, a marked combined copy and exact Food 0.5 in the Ubisoft source installation |
+| Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
 | Automatic launch | Supporting platform | Imported launcher 1.0.0 source; actual automatic startup/activation/menu test exists for the preserved build | Bound to the inspected World Settings package and supported native fingerprints |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
 | Local-host multiplayer | Priority research | No new transport, lobby or capacity implementation provided by this migration | Unavailable; establish engine/network feasibility and session limits first |
 | Knowledge overhaul | Planned | Design and native-state investigation pending | Unavailable; establish education/research behavior, persistence and interactions first |
+
+The installer provides **Check installation**, **Install selected features**
+and **Restore original game**. The restore action affects its independent copy
+and retains saves and backup generations. The installed Ubisoft source and
+its prior backups are preserved as read-only inputs. See [installer details](INSTALLER.md).
 
 Unavailable modules must not be enabled merely by editing a profile file.
 The UI should explain their status and the validator must enforce it too.
@@ -39,7 +45,8 @@ strict save/reload comparison after restarting Anno. Smaller saved worlds were
 also loaded and inspected under that engine. Automatic activation and opening
 the World Settings preview were tested separately in the launcher work.
 
-Those observations remain bounded. They do not certify all combinations,
+Those historical observations remain bounded and are not new tests of the
+modular installer integration. They do not certify all combinations,
 extended trade/combat, harvesting/mining access or long-session stability.
 Earlier failed Huge builds and the limited different-runtime save migration
 must remain distinguishable from accepted tests.
