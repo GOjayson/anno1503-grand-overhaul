@@ -109,11 +109,49 @@ for the expanded profile's actual startup, preset and native-save reload
 acceptance. The earlier stock-host observations remain in
 [decoupling validation](DECOUPLING_VALIDATION.md).
 
+On the validated local installation, the existing **Anno 1503 - World
+Settings** desktop shortcut now uses the repository's production
+installed-copy launcher and the current installed profile. Its previous
+shortcut was retained in a private backup. Exact shortcut readback passed;
+updating it did not launch a second game. This is a local shortcut update,
+not a shortcut automatically installed by every public checkout.
+
 ## Configure a world inside Anno
 
 Starting a supported endless game opens the expanded World Settings screen.
-Use **World**, **Players**, **Starting options**, **Presets** and **Islands** to choose the
-world. The preview, displayed seed, regeneration and Start remain visible.
+Use **World**, **Players**, **Starting**, **Presets**, **Islands** and
+**Visibility** to choose the world; the Starting heading remains **Starting
+options**. The preview area, displayed seed, regeneration and Start remain
+visible. Terra incognita covers the preview area.
+
+Experimental 0.6.0-dev.1 adds the following choices on **Visibility**:
+
+- **Unexplored (terra incognita):** hide undiscovered islands. Native contact
+  reveals a whole island, which stays remembered after ships leave. Its setup
+  preview, island metadata, start badges and resource summaries are concealed;
+  preview clicks cannot inspect or select an island. Entering this mode clears
+  a preceding preferred island. A preferred climate and balanced starts remain
+  available; an incompatible saved manual-island choice is refused.
+- **Geography revealed:** show island locations initially. This is the default.
+- **Fully explored:** begin with every island discovered and its fertility
+  information unlocked.
+- **Enemy activity:** independently choose **Strict line of sight** (default)
+  or **Reveal all activity**. Strict uses a fixed 48-tile radius around
+  controllable human ships and owned settlements' building-anchor rectangles.
+  Activity outside current vision becomes hidden again; remembered island
+  geography remains. Reveal all activity removes this activity range limit.
+
+The visibility policy is stored with the world save. Activate the matching
+World Settings runtime before loading that save, including after a fresh
+launch or restoration/reinstallation. These 0.6 features remain experimental.
+R8 World-only automatic startup and certified native-save reload passed;
+the user confirmed smooth camera movement and working visibility in the
+requested large-island/village-range sample. This does not establish FPS,
+every interaction path or fresh Terra generation. Food remains optional.
+Both profiles passed build, isolated scene and production install/restore
+checks; Food + World actual visibility gameplay was omitted at the user's
+request and is not a publication requirement for this iteration. See the
+[visibility validation record](WORLD_VISIBILITY_VALIDATION.md).
 
 **Map seed** accepts decimal values from 0 to 4294967295. **Copy seed** puts
 the displayed value on the clipboard. The same seed and the same settings,
@@ -126,23 +164,25 @@ spacing, grouped archipelagos or a central ocean. Existing overlap, map-border,
 minimum-spacing and essential-resource checks still apply; an impossible
 configuration is blocked with an explanation.
 
-Click any island's land on the preview to open **Islands**. Its details show
+With Geography revealed or Fully explored selected, click any island's land
+on the preview to open **Islands**. Its details show
 climate, dimensions, the catalogue's fertile-land estimate, planned crops and
 minerals, occupants and nearby ordinary-island resources. The fertile-land
 estimate is not proof of accessible construction space or mining access.
 The white outline identifies the inspected island; inspection does not change
 the starting position. Native, Pirate and Venetian islands can be inspected.
 
-Under **Starting options**, choose a preferred climate. Alternatively inspect
-an ordinary island and choose **Use inspected island as preferred starting
+Under **Starting options**, choose a preferred climate. With a revealed
+preview, alternatively inspect an ordinary island and choose **Use inspected island as preferred starting
 position**. The human fleet starts in checked water nearby; the player builds
 the settlement normally. Native, Pirate and Venetian islands are not eligible
 starting islands. **Use automatic starting position** clears both preferences.
 
 **Balance starting islands for human and AI players** requests comparable
 ordinary islands for the human and selected AI opponents. Choose close
-neighbours, balanced separation or distant rivals. The preview displays **S**
-for the human and **1–3** for ordinary AI starts, with a summary on **Islands**.
+neighbours, balanced separation or distant rivals. A revealed preview displays
+**S** for the human and **1–3** for ordinary AI starts, with a summary on
+**Islands**. Terra incognita withholds these assignments and the summary.
 A preferred human island/climate remains a constraint, and an impossible
 combination is refused. Fair starts do not enable a smarter-AI module or add
 player slots.
@@ -174,12 +214,16 @@ preview is ready. Choose an existing preset and **Load selected preset** to
 restore every world option and its seed. Replacing a named preset requires an
 in-game confirmation. Presets use versioned, bounded text files in the managed
 copy's `WorldSettingsPresets/` folder. They remain during restoration and are
-refused when their generator fingerprint differs. Version-2 presets contain
-all 27 settings; older presets remain on disk and are not silently converted.
+refused when their generator fingerprint differs. Version-3 presets contain
+all 29 settings, including map visibility and enemy activity. Earlier-schema
+presets remain on disk and are refused rather than silently converted.
 Feature-profile files still
 contain installer choices only.
 
-The 0.5 additions have their own
+The 0.6 visibility choices have a separate
+[validation record](WORLD_VISIBILITY_VALIDATION.md) covering automated checks
+and r8's bounded World-only startup, reload and user camera/visibility sample.
+Broader gameplay coverage is not implied. The 0.5 additions retain their original
 [validation record](WORLD_FAIRNESS_VALIDATION.md). Earlier seven-option
 acceptance remains in [World options validation](WORLD_OPTIONS_VALIDATION.md).
 Seed reproducibility covers generation choices and the preview; AI decisions
@@ -212,20 +256,27 @@ inputs for independent recipe verification and uses:
 
 The installer prepares the separate expanded-menu package kind for both
 profiles. It retains and verifies the frozen corpus and binds the exact
-runtime, generator identity and snapshot schema. The 0.5 development schema
-is 112-byte settings and a 5248-byte preview; its current build and acceptance
-state is recorded in [fairness validation](WORLD_FAIRNESS_VALIDATION.md).
+runtime, generator identity and snapshot schema. Experimental 0.6 uses
+120-byte settings, a 5256-byte preview and 29-choice version-3 presets.
+Its current r8 build fingerprints, automated checks and bounded World-only
+acceptance evidence belong in the
+[visibility validation record](WORLD_VISIBILITY_VALIDATION.md), not in the
+historical tables below.
 
-| Current 0.5 expanded-menu native profile | SHA-256 |
+The preserved 0.5 schema used 112-byte settings and a 5248-byte preview; its
+build and acceptance state remains recorded in
+[fairness validation](WORLD_FAIRNESS_VALIDATION.md).
+
+| Historical 0.5 expanded-menu native profile | SHA-256 |
 | --- | --- |
 | World only | `3ae9e17383ff7aa4405fe0a39274f81e443d545f10582c395cc97c138554f371` |
 | Food and World | `f2eab1d1a9dcb7aaa35f2e28b277101e94d0b538a9b77583f59d031cad1d381b` |
 
-The current generator fingerprint is
+The historical 0.5 generator fingerprint is
 `ws5-9763e325b88da3c2e60d75368626888fe5effa444071076c45bb3683dada1808`.
 Both profiles compiled three times to their identical reviewed output, with
-exact native preimage checks. Compilation is separate from actual game
-acceptance; consult the current validation record for that scope.
+exact native preimage checks. Those earlier builds do not validate the 0.6
+visibility runtime. Compilation remains separate from actual game acceptance.
 
 The preserved 0.4 schema was 96-byte settings and a 5232-byte preview. Its
 historical reviewed canonical runtimes are:
@@ -269,7 +320,9 @@ They refuse an existing output folder. The expanded native builder uses Zig
 0.16.0 and the exact native inputs for the selected profile, checks the original
 43 compiled-source fingerprints and native hook/engine/unwind preimages, then
 publishes only its reviewed canonical output when requested. It preserves the
-imported source, previous builds and historical runtimes. A public clone contains the Food
+488 imported legacy source files, all 43 original compiled-source inputs,
+previous builds and historical runtimes, while existing restoration backup
+generations remain retained. A public clone contains the Food
 reconstruction source, but no licensed World payloads, complete game islands,
 private test corpus or compiler installation.
 
@@ -292,3 +345,9 @@ after a fresh process. Extended gameplay, active ordinary AI and a new Huge
 World-only world were not exercised by that acceptance run.
 The seven expanded settings have separate source, fixture, compilation and
 actual-game evidence in [World options validation](WORLD_OPTIONS_VALIDATION.md).
+The 0.6 [visibility record](WORLD_VISIBILITY_VALIDATION.md) separately records
+r8's World-only automatic startup, certified-save reload and the user's
+smooth camera/visibility sample. Food + World builds, scene APIs and
+production installation/restoration were checked; its actual visibility
+gameplay run was omitted at the user's request. Those automated checks do not
+stand in for a Food live run or establish long-session gameplay performance.

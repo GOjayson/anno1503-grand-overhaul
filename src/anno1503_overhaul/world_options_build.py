@@ -18,17 +18,24 @@ import uuid
 from . import world_runtime_build as old
 from .filesystem import checked_path
 from .world_options import apply_options, generator_id, PRIVATE, SETTINGS_SIZE, PREVIEW_SIZE, VERSION
+from .world_options_visibility_calls import CALLS, DISPLAY_SHA256, verify_visibility_call_preimages
 
 
 PINNED_RUNTIMES = {
-    'world-only': '3ae9e17383ff7aa4405fe0a39274f81e443d545f10582c395cc97c138554f371',
-    'food-world': 'f2eab1d1a9dcb7aaa35f2e28b277101e94d0b538a9b77583f59d031cad1d381b',
+    'world-only': '50a92fc71221fa3e8a23d97e6971a6b30197de700755da57819a0d25f11cc5f8',
+    'food-world': '70668e10dde3fd6b61480b256dd41a2e280bcf654c573093f41f2fd91a4fc1b5',
 }
-PINNED_GENERATOR = 'ws5-9763e325b88da3c2e60d75368626888fe5effa444071076c45bb3683dada1808'
+PINNED_GENERATOR = 'ws6-0d2879f90b27860951e9a8a67245e9458d4200e6b28c5452505dd016341e31f9'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
     'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',
-    'WorldSettingsStartOwner', 'WorldSettingsDescribeStarts', 'WorldSettingsExpectedFairOwners'}
+    'WorldSettingsStartOwner', 'WorldSettingsDescribeStarts', 'WorldSettingsExpectedFairOwners',
+    'WorldSettingsVisibilityDrawTerrain', 'WorldSettingsVisibilityDrawTerrainClipped',
+    'WorldSettingsVisibilityCreateMap', 'WorldSettingsVisibilityPatchStatus',
+    'WorldSettingsCopyVisibilityDiagnostics', 'WorldSettingsCopyVisibilityRenderTargets',
+    'WorldSettingsVisibilityRenderStatic180', 'WorldSettingsVisibilityRenderStatic188',
+    'WorldSettingsVisibilityDrawWildlife',
+    'WorldSettingsVisibilityDrawWildlifeClipped'} | {row[4] for row in CALLS}
 UNITS = [PRIVATE + name for name in ('WorldSettings.c', 'world_backend.c', 'world_ai.c')]
 UNITS += ['developer/source/world_factory.c', old.AI_LOADER,
           'developer/source/engine_resume/route_coverage/selection.c',
@@ -59,9 +66,32 @@ def derive_sources(profile: str, files: dict[str, bytes], game: Path):
         food = json.loads(food_raw)
         expected = {**old.STOCK_SHA256,
                     **{item['name']: item['sources']['combined-0.5.0'] for item in food['native_modules']}}
+    expected = {**expected, 'AnnoDisplay.dll': DISPLAY_SHA256}
     files[old.ENGINE_PLAN] = plan
     proof = old.verify_native_preimages(game, files[old.BLOBS], plan, expected_hashes=expected)
-    return apply_options(files), proof
+    from .world_options_visibility_hooks import (verify_visibility_preimages,
+                                                verify_renderer_visibility_preimages)
+    proof['visibility_dispatch'] = verify_visibility_preimages(
+        (game / 'AnnoWelt.dll').read_bytes(), expected['AnnoWelt.dll'])
+    proof['visibility_renderer_dispatch'] = verify_renderer_visibility_preimages(
+        (game / 'AnnoDisplay.dll').read_bytes(), expected['AnnoDisplay.dll'])
+    proof['strict_visibility_calls'] = verify_visibility_call_preimages(
+        {name: (game / name).read_bytes() for name in {row[0] for row in CALLS}}, expected)
+    result = apply_options(files)
+    # These exact profile-specific fingerprints also guard new read-only data
+    # interfaces and original renderer delegates in the live transaction.
+    names = ('AnnoWelt.dll', 'AnnoFrame.dll', 'AnnoScene.dll',
+             'AnnoGame.dll', 'View.dll', 'AnnoDisplay.dll')
+    pins = ['/* Generated from this profile\'s independently verified images. */',
+            'typedef struct WSVisibilityModulePin {const wchar_t*name;unsigned char sha256[32];} WSVisibilityModulePin;',
+            'static const WSVisibilityModulePin wsVisibilityModulePins[]={']
+    for name in names:
+        digest = ','.join('0x' + expected[name][at:at + 2] for at in range(0, 64, 2))
+        pins.append(' {L"%s",{%s}},' % (name, digest))
+    pins.append('};')
+    result['developer/source/engine_resume/ai_loader/visibility_native_pins.h'] = ('\n'.join(pins) + '\n').encode('ascii')
+    proof['visibility_runtime_module_pins'] = {name: expected[name] for name in names}
+    return result, proof
 
 
 def build_options_runtime(profile, game, tools=None, *, output=None, publish=False):
@@ -102,7 +132,9 @@ def build_options_runtime(profile, game, tools=None, *, output=None, publish=Fal
         target.write_bytes(data)
     closure = {name: _sha(value) for name, value in files.items() if name in UNITS
                or name.startswith(PRIVATE) and name.endswith(('.h', '.inc'))
-               or name in (old.BLOBS, old.AI_LOADER, old.ENGINE_HEADER)
+               or name in (old.BLOBS, old.AI_LOADER, old.ENGINE_HEADER,
+                           'developer/source/engine_resume/ai_loader/visibility_hooks.inc',
+                           'developer/source/engine_resume/ai_loader/visibility_native_pins.h')
                or name.startswith('developer/source/') and name.endswith(('.c', '.h', '.inc'))
                and name in {n.removeprefix(old.SOURCE_PREFIX) for n in compiled}}
     report = dict(schema_version=1, version=VERSION, profile=profile, generator_id=generation,

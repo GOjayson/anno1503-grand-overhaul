@@ -1,6 +1,7 @@
 /* Hit testing uses the paint projection and coast mask. Inspection is separate
  * from selecting a preferred start; inhabited/special islands are inspectable. */
 static void wsMenuPreviewClick(DialogState*d,HWND window,LPARAM position){
+ if(wsMenuMapConcealed(d)){status(d,"Terra incognita keeps the map hidden. Explore after starting to discover its islands.");return;}
  if(!d->previewValid||d->previewBusy)return;
  RECT client;GetClientRect(window,&client);int width=client.right-client.left,height=client.bottom-client.top;
  int size=width<height?width:height;if(size<=0)return;

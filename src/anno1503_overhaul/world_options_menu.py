@@ -13,9 +13,9 @@ def apply_menu(files: dict[str, bytes]) -> None:
     menu = replace(menu, anchor, anchor + b'\n'
         b'enum {ID_SEED=201,ID_COPY_SEED,ID_START_CLIMATE,ID_CARGO_MODE,ID_CARGO_TOOLS,ID_CARGO_WOOD,ID_CARGO_FOOD,\n'
         b' ID_CLIMATE_BALANCE,ID_LAYOUT_STYLE,ID_DISASTERS,ID_PRESET_PICK,ID_PRESET_NAME,ID_PRESET_SAVE,ID_PRESET_LOAD,ID_CLEAR_START,ID_START_HINT,\n'
-        b' ID_TAB_WORLD=220,ID_TAB_PLAYERS,ID_TAB_START,ID_TAB_PRESETS,ID_TAB_ISLANDS,\n'
+        b' ID_TAB_WORLD=220,ID_TAB_PLAYERS,ID_TAB_START,ID_TAB_PRESETS,ID_TAB_ISLANDS,ID_TAB_VISIBILITY,\n'
         b' ID_FAIR_STARTS=230,ID_START_SEPARATION,ID_RESOURCE_DISTRIBUTION,ID_GUARANTEE_BASICS,\n'
-        b' ID_ISLAND_DETAILS,ID_USE_ISLAND,ID_FAIR_SUMMARY};', 'advanced menu control IDs')
+        b' ID_ISLAND_DETAILS,ID_USE_ISLAND,ID_FAIR_SUMMARY,ID_MAP_VISIBILITY,ID_ENEMY_VISIBILITY};', 'advanced menu control IDs')
     menu = replace(menu,
         b' uint32_t previewSeed,previewCount;WSPlanIsland previewIslands[128];',
         b' uint32_t previewSeed,previewCount;WSPlanIsland previewIslands[128];\n'
@@ -62,6 +62,11 @@ def apply_menu(files: dict[str, bytes]) -> None:
     preview_name = PRIVATE + 'world_menu_preview.inc'
     preview = files[preview_name]
     preview = replace(preview,
+        b' HBRUSH sea=CreateSolidBrush(RGB(34,75,103));FillRect(dc,client,sea);DeleteObject(sea);',
+        b' if(wsMenuMapConcealed(d)){wsMenuPaintConcealed(d,dc,client);return;}\n'
+        b' HBRUSH sea=CreateSolidBrush(RGB(34,75,103));FillRect(dc,client,sea);DeleteObject(sea);',
+        'terra incognita precedes every preview geometry and marker query')
+    preview = replace(preview,
         b'   uint32_t faction=wsTemplateFactions[p->templateIndex];if(faction!=1u&&faction!=2u)continue;\n'
         b"   char symbol[2]={faction==1u?'P':'V',0};",
         b'   uint32_t faction=wsTemplateFactions[p->templateIndex];int owner=WorldSettingsStartOwner(i);\n'
@@ -94,7 +99,7 @@ def apply_menu(files: dict[str, bytes]) -> None:
         b'static int settingsNotification(int id,int notification){\n'
         b' if(id==ID_SEED||(id>=ID_CARGO_TOOLS&&id<=ID_CARGO_FOOD))return notification==EN_CHANGE;\n'
         b' if(id==ID_CARGO_MODE||id==ID_DISASTERS||id==ID_FAIR_STARTS||id==ID_GUARANTEE_BASICS)return notification==BN_CLICKED;\n'
-        b' if(id==ID_START_CLIMATE||id==ID_CLIMATE_BALANCE||id==ID_LAYOUT_STYLE||id==ID_START_SEPARATION||id==ID_RESOURCE_DISTRIBUTION)return notification==CBN_SELCHANGE;',
+        b' if(id==ID_START_CLIMATE||id==ID_CLIMATE_BALANCE||id==ID_LAYOUT_STYLE||id==ID_START_SEPARATION||id==ID_RESOURCE_DISTRIBUTION||id==ID_MAP_VISIBILITY||id==ID_ENEMY_VISIBILITY)return notification==CBN_SELCHANGE;',
         'advanced control notifications')
     preview = replace(preview,
         b' d->previewValid=0;d->previewCount=0;EnableWindow(GetDlgItem(d->window,ID_START),FALSE);',
@@ -108,7 +113,7 @@ def apply_menu(files: dict[str, bytes]) -> None:
         b'  d->previewSeed=d->settings.mapSeed;', 'displayed seed is the generation seed')
     preview = replace(preview,
         b'd->previewCount=(uint32_t)count;d->previewValid=1;status(d,"Map ready. Start uses this preview; Regenerate makes another world.");',
-        b'd->previewCount=(uint32_t)count;d->previewValid=1;wsMenuStartHint(d);wsMenuIslandInfo(d);status(d,"Map ready. Start uses this preview; click an island to inspect it.");',
+        b'd->previewCount=(uint32_t)count;d->previewValid=1;wsMenuStartHint(d);wsMenuIslandInfo(d);status(d,wsMenuMapConcealed(d)?"World ready. Terra incognita keeps the map hidden until you explore in the game.":"Map ready. Start uses this preview; click an island to inspect it.");',
         'updated preview preserves chosen start hint')
     files[preview_name] = preview
     for name in ('menu_presets_codec.inc', 'menu_values.inc', 'menu_create.inc', 'menu_preview.inc', 'menu_island_text.inc'):

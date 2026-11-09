@@ -10,7 +10,7 @@ It does not support arbitrary combinations of future native modifications.
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Expanded in-game options 0.5.0-dev.1 add island details, fair starts and resource distribution; historical runtimes remain retained | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; source, native and live validation remain separate |
+| World Settings | Priority | Experimental 0.6.0-dev.1 adds exploration and separate strict/revealed enemy activity; r8 World-only automatic startup, certified-save reload and sampled user camera/visibility checks passed | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and bounded live evidence remain separate |
 | Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
 | Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
@@ -27,17 +27,19 @@ The UI should explain their status and the validator must enforce it too.
 
 ## Expanded in-game World Settings
 
-Version 0.5.0-dev.1 extends the in-game screen with island inspection,
-balanced starts and resource distribution. The
-installer selects the feature combination; it does not configure individual
-worlds. Five menu pages keep these choices beside the persistent map preview.
+Experimental 0.6.0-dev.1 extends the in-game screen with map exploration and
+separate enemy-activity visibility, retaining island inspection, balanced
+starts and resource distribution. The installer selects the feature
+combination; it does not configure individual worlds. Six pages keep the
+choices beside the persistent preview area: World, Players, Starting,
+Presets, Islands and Visibility. Terra incognita covers that preview.
 
 | Setting | Behavior and constraints |
 | --- | --- |
 | Map seed | Enter or copy an unsigned 32-bit seed, including zero. The same seed, generator fingerprint and settings reproduce the validated map preview. Regenerate chooses another displayed seed. |
-| Saved presets | Save/load all 27 world choices, including seed, preferred island and the new fairness/resource choices, using bounded version-2 named files inside the managed copy. A different generator fingerprint is refused; older files are retained. |
-| Island inspection | Click any preview island, including native and special-faction islands, to inspect dimensions, climate, fertile-land estimate, planned crop/mineral masks, occupants, template ore/whale occurrences, nearby resources and starting eligibility. The estimate does not establish building or mine accessibility. |
-| Starting position | Choose a climate or inspect an ordinary uninhabited island and explicitly prefer it. Starting ships move to checked nearby water; native/special islands and unsafe coastal starts are refused. Inspection alone does not move the starting fleet; no settlement is built automatically. |
+| Saved presets | Save/load all 29 world choices, including seed, preferred island and both visibility choices, using bounded version-3 named files inside the managed copy. A different generator fingerprint or preceding schema is refused; older files are retained. |
+| Island inspection | With a revealed preview, click any island, including native and special-faction islands, to inspect dimensions, climate, fertile-land estimate, planned crop/mineral masks, occupants, template ore/whale occurrences, nearby resources and starting eligibility. The estimate does not establish building or mine accessibility. |
+| Starting position | Choose a climate or, with a revealed preview, inspect an ordinary uninhabited island and explicitly prefer it. Terra incognita disables manual island selection, clears a preceding preferred island and retains climate preferences. Starting ships move to checked nearby water; native/special islands and unsafe coastal starts are refused. Inspection alone does not move the starting fleet; no settlement is built automatically. |
 | Balanced starts | Optionally allocate distinct ordinary islands to the human and selected ordinary AI opponents using fertile-land estimates and resource access. Close, balanced and distant separation choices apply to balanced starts. A preferred human island/climate remains a constraint. This does not improve AI strategy or increase the supported AI count. |
 | Resource distribution | Original, Spread resources or Specialised regions. Spread favours geographic separation; Specialised regions favours grouping around a compatible seeded region. Both preserve each resource's world count from the selected fertility level, with native climate and occurrence limits. Per-island quantities can change; saturated fertility and native/climate constraints can leave modes with identical assignments. Native/special-faction resource assignments remain untouched. |
 | Nearby basic resources | Optionally guarantee grain, flax, potatoes, iron and salt on ordinary islands within `max(128, worldSize / 4)` tiles of each actual participant's starting island. This can increase world abundance above fertility settings and is not a complete Food-overhaul diet guarantee. |
@@ -45,18 +47,31 @@ worlds. Five menu pages keep these choices beside the persistent map preview.
 | Climate balance | Balanced, favour temperate (north/prairie), tropical (jungle/steppe) or polar (polar/tundra). Enabled cultures, all six climates and essential resources remain required. |
 | Layout style | Evenly spread, grouped archipelagos or a central ocean. Geometry, native placement grid, ship reserves, border bounds and minimum spacing remain validated. An impossible choice fails rather than changing layout style silently. |
 | Disasters | Enable/disable the inspected native endless-game disaster option while retaining the separately selected faction options. |
+| Map visibility | Unexplored (terra incognita) conceals undiscovered islands; native contact reveals the whole island permanently. Geography revealed is the default and shows island locations. Fully explored begins with all islands discovered and their fertility information unlocked. Terra incognita covers setup geometry, details, start badges and resource summaries. |
+| Enemy activity | Strict line of sight (default) or Reveal all activity. Strict uses a fixed 48-tile radius around controllable human ships and owned settlement building-anchor rectangles. Activity beyond current vision is hidden again while discovered islands stay remembered. Reveal all activity removes this range limit. R8 World-only passed its sampled user camera/visibility check; this does not establish every renderer or interaction path. |
 
 Preset files are user data and are retained during restoration. Changing
 generation choices clears a stale preferred-island selection; loading a preset
 restores its seed, settings and selected index together. The preview remains
-the exact cached plan used by Start.
+the exact cached plan used by Start, including when terra incognita conceals
+its display. Visibility policy is stored with the world save and needs the
+compatible World Settings runtime on reload. R8 World-only automatic startup
+and certified native-save reload passed. Food remains an independent feature
+selection.
 
 The original seven expanded options have separately recorded compilation,
 native fixtures and actual World-only acceptance in
 [World options validation](WORLD_OPTIONS_VALIDATION.md). The 0.5 additions have
 their own [fairness validation record](WORLD_FAIRNESS_VALIDATION.md); older
 results must not be relabelled as testing the new generator. Both native
-profiles require their own reviewed build and validation.
+profiles have separately reviewed builds and production installation/
+restoration checks. The 0.6 [visibility validation record](WORLD_VISIBILITY_VALIDATION.md)
+separates automated results from r8's bounded World-only startup, reload and
+user-reported smooth camera/visibility sample. Fresh Terra generation,
+broader interactions and long-session behavior remain outside that sample.
+Food + World actual visibility gameplay was omitted in this iteration at
+the user's request; its automated build, scene and installation checks are
+separate evidence, and another Food live run is not a publication requirement.
 
 ## Preserved World Settings baseline
 
@@ -162,6 +177,6 @@ unlocks must remain compatible with the selected Food and economy rules.
 
 ## Further World Settings candidates
 
-Deposit quantities/depletion, map visibility, trader and Pirate behavior,
+Deposit quantities/depletion, trader and Pirate behavior,
 starting diplomacy and victory goals need their own native and save
 investigations. These remain proposals for subsequent settings.

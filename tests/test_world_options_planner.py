@@ -65,7 +65,8 @@ class Settings(C.Structure):
                              'mineralFertility', 'worldSize', 'mapSeed', 'startClimate',
                              'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
                              'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
-                             'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics')]
+                             'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics',
+                             'mapVisibility', 'enemyVisibility')]
 
 
 class Island(C.Structure):
@@ -80,7 +81,7 @@ def settings(**overrides):
                       aiDifficulty=1, plantFertility=1, mineralFertility=1,
                       worldSize=1024, mapSeed=3719, startClimate=-1,
                       startIsland=-1, cargoTools=40, cargoWood=40, cargoFood=10,
-                      disasters=1, startSeparation=1)
+                      disasters=1, startSeparation=1, mapVisibility=1)
     for key, value in overrides.items():
         setattr(result, key, value)
     return result
@@ -186,7 +187,7 @@ __declspec(dllexport) int FixtureLayoutMatches(const WSWorldSettings*s,const WSP
         return list(out[:count])
 
     def test_native_abi_and_weighted_climate_targets(self):
-        self.assertEqual(self.lib.FixtureABI(), 112)
+        self.assertEqual(self.lib.FixtureABI(), 120)
         self.assertEqual(C.sizeof(Island), 40)
         for balance, favored in ((0, ()), (1, (2, 3)), (2, (4, 5)), (3, (0, 1))):
             options = settings(islandCount=60, climateBalance=balance)
@@ -231,6 +232,8 @@ __declspec(dllexport) int FixtureLayoutMatches(const WSWorldSettings*s,const WSP
             options.cargoTools = 50
             options.cargoWood = 100
             options.disasters = 0
+            options.mapVisibility = 0
+            options.enemyVisibility = 1
             changed = self.native_plan(options)
             self.assertEqual([bytes(p) for p in first], [bytes(p) for p in changed])
 

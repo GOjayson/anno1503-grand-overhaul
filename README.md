@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.5.0-dev.1 adds island inspection, balanced starts and resource distribution to the existing in-game options; stock and Food hosts have separate validation |
+| World Settings | Priority | Experimental 0.6.0-dev.1 adds map exploration and separate enemy-activity visibility; r8 World-only automatic startup, certified-save reload and sampled camera/visibility checks passed |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -66,7 +66,14 @@ inside Anno; Huge saves still need the compatible runtime after restoration.
 The seven earlier menu additions are recorded in
 [World options validation](docs/WORLD_OPTIONS_VALIDATION.md). The new island,
 starting-position and resource controls have a separate
-[fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md).
+[fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
+0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
+Its r8 World-only automatic startup and certified `wv63` reload passed; the
+user confirmed smooth camera movement and working visibility in the requested
+large-island and village-range sample. This is bounded acceptance, not an FPS
+measurement or proof of every setting and gameplay path. Food + World builds,
+isolated scene checks and installation/restoration passed; its actual
+visibility gameplay run was omitted at the user's request.
 
 A public clone can prepare Food-only installation inputs. World Settings also
 requires a local payload provider containing the complete preserved
@@ -105,25 +112,42 @@ fleet and other world options remain in the game's World Settings screen.
 
 ## In-game world options
 
-The menu has **World**, **Players**, **Starting options**, **Presets** and
-**Islands** pages, with the map preview and seed always visible. In addition to the existing
-world, island, fertility, fleet and opponent choices, it provides:
+The menu has **World**, **Players**, **Starting**, **Presets**, **Islands** and
+**Visibility** pages. The Starting page heading remains **Starting options**.
+The preview area and seed stay visible; terra incognita covers the preview.
+In addition to the existing world, island, fertility, fleet and opponent
+choices, it provides:
 
 - **Map seed:** enter a number from 0 to 4294967295, copy it, or regenerate to
   choose another seed. The same seed and the same settings reproduce the map
   preview with the same generator version.
 - **Saved presets:** save and load every world setting, including the seed and
   preferred starting island, from inside the game.
-- **Island details:** click any island to inspect its climate, dimensions,
+- **Map visibility:** choose Unexplored (terra incognita), Geography revealed
+  (the default), or Fully explored. Unexplored hides unknown islands until
+  native contact reveals a whole island, which stays remembered. Geography
+  revealed shows island locations; Fully explored also unlocks their fertility
+  information. Terra incognita covers the setup preview and its island details,
+  start assignments and resource summaries; a preferred climate still works.
+- **Enemy activity:** separately choose Strict line of sight (the default) or
+  Reveal all activity. Strict vision uses 48 tiles around controllable human
+  ships and owned settlements' building-anchor rectangles. Known islands stay
+  remembered when activity moves out of sight. Reveal all activity removes
+  this activity range limit. The selected policy is stored with the world;
+  certified native-save reload under the r8 World-only profile passed.
+- **Island details:** with a revealed preview, click any island to inspect its climate, dimensions,
   estimated fertile land, planned crops and minerals, occupants and nearby
   resources. Inspection is separate from selecting a starting position;
   fertile land is not a guarantee of usable building space.
 - **Starting position:** choose a climate, or inspect an ordinary island and
   choose **Use inspected island as preferred starting position**. Starting
   ships move to checked nearby water; no settlement is built automatically.
+  Terra incognita uses an automatic island and prevents preview selection,
+  while retaining the preferred-climate choice.
 - **Balanced starts:** optionally choose comparable ordinary starting islands
   for the human and selected AI opponents, with close, balanced or distant
-  separation. The preview marks assigned starts and displays a summary.
+  separation. A revealed preview marks assigned starts and displays a summary;
+  terra incognita withholds those details.
 - **Resource distribution:** keep original assignments, favour spreading
   resources, or favour specialised regions. Redistribution preserves each
   resource's world count from the selected fertility level while respecting
@@ -146,7 +170,12 @@ map-generation feature, not a promise that AI events or a played game will
 unfold identically. Earlier presets remain on disk when a new generator
 refuses their fingerprint; they are not silently converted. Compilation,
 native fixtures and actual game acceptance are distinguished in the
-[current validation record](docs/WORLD_FAIRNESS_VALIDATION.md).
+[visibility validation record](docs/WORLD_VISIBILITY_VALIDATION.md). R8 passed
+its automated suite and both profiles' build/install checks, plus the bounded
+World-only startup, reload and user camera/visibility sample above. Fresh
+Terra generation, broader interaction coverage and long-session behavior are
+not established by that sample. Earlier fairness
+acceptance remains bound to [its original build](docs/WORLD_FAIRNESS_VALIDATION.md).
 
 ## Source and local builds
 
@@ -164,7 +193,8 @@ Original/patched game DLLs, executable files, complete game islands, saves and
 compiler caches are kept out of Git. The initial local migration preserves the
 complete tested packages and release ZIPs separately under `.local/baselines/`.
 The existing installed mod, game copy, desktop shortcut and backups remain in
-place.
+place. The 488 imported legacy source files and 43 original compiled-source
+inputs remain preserved; new native changes are staged separately.
 
 The imported public World Settings specification remains explicitly a source
 snapshot and refuses direct legacy installation or activation. The modular

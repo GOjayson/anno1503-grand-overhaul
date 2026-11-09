@@ -1,4 +1,4 @@
-/* Five pages keep the existing and advanced choices readable while the map
+/* Six pages keep the existing and advanced choices readable while the map
  * preview, seed, status and Start controls remain visible. */
 static int wsCreateMenu(DialogState*d,HWND w){
  const char*diff[]={"Easy","Medium","Hard"};
@@ -14,10 +14,12 @@ static int wsCreateMenu(DialogState*d,HWND w){
  const char*climate[]={"Any climate","Polar","Tundra","North","Prairie","Jungle","Steppe"};
  const char*distribution[]={"Original distribution","Spread resources","Specialised regions"};
  const char*separation[]={"Close neighbours","Balanced separation","Distant rivals"};
- const char*tabs[]={"World","Players","Starting options","Presets","Islands"};
+ const char*visibility[]={"Unexplored (terra incognita)","Geography revealed","Fully explored"};
+ const char*enemies[]={"Strict line of sight","Reveal all activity"};
+ const char*tabs[]={"World","Players","Starting","Presets","Islands","Visibility"};
  d->creatingPage=-1;d->preferredIsland=d->inspectedIsland=-1;d->pageControlCount=0;
  label(d,"World Settings",24,18,632,28);
- for(int i=0;i<5;i++)control(d,"BUTTON",tabs[i],BS_PUSHBUTTON|WS_TABSTOP,24+i*128,58,124,32,ID_TAB_WORLD+i);
+ for(int i=0;i<6;i++)control(d,"BUTTON",tabs[i],BS_PUSHBUTTON|WS_TABSTOP,24+i*106,58,102,32,ID_TAB_WORLD+i);
 
  d->creatingPage=0;
  label(d,"World generation",24,108,632,24);
@@ -76,6 +78,14 @@ static int wsCreateMenu(DialogState*d,HWND w){
  control(d,"EDIT","",WS_BORDER|ES_MULTILINE|ES_READONLY|ES_AUTOVSCROLL|WS_VSCROLL|WS_TABSTOP,24,196,620,326,ID_ISLAND_DETAILS);
  label(d,"Starting-position and resource summary",24,540,620,22);
  control(d,"EDIT","",WS_BORDER|ES_MULTILINE|ES_READONLY|ES_AUTOVSCROLL|WS_VSCROLL|WS_TABSTOP,24,570,620,80,ID_FAIR_SUMMARY);
+
+ d->creatingPage=5;
+ label(d,"Exploration and visibility",24,108,632,24);
+ label(d,"Map visibility",24,150,620,22);
+ fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,176,620,180,ID_MAP_VISIBILITY),visibility,3,1);
+ label(d,"Enemy activity",24,236,620,22);
+ fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,262,620,150,ID_ENEMY_VISIBILITY),enemies,2,0);
+ label(d,"Unexplored covers this preview and hides undiscovered islands. Finding an island reveals the whole island, which stays remembered. Geography revealed shows island locations; Fully explored starts with all islands discovered.\r\n\r\nStrict line of sight shows other players' activity within 48 tiles of your ships or settlements. Reveal all activity removes this range limit. Island exploration remains separate.\r\n\r\nPreferred climates and balanced starts remain available with terra incognita; selecting a preview island is disabled.",24,332,620,220);
 
  d->creatingPage=-1;
  label(d,"Map seed",688,58,408,20);control(d,"EDIT","",WS_BORDER|ES_NUMBER|WS_TABSTOP,688,82,280,28,ID_SEED);SendDlgItemMessageA(w,ID_SEED,EM_SETLIMITTEXT,10,0);

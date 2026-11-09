@@ -4,7 +4,7 @@
 #define WS_WORLD_OPTIONS_GENERATOR "pending-build"
 
 /* The original 56-byte prefix retains every native bridge field offset. */
-_Static_assert(sizeof(WSWorldSettings)==112,"Advanced settings ABI differs");
+_Static_assert(sizeof(WSWorldSettings)==120,"Advanced settings ABI differs");
 _Static_assert(sizeof(WSIslandDetails)==44,"Island details ABI differs");
 static inline int wsAdvancedValidateSettings(const WSWorldSettings*s,char*error,uint32_t cap){
  const char*reason=NULL;
@@ -26,6 +26,9 @@ static inline int wsAdvancedValidateSettings(const WSWorldSettings*s,char*error,
  if(!reason&&(s->startSeparation<0||s->startSeparation>2))reason="Choose close, balanced or distant starting positions.";
  if(!reason&&(s->resourceDistribution<0||s->resourceDistribution>2))reason="Choose normal, spread or specialised resource distribution.";
  if(!reason&&(s->guaranteeBasics<0||s->guaranteeBasics>1))reason="Choose whether basic resources are guaranteed near starts.";
+ if(!reason&&(s->mapVisibility<0||s->mapVisibility>2))reason="Choose unexplored, revealed geography or a fully explored map.";
+ if(!reason&&(s->enemyVisibility<0||s->enemyVisibility>1))reason="Choose strict line of sight or reveal all activity.";
+ if(!reason&&s->mapVisibility==0&&s->startIsland>=0)reason="Unexplored worlds use an automatic starting island. Clear the preferred island or reveal the geography.";
  if(error&&cap)snprintf(error,cap,"%s",reason?reason:"");
  return reason==NULL;
 }

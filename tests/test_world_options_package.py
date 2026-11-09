@@ -35,10 +35,10 @@ class OptionsPackageTests(unittest.TestCase):
         self.assertFalse(value['food_enabled'])
         self.assertEqual(value['kind'], options.KIND)
         spec = json.loads((path / 'world/world_patch.json').read_bytes())
-        self.assertEqual(spec['world_options']['settings_size'], 112)
-        self.assertEqual(spec['world_options']['preview_size'], 5248)
+        self.assertEqual(spec['world_options']['settings_size'], 120)
+        self.assertEqual(spec['world_options']['preview_size'], 5256)
         self.assertEqual(len(spec['introduced_files']), 19)
-        self.assertIn(b'SETTINGS_SIZE = 112', (path / 'world/activation/preview_snapshot.py').read_bytes())
+        self.assertIn(b'SETTINGS_SIZE = 120', (path / 'world/activation/preview_snapshot.py').read_bytes())
         self.assertFalse(self.copy.exists())
 
     def test_food_recipe_preserves_every_other_frozen_payload(self):
@@ -76,7 +76,7 @@ class OptionsPackageTests(unittest.TestCase):
 
     def test_changed_generator_cannot_be_blessed_by_old_runtime_pin(self):
         self.prepare()
-        with patch.object(options, 'generator_id', return_value='ws5-unreviewed'):
+        with patch.object(options, 'generator_id', return_value='ws6-unreviewed'):
             with self.assertRaisesRegex(common.PackageError, 'generator source changed'):
                 options.validate_options_package(self.output)
 

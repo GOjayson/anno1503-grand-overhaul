@@ -82,7 +82,7 @@ class Settings(C.Structure):
         'plantFertility', 'mineralFertility', 'worldSize', 'mapSeed',
         'startClimate', 'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
         'cargoFood', 'climateBalance', 'layoutStyle', 'disasters', 'fairStarts',
-        'startSeparation', 'resourceDistribution', 'guaranteeBasics')]
+        'startSeparation', 'resourceDistribution', 'guaranteeBasics', 'mapVisibility', 'enemyVisibility')]
 
 
 class Island(C.Structure):
@@ -102,6 +102,7 @@ def settings(**changes):
     value.worldSize = 1024
     value.startClimate = value.startIsland = -1
     value.disasters = 1
+    value.mapVisibility = 1
     for key, item in changes.items():
         setattr(value, key, item)
     return value

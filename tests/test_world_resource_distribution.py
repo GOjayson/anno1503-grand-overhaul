@@ -27,7 +27,7 @@ FIELDS = ('size', 'difficulty', 'islandSize', 'islandCount', 'spacing', 'aiCount
           'plantFertility', 'mineralFertility', 'worldSize', 'mapSeed', 'startClimate',
           'startIsland', 'cargoMode', 'cargoTools', 'cargoWood', 'cargoFood',
           'climateBalance', 'layoutStyle', 'disasters', 'fairStarts',
-          'startSeparation', 'resourceDistribution', 'guaranteeBasics')
+          'startSeparation', 'resourceDistribution', 'guaranteeBasics', 'mapVisibility', 'enemyVisibility')
 
 
 class Settings(C.Structure):
@@ -44,7 +44,7 @@ def options(**values):
                       islandCount=24, spacing=16, cultures=255, factions=3,
                       startingMoney=30000, aiDifficulty=1, plantFertility=1,
                       mineralFertility=1, worldSize=1024, mapSeed=3719,
-                      startClimate=-1, startIsland=-1, disasters=1, startSeparation=1)
+                      startClimate=-1, startIsland=-1, disasters=1, startSeparation=1, mapVisibility=1)
     for key, value in values.items():
         setattr(result, key, value)
     return result
@@ -190,7 +190,7 @@ __declspec(dllexport) void ResourceNearby(uint32_t index,uint32_t*crops,uint32_t
         return result, list(out), error.value.decode()
 
     def test_real_catalogue_modes_preserve_census_geometry_and_special_islands(self):
-        self.assertEqual(C.sizeof(Settings),112)
+        self.assertEqual(C.sizeof(Settings),120)
         improved = 0
         for seed in (0,3719,123456789,0xffffffff):
             for fertility in range(4):

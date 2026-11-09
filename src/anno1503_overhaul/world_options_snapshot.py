@@ -6,9 +6,10 @@ SETTINGS_FIELDS = ['size', 'difficulty', 'islandSize', 'islandCount', 'spacing',
     'cultures', 'factions', 'startingMoney', 'startingFleet', 'aiDifficulty',
     'plantFertility', 'mineralFertility', 'worldSize', 'mapSeed', 'startClimate', 'startIsland',
     'cargoMode', 'cargoTools', 'cargoWood', 'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
-    'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics']
+    'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics',
+    'mapVisibility', 'enemyVisibility']
 ISLAND_FIELDS = ['id', 'x', 'y', 'width', 'height', 'templateIndex', 'cropMask', 'mineralMask', 'cultures', 'climate']
-SETTINGS_SIZE = 112
+SETTINGS_SIZE = 120
 ROWS_OFFSET = 16 + SETTINGS_SIZE
 SNAPSHOT_SIZE = ROWS_OFFSET + 128 * 40
 CATALOGUE_COUNT = 444
@@ -21,7 +22,7 @@ def decode(data):
     size, state, seed, count = struct.unpack_from('<4I', data)
     if size != SNAPSHOT_SIZE or state >= len(STATES) or count > 128:
         raise ValueError('Invalid World options snapshot envelope.')
-    settings = dict(zip(SETTINGS_FIELDS, struct.unpack_from('<I5i2I6iI13i', data, 16)))
+    settings = dict(zip(SETTINGS_FIELDS, struct.unpack_from('<I5i2I6iI15i', data, 16)))
     if state == 0:
         if count or seed or any(settings.values()) or any(data[ROWS_OFFSET:]):
             raise ValueError('An absent preview contains data.')
@@ -39,6 +40,8 @@ def decode(data):
           or not 0 <= settings['climateBalance'] <= 3 or not 0 <= settings['layoutStyle'] <= 2
           or settings['fairStarts'] not in (0, 1) or settings['guaranteeBasics'] not in (0, 1)
           or not 0 <= settings['startSeparation'] <= 2 or not 0 <= settings['resourceDistribution'] <= 2
+          or not 0 <= settings['mapVisibility'] <= 2 or settings['enemyVisibility'] not in (0, 1)
+          or settings['mapVisibility'] == 0 and settings['startIsland'] >= 0
           or any(not 0 <= settings[key] <= 400 for key in ('cargoTools', 'cargoWood', 'cargoFood'))):
         raise ValueError('World options settings and preview disagree.')
     if state and settings['cargoMode']:

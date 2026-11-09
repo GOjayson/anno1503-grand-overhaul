@@ -7,10 +7,27 @@ static void invalidatePreview(DialogState*d);
 static int generatePreview(DialogState*d,int regenerate);
 static uint32_t freshPreviewSeed(uint32_t previous);
 
+/* Read the live selection rather than a cached plan: choosing terra incognita
+ * covers an older preview immediately, even while regeneration is pending.
+ * Missing/invalid controls fail closed and disclose no map metadata. */
+static int wsMenuMapConcealed(DialogState*d){
+ if(!d||!d->window)return 1;
+ LRESULT mode=SendDlgItemMessageA(d->window,ID_MAP_VISIBILITY,CB_GETCURSEL,0,0);
+ return mode!=1&&mode!=2;
+}
+static void wsMenuPaintConcealed(DialogState*d,HDC dc,const RECT*client){
+ HBRUSH cover=CreateSolidBrush(RGB(25,31,39));FillRect(dc,client,cover);DeleteObject(cover);
+ HGDIOBJ font=SelectObject(dc,d->font);int oldMode=SetBkMode(dc,TRANSPARENT);COLORREF oldColor=GetTextColor(dc);
+ SetTextColor(dc,RGB(225,224,211));RECT text=*client;text.left+=scaled(d,20);text.right-=scaled(d,20);
+ int height=text.bottom-text.top;text.top+=height/2-scaled(d,52);text.bottom=text.top+scaled(d,120);
+ DrawTextA(dc,"TERRA INCOGNITA\r\n\r\nThe world is hidden.\r\nExplore after starting to discover its islands.",-1,&text,DT_CENTER|DT_WORDBREAK);
+ SetTextColor(dc,oldColor);SetBkMode(dc,oldMode);SelectObject(dc,font);
+}
+
 static void wsMenuPage(DialogState*d,int page){
- if(page<0||page>4)return;d->page=page;
+ if(page<0||page>5)return;d->page=page;
  for(uint32_t i=0;i<d->pageControlCount;i++)ShowWindow(d->pageControls[i],d->controlPages[i]==page?SW_SHOW:SW_HIDE);
- for(int i=0;i<5;i++)SendDlgItemMessageA(d->window,ID_TAB_WORLD+i,BM_SETSTATE,i==page,0);
+ for(int i=0;i<6;i++)SendDlgItemMessageA(d->window,ID_TAB_WORLD+i,BM_SETSTATE,i==page,0);
 }
 static void wsMenuPutNumber(DialogState*d,int id,int32_t value){char text[32];snprintf(text,sizeof text,"%d",value);SetDlgItemTextA(d->window,id,text);}
 static void wsMenuPutSeed(DialogState*d,uint32_t value){char text[16];snprintf(text,sizeof text,"%u",value);SetDlgItemTextA(d->window,ID_SEED,text);}
@@ -30,6 +47,11 @@ static void wsMenuFairControls(DialogState*d){
 }
 static void wsMenuIslandInfo(DialogState*d){
  char text[4096],summary[768];WSIslandDetails details={0};details.size=sizeof details;
+ if(wsMenuMapConcealed(d)){
+  SetDlgItemTextA(d->window,ID_ISLAND_DETAILS,"Terra incognita hides island locations, resources and occupants. Explore in the game to discover them.\r\n\r\nA preferred climate and balanced starts remain available; selecting a particular island is disabled.");
+  SetDlgItemTextA(d->window,ID_FAIR_SUMMARY,"Starting-position and resource validation still apply. Their map details stay hidden until you explore.");
+  EnableWindow(GetDlgItem(d->window,ID_USE_ISLAND),FALSE);return;
+ }
  int selected=d->previewValid&&d->inspectedIsland>=0&&(uint32_t)d->inspectedIsland<d->previewCount;
  int known=selected&&WorldSettingsIslandDetails((uint32_t)d->inspectedIsland,&details);
  if(known){
@@ -56,10 +78,16 @@ static int wsMenuCollectAdvanced(DialogState*d,WSSettings*s){
  s->startSeparation=(int)SendDlgItemMessageA(d->window,ID_START_SEPARATION,CB_GETCURSEL,0,0);
  s->resourceDistribution=(int)SendDlgItemMessageA(d->window,ID_RESOURCE_DISTRIBUTION,CB_GETCURSEL,0,0);
  s->guaranteeBasics=SendDlgItemMessageA(d->window,ID_GUARANTEE_BASICS,BM_GETCHECK,0,0)==BST_CHECKED;
+ s->mapVisibility=(int)SendDlgItemMessageA(d->window,ID_MAP_VISIBILITY,CB_GETCURSEL,0,0);
+ s->enemyVisibility=(int)SendDlgItemMessageA(d->window,ID_ENEMY_VISIBILITY,CB_GETCURSEL,0,0);
  return 1;
 }
 static void wsMenuStartHint(DialogState*d){
  char text[160];int climate=(int)SendDlgItemMessageA(d->window,ID_START_CLIMATE,CB_GETCURSEL,0,0)-1;
+ if(wsMenuMapConcealed(d)){
+  snprintf(text,sizeof text,"Terra incognita: preview covered. Explore in the game to discover the world.");
+  SetDlgItemTextA(d->window,ID_START_HINT,text);return;
+ }
  if(d->preferredIsland>=0)snprintf(text,sizeof text,"Preferred start: island %d. Inspect islands to change it.",d->preferredIsland+1);
  else if(climate>=0&&climate<6){static const char*names[]={"Polar","Tundra","North","Prairie","Jungle","Steppe"};snprintf(text,sizeof text,"Preferred start: %s climate. Inspect an island for details.",names[climate]);}
  else snprintf(text,sizeof text,"Click any island to inspect it. S: human start; 1-3: AI starts.");
@@ -82,6 +110,8 @@ static void wsMenuApplySettings(DialogState*d,const WSSettings*s){
  SendDlgItemMessageA(d->window,ID_LAYOUT_STYLE,CB_SETCURSEL,s->layoutStyle,0);
  SendDlgItemMessageA(d->window,ID_START_SEPARATION,CB_SETCURSEL,s->startSeparation,0);
  SendDlgItemMessageA(d->window,ID_RESOURCE_DISTRIBUTION,CB_SETCURSEL,s->resourceDistribution,0);
+ SendDlgItemMessageA(d->window,ID_MAP_VISIBILITY,CB_SETCURSEL,s->mapVisibility,0);
+ SendDlgItemMessageA(d->window,ID_ENEMY_VISIBILITY,CB_SETCURSEL,s->enemyVisibility,0);
  for(int i=0;i<8;i++)SendDlgItemMessageA(d->window,ID_CULTURE+i,BM_SETCHECK,s->cultures&(1u<<i)?BST_CHECKED:BST_UNCHECKED,0);
  for(int i=0;i<2;i++)SendDlgItemMessageA(d->window,ID_FACTION+i,BM_SETCHECK,s->factions&(1u<<i)?BST_CHECKED:BST_UNCHECKED,0);
  SendDlgItemMessageA(d->window,ID_CARGO_MODE,BM_SETCHECK,s->cargoMode?BST_CHECKED:BST_UNCHECKED,0);
@@ -174,8 +204,9 @@ static void wsMenuSavePreset(DialogState*d){
  wsPresetRefresh(d,name);status(d,"Preset saved, including the seed and every world setting.");
 }
 static int wsMenuCommand(DialogState*d,int id,int notice){
- if(id>=ID_TAB_WORLD&&id<ID_TAB_WORLD+5&&notice==BN_CLICKED){wsMenuPage(d,id-ID_TAB_WORLD);return 1;}
+ if(id>=ID_TAB_WORLD&&id<ID_TAB_WORLD+6&&notice==BN_CLICKED){wsMenuPage(d,id-ID_TAB_WORLD);return 1;}
  if(id==ID_USE_ISLAND&&notice==BN_CLICKED){
+  if(wsMenuMapConcealed(d)){status(d,"Terra incognita keeps island selection hidden. Choose a preferred climate instead.");return 1;}
   if(!d->previewValid||d->inspectedIsland<0||!WorldSettingsStartingIslandEligible((uint32_t)d->inspectedIsland)){status(d,"Inspect an ordinary island with safe nearby water first.");return 1;}
   d->creating=1;d->preferredIsland=d->inspectedIsland;SendDlgItemMessageA(d->window,ID_START_CLIMATE,CB_SETCURSEL,0,0);d->creating=0;
   KillTimer(d->window,WS_PREVIEW_TIMER);generatePreview(d,0);return 1;
@@ -190,6 +221,8 @@ static int wsMenuCommand(DialogState*d,int id,int notice){
  return 0;
 }
 static void wsMenuOptionChanged(DialogState*d,int id){
- if(id!=ID_MONEY&&id!=ID_AI_DIFFICULTY&&id!=ID_CARGO_MODE&&id!=ID_CARGO_TOOLS&&id!=ID_CARGO_WOOD&&id!=ID_CARGO_FOOD&&id!=ID_DISASTERS&&id!=ID_FAIR_STARTS&&id!=ID_START_SEPARATION&&id!=ID_GUARANTEE_BASICS){d->preferredIsland=-1;d->inspectedIsland=-1;}
- if(id==ID_CARGO_MODE)wsMenuCargoControls(d);if(id==ID_FAIR_STARTS)wsMenuFairControls(d);wsMenuStartHint(d);
+ if(id!=ID_MONEY&&id!=ID_AI_DIFFICULTY&&id!=ID_CARGO_MODE&&id!=ID_CARGO_TOOLS&&id!=ID_CARGO_WOOD&&id!=ID_CARGO_FOOD&&id!=ID_DISASTERS&&id!=ID_FAIR_STARTS&&id!=ID_START_SEPARATION&&id!=ID_GUARANTEE_BASICS&&id!=ID_MAP_VISIBILITY&&id!=ID_ENEMY_VISIBILITY){d->preferredIsland=-1;d->inspectedIsland=-1;}
+ if(id==ID_MAP_VISIBILITY&&wsMenuMapConcealed(d))d->preferredIsland=d->inspectedIsland=-1;
+ if(id==ID_CARGO_MODE)wsMenuCargoControls(d);if(id==ID_FAIR_STARTS)wsMenuFairControls(d);wsMenuStartHint(d);wsMenuIslandInfo(d);
+ if(id==ID_MAP_VISIBILITY&&d->preview)InvalidateRect(d->preview,NULL,FALSE);
 }

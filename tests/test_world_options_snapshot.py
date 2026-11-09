@@ -9,12 +9,12 @@ from anno1503_overhaul import world_options_snapshot as snapshot
 
 
 def fixture(**changes):
-    settings = dict(zip(snapshot.SETTINGS_FIELDS, [112, 1, 3, 2, 0, 0, 255, 3,
-        30000, 0, 1, 1, 1, 1024, 4294967295, -1, -1, 0, 40, 40, 10, 0, 0, 1, 0, 1, 0, 0]))
+    settings = dict(zip(snapshot.SETTINGS_FIELDS, [120, 1, 3, 2, 0, 0, 255, 3,
+        30000, 0, 1, 1, 1, 1024, 4294967295, -1, -1, 0, 40, 40, 10, 0, 0, 1, 0, 1, 0, 0, 1, 0]))
     settings.update(changes)
     data = bytearray(snapshot.SNAPSHOT_SIZE)
     struct.pack_into('<4I', data, 0, len(data), 1, settings['mapSeed'], 2)
-    struct.pack_into('<I5i2I6iI13i', data, 16, *settings.values())
+    struct.pack_into('<I5i2I6iI15i', data, 16, *settings.values())
     for index, x in enumerate((0, 128)):
         struct.pack_into('<10I', data, snapshot.ROWS_OFFSET + index * 40, index, x, 0, 64, 64, index, 1, 0, 0, 2)
     return data
@@ -45,13 +45,24 @@ class OptionsSnapshotTests(unittest.TestCase):
     def test_invalid_selection_fields_and_seed_mismatch_refused(self):
         for key, value in [('startIsland', 2), ('startClimate', 6), ('disasters', 2),
                            ('layoutStyle', 3), ('climateBalance', 4), ('cargoFood', -1),
-                           ('fairStarts', 2), ('startSeparation', -1), ('resourceDistribution', 3), ('guaranteeBasics', 2)]:
+                           ('fairStarts', 2), ('startSeparation', -1), ('resourceDistribution', 3), ('guaranteeBasics', 2),
+                           ('mapVisibility', -1), ('mapVisibility', 3), ('enemyVisibility', -1), ('enemyVisibility', 2)]:
             with self.subTest(field=key), self.assertRaises(ValueError):
                 snapshot.decode(fixture(**{key: value}))
         data = fixture()
         struct.pack_into('<I', data, 8, 12)
         with self.assertRaises(ValueError):
             snapshot.decode(data)
+
+    def test_exploration_and_enemy_visibility_are_independent(self):
+        for geography in range(3):
+            for activity in range(2):
+                with self.subTest(geography=geography, activity=activity):
+                    result = snapshot.decode(fixture(mapVisibility=geography, enemyVisibility=activity))
+                    self.assertEqual(result['settings']['mapVisibility'], geography)
+                    self.assertEqual(result['settings']['enemyVisibility'], activity)
+        with self.assertRaises(ValueError):
+            snapshot.decode(fixture(mapVisibility=0, startIsland=1))
 
     def test_absent_and_truncated_snapshots(self):
         data = bytearray(snapshot.SNAPSHOT_SIZE)

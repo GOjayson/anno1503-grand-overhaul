@@ -6,7 +6,7 @@
 #endif
 #define WS_PRESET_MAX_BYTES 4096u
 #define WS_PRESET_NAME_MAX 32u
-static const char wsPresetHeader[]="ANNO1503_WORLD_PRESET 2\nGENERATOR=" WS_WORLD_OPTIONS_GENERATOR "\n";
+static const char wsPresetHeader[]="ANNO1503_WORLD_PRESET 3\nGENERATOR=" WS_WORLD_OPTIONS_GENERATOR "\n";
 typedef struct WSMenuPresetField {const char *name;size_t offset;int unsignedValue;} WSMenuPresetField;
 #define WS_PRESET_FIELD(name,isUnsigned) {#name,offsetof(WSWorldSettings,name),isUnsigned}
 static const WSMenuPresetField wsPresetFields[]={
@@ -22,7 +22,8 @@ static const WSMenuPresetField wsPresetFields[]={
  WS_PRESET_FIELD(cargoFood,0),WS_PRESET_FIELD(climateBalance,0),
  WS_PRESET_FIELD(layoutStyle,0),WS_PRESET_FIELD(disasters,0),
  WS_PRESET_FIELD(fairStarts,0),WS_PRESET_FIELD(startSeparation,0),
- WS_PRESET_FIELD(resourceDistribution,0),WS_PRESET_FIELD(guaranteeBasics,0)
+ WS_PRESET_FIELD(resourceDistribution,0),WS_PRESET_FIELD(guaranteeBasics,0),
+ WS_PRESET_FIELD(mapVisibility,0),WS_PRESET_FIELD(enemyVisibility,0)
 };
 #undef WS_PRESET_FIELD
 
