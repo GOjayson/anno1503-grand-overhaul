@@ -22,10 +22,10 @@ from .world_options_visibility_calls import CALLS, DISPLAY_SHA256, verify_visibi
 
 
 PINNED_RUNTIMES = {
-    'world-only': '50a92fc71221fa3e8a23d97e6971a6b30197de700755da57819a0d25f11cc5f8',
-    'food-world': '70668e10dde3fd6b61480b256dd41a2e280bcf654c573093f41f2fd91a4fc1b5',
+    'world-only': '2d2cfeb38245bcdd6d68bf20b42e40d039b57969f0628df96414a28ebc0b276b',
+    'food-world': 'b538559cf2c3be0a39f24db2e783370859aee5fdb4edd7d08e4cfdb8d4c70007',
 }
-PINNED_GENERATOR = 'ws6-0d2879f90b27860951e9a8a67245e9458d4200e6b28c5452505dd016341e31f9'
+PINNED_GENERATOR = 'ws6-315c8830e9685ede73a466ad8ad7bd9ce39786f22446ede1de709c028cc2da5a'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
     'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',
@@ -35,7 +35,14 @@ REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSe
     'WorldSettingsCopyVisibilityDiagnostics', 'WorldSettingsCopyVisibilityRenderTargets',
     'WorldSettingsVisibilityRenderStatic180', 'WorldSettingsVisibilityRenderStatic188',
     'WorldSettingsVisibilityDrawWildlife',
-    'WorldSettingsVisibilityDrawWildlifeClipped'} | {row[4] for row in CALLS}
+    'WorldSettingsVisibilityDrawWildlifeClipped',
+    'WorldSettingsVisibilitySaveBlob', 'WorldSettingsVisibilityStageBlob',
+    'WorldSettingsVisibilityApplyBlob', 'WorldSettingsVisibilityCancelBlob',
+    'WorldSettingsVisibilityBeforeLoad', 'WorldSettingsVisibilityAfterLoad',
+    'WorldSettingsVisibilityCancelLoad', 'WorldSettingsVisibilityReleaseUnpublishedScene',
+    'WorldSettingsVisibilityCommitFresh', 'WorldSettingsVisibilityCancelFresh',
+    'WorldSettingsCopyMemoryError',
+    'WorldSettingsCopyVisibilityChartDiagnostics'} | {row[4] for row in CALLS}
 UNITS = [PRIVATE + name for name in ('WorldSettings.c', 'world_backend.c', 'world_ai.c')]
 UNITS += ['developer/source/world_factory.c', old.AI_LOADER,
           'developer/source/engine_resume/route_coverage/selection.c',

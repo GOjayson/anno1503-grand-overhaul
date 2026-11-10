@@ -27,7 +27,7 @@ RENDER_DISPATCH = tuple((slot, target) for slot, target, _ in visibility.RENDER_
 POINTERS = (tuple(('AnnoWelt.dll', slot, target) for slot, target in DISPATCH) +
             tuple(('AnnoDisplay.dll', slot, target) for slot, target in RENDER_DISPATCH))
 COMPONENTS = len(POINTERS) + len(call_visibility.CALLS)
-TRANSACTION_CAPACITY = 24 + 173
+TRANSACTION_CAPACITY = 29 + 173
 PREPARED_COMPONENTS = 9 + len(call_visibility.CALLS) + 173
 
 
@@ -216,7 +216,7 @@ class VisibilityStagingTests(unittest.TestCase):
             self.assertEqual(result.count(token), 1)
         for macro, count in ((b'POINTER', len(POINTERS)), (b'CALL', len(call_visibility.CALLS)), (b'HOOK', COMPONENTS)):
             self.assertIn(b'#define WS_VISIBILITY_' + macro + b'_COUNT ' + str(count).encode() + b'u', result)
-        self.assertEqual(PREPARED_COMPONENTS + len(POINTERS), 197)
+        self.assertEqual(PREPARED_COMPONENTS + len(POINTERS), 202)
         self.assertLess(result.index(b'wsPrepareVisibility(self,patches,'),
                         result.index(b'if(!wsSuspendThreads('))
         pause = result.index(b'if(!wsSuspendThreads(')
@@ -366,7 +366,7 @@ __declspec(dllexport) const char*fixture_error(void){return lastError;}
 __declspec(dllexport) void fixture_fault(int kind,int value){if(kind==0)missingExport=value;if(kind==1)unreadable=value;if(kind==2)missingImage=value;if(kind==3)image[value]^=1;if(kind==4){prepared[0].address=image+value;prepared[0].length=8;}if(kind==5)wsInstallState=value;}
 __declspec(dllexport) void fixture_display_fault(int kind,uint32_t value){if(kind==0)displayFault=(int)value;if(kind==1)displayImage[value]^=1;if(kind==2){prepared[0].address=displayImage+value;prepared[0].length=8;}}
 __declspec(dllexport) void fixture_call_fault(int kind,uint32_t i){WSPatch*p=fixture_call(i);if(!p)return;unsigned char*bridge=NULL;int32_t d;memcpy(&d,p->after+1,4);bridge=p->address+5+d;
- if(kind==0)p->after[0]^=1;if(kind==1)p->before[0]^=1;if(kind==2)bridge[0]^=1;if(kind==3)bridge[8]^=1;
+ if(kind==0)p->after[0]^=1;if(kind==1)p->before[0]^=1;if(kind==2)bridge[0]^=1;if(kind==3)bridge[wsVisibilityCallPlan[i].contextArgument?16:8]^=1;
  if(kind==4)for(uint32_t j=0;j<WS_BLOB_COUNT;j++)wsInstalled[j].registered=0;
  if(kind==5)badHash=1;if(kind==6)p->address[0]^=1;if(kind==7)prepared[initialCount]=*p;}
 __declspec(dllexport) void fixture_publish_only(void){for(uint32_t i=0;i<preparedCount;i++)if(prepared[i].length)memcpy(prepared[i].address,prepared[i].after,prepared[i].length);wsInstallState=1;}
@@ -410,7 +410,7 @@ __declspec(dllexport) void fixture_restore_only(void){for(uint32_t i=preparedCou
         before = self.image_hash()
         self.assertEqual(self.lib.fixture_count(), PREPARED_COMPONENTS)
         self.assertEqual(self.lib.fixture_prepare(PREPARED_COMPONENTS), 1)
-        self.assertEqual(self.lib.fixture_count(), 197)
+        self.assertEqual(self.lib.fixture_count(), 202)
         self.lib.fixture_reset()
         initial = TRANSACTION_CAPACITY - len(POINTERS)
         self.assertEqual(self.lib.fixture_prepare(initial), 1)
@@ -427,7 +427,7 @@ __declspec(dllexport) void fixture_restore_only(void){for(uint32_t i=preparedCou
         self.assertEqual(self.lib.WorldSettingsVisibilityPatchStatus(), 0)
         self.assertEqual(self.lib.WorldSettingsEnginePatchStatus(), 0)
         self.lib.fixture_publish_only()
-        self.assertEqual(self.lib.WorldSettingsVisibilityPatchStatus(), 15)
+        self.assertEqual(self.lib.WorldSettingsVisibilityPatchStatus(), COMPONENTS)
         self.assertNotEqual(self.image_hash(), before)
         self.lib.fixture_restore_only()
         self.assertEqual(self.image_hash(), before)

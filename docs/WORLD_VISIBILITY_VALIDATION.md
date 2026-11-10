@@ -1,7 +1,135 @@
 # Map visibility and terra incognita validation
 
+## 0.6.0-dev.2 chart memory: candidate verification
+
+The development candidate adds continuous exploration of land and sea,
+and last-seen building memory. Source review, reproducible compilation and
+isolated native checks, the full suite and installation/restoration have passed.
+The managed copy now has **World Settings enabled and Food disabled**. Actual
+game rendering and save/reload acceptance are still in progress. The accepted
+r8 baseline and its evidence below remain separate.
+
+| Identity | Reviewed chart-memory candidate |
+| --- | --- |
+| Generator | `ws6-315c8830e9685ede73a466ad8ad7bd9ce39786f22446ede1de709c028cc2da5a` |
+| World-only runtime SHA-256 | `2d2cfeb38245bcdd6d68bf20b42e40d039b57969f0628df96414a28ebc0b276b` |
+| Food + World runtime SHA-256 | `b538559cf2c3be0a39f24db2e783370859aee5fdb4edd7d08e4cfdb8d4c70007` |
+
+Unexplored terrain uses a permanent chart of eight-tile cells around the
+human player's ships and settlements. The main view covers unknown land and
+water with opaque black; the minimap conceals both uniformly, without island
+outlines. Its native 160-entry palette has no separate opaque-black fog
+entry, so no invented palette index is used. Unknown areas stay covered with
+either enemy-activity choice. Reveal all activity applies to charted areas;
+revealed geography and fully explored modes retain global activity reveal.
+
+Strict line of sight keeps the existing 48-tile activity range. Observed
+buildings remain as visual snapshots outside sight, including their last-seen
+appearance and ownership colour; they update on observation. Enemy ships and
+units still require current sight. Remembered buildings do not become selectable
+live objects. Renderer/picking fixtures do not establish every tooltip or
+interaction path; those require actual game checks.
+
+Chart and building memory belong to each native checkpoint, using a bounded,
+checksummed `WSCHART` extension rather than a sidecar. Save As carries the
+current snapshot. Loading an older checkpoint restores that checkpoint's
+memory; a save without the extension begins conservatively from current
+human observers. Historic ship routes and city appearances cannot be
+reconstructed from older native discovery bits. Verified complete checkpoint
+and native-output backups are retained when augmenting a save. The final
+Win32 replacement is name-based, not an atomic FileID comparison against an
+unrelated external writer.
+
+The final independent source review passed. Each profile produced three
+byte-identical actual DLLs: two candidates and one publication build.
+The independent six-build audit verified **33 raw LF/index generator inputs,
+488 immutable imported files, 43 immutable compiled inputs, a 64-file staged
+closure, 82 exports, seven pointer hooks, 13 code branches and all 202 guarded
+transaction components**. The existing engine plan still contains 173 edits.
+The save tail jump and final frame's 24-byte context bridge have separate
+native preimage and ABI proofs. No classic-version addresses are assumed.
+
+The final native/core fixture passed **27 methods**, including 43 earlier
+memory cases, 14 new lifecycle/drawing cases and 4,096 palette comparisons.
+The save/load fixture passed **28 Windows methods**; the independent save
+inspector passed **15 synthetic methods**. Actual compiled DLL APIs passed
+**72 isolated scene stages** across both profiles, all six visibility choices,
+512/1024/2048 worlds and two seeds. All 82 copied assets stayed exact; AI was
+zero only. These fixtures do not load a native game world or measure GPU output.
+
+Native palette proofs establish asset-specific banks of 3, 27, 96 and 144,
+and the exact colour-ignoring format-23 path. Remembered minimap bytes must
+fit the native 160-entry lookup. Current frame/texture/palette bindings are
+checked again before a matched remembered sprite is submitted. Invalid data
+does not receive a live-state fallback. The native period-zero static path is
+retained; the unsafe animated period-one case is refused. No guessed owner
+colour range or current-player lifetime assumption replaces these checks.
+
+The new Windows CPU benchmark retains r8's actor/coordinate callback query
+counts. A single observed 3-by-3 building costs about 0.114 ms per synthetic
+observation, including current context/allocation and asset checks. These
+figures exclude native rasterization and GPU work; they are **not game FPS**.
+The maximum codec fixture used 80 MiB of cell records plus the largest bitmap
+history and produced an 88,613,000-byte payload within the 96 MiB codec bound.
+
+Completed private records include `visibility-charted-v3-independent-source-review.json`,
+`visibility-charted-v3-published-build-audit.json`,
+`visibility-r9-native-core-closure-v3.json`,
+`visibility-r9-chart-windows-benchmark-v3.json` and
+`world-v6-charted-v3-full-runtime.json`. The two preceding candidate iterations
+and their passing structural evidence remain preserved as superseded builds;
+neither was installed or used to launch Anno.
+
+The definitive post-pin suite passed **322 tests in 152.058 seconds: 317 passed
+and five were skipped** because this Windows account cannot create symbolic
+links. It finished `OK (skipped=5)` without failures or errors. Its completed
+records are `world-v6-charted-v3-postpin-suite.txt` and the corresponding JSON.
+
+The production installer cycle passed with Anno closed: restore accepted r8,
+install/restore the new World-only profile, install/restore Food + World, then
+install final World-only. The installations changed 19/41/19 managed files;
+each passed the production exact-preparation no-op. Three restorations returned
+the 23-file stock closure and removed 19 introduced World files. All **40 saves,
+five presets, 35 prior backup generations, five separate autosave archives,
+23 original source inputs, 297 historical backup files and 488/43 imported
+inputs** stayed exact. Three new restored generations give **38** in total.
+The completed report is
+`world-v6-charted-cycle-9dcf157a68dc4116bb24dbc3473d60bd/result.json`.
+This cycle launched no game and activated no hooks.
+
+The final World-only package launched through automatic production startup,
+and the existing `wv63` world loaded. The continuous main-view mask was
+observed over both water and land. A read-only live observer verified all
+20 visibility dispatches, the 173 engine edits, the saved Terra/Strict policy,
+24 islands and the exact original preview geometry, climates and harvest bits.
+The observed human player had one controllable ship and no settlements.
+This verifies native state separately from the displayed image.
+
+The current `wv63` has a valid `WSCHART` checkpoint. Its original unextended
+2,783,755-byte checkpoint remains byte-exact in the exclusive complete-save
+backup. A separate in-game Save As, `wc1`, passed the independent native-save
+and exploration-history inspector: 2,115 charted cells, 1,973 remembered anchors,
+3,624 building-footprint cells and 7,679 known minimap pixels. Save As did not
+change the existing `wv63` checkpoint. These are actual game-produced saves,
+not synthetic codec fixtures.
+
+The first running-world diagnostic had equal masked/restored row counts,
+zero pending rows and no error. While the native pause dialog was open, the
+guarded chart getter returned busy, with 57 rows still inside the parent draw
+and final-frame error 16 recorded. After resuming, the getter succeeded,
+masked/restored totals matched again, pending rows and owned pending copies
+were zero, and the save-memory error was empty; error 16 remained sticky.
+The pause/presentation case remains under investigation and is not recorded
+as an entirely error-free live run.
+
+Actual distant-building rendering, exploration-memory restart/revisit and
+hands-on performance acceptance remain pending. No additional Food-profile
+gameplay run is planned, as requested by the user.
+
+## Accepted 0.6.0-dev.1 baseline
+
 This is the **0.6.0-dev.1 development validation record**, reviewed on
-**9 November 2026**. **R8 is the current frozen performance candidate**:
+**9 November 2026**. **R8 was the accepted frozen performance candidate for this baseline**:
 independent source review, three matching builds per profile, targeted
 checks, definitive post-pin full suite and isolated compiled-DLL checks
 passed. The r8 installer/restoration cycle, automatic startup and certified
@@ -35,9 +163,9 @@ automated checks. Earlier 0.5 island-inspection, fair-start
 and resource results remain in [their original record](WORLD_FAIRNESS_VALIDATION.md);
 they are not evidence of new visibility behavior.
 
-## Current r8 candidate identity and precise scope
+## Historical r8 candidate identity and precise scope
 
-The current canonical candidate pins from `world_options_build.py` are:
+The accepted r8 candidate pins on 9 November 2026 were:
 
 | Identity | Reviewed r8 candidate value |
 | --- | --- |

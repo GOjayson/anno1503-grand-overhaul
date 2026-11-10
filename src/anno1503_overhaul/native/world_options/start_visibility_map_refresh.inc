@@ -8,6 +8,7 @@ typedef struct WSVisibilityMapMemo {
  LONG generation;uint32_t valid,visionCount;
  WSVisibilityMapIslandMemo islands[WS_VISIBILITY_ISLAND_LIMIT];
  WSVisibilityVisionSource vision[WS_VISIBILITY_VISION_LIMIT];
+ uint32_t chartGeneration;unsigned char chartBits[8192];
 } WSVisibilityMapMemo;
 static WSVisibilityMapMemo wsVisibilityMapMemo;
 static volatile LONG wsVisibilityMapRefreshBusy;
@@ -41,14 +42,14 @@ static int wsVisibilityMapRefreshPlan(const WSVisibilityMapView*m,const WSVisibi
   * needs one bounded complete terrain rebuild, then unchanged frames stay
   * owner-only/idle. Terra instead rebuilds only newly known island bounds. */
  if(!matching&&v->map!=0){out[0]=out[1]=0;out[2]=(int32_t)v->width;out[3]=(int32_t)v->height;*flags|=2u;}
- if(v->map==0)for(uint32_t id=0;id<WS_VISIBILITY_ISLAND_LIMIT;id++)if(c->present[id]){
-  const WSVisibilityIsland*s=&c->islands[id];const WSVisibilityMapIslandMemo*old=&wsVisibilityMapMemo.islands[id];
-  int known=(s->discovered&(1u<<v->viewer))!=0;
-  if(known&&(!matching||!old->present||!old->known||old->identity!=(uintptr_t)s->object||
-     old->x!=s->x||old->y!=s->y||old->width!=s->width||old->height!=s->height)){
-   /* Terra previously cleared owner colors as well as heights. Restore both
-    * native channels even when a stationary observer's sight did not change. */
-   wsVisibilityUnionRect(out,(int32_t)s->x,(int32_t)s->y,(int32_t)(s->x+s->width),(int32_t)(s->y+s->height));*flags|=3u;
+ if(v->map==0){
+  const WSChartCore*chart=wsVisibilityChartReadSnapshot(v);if(!chart||chart->bitBytes>sizeof wsVisibilityMapMemo.chartBits)return 0;
+  if(!matching||wsVisibilityMapMemo.chartGeneration!=chart->generation)for(uint32_t byte=0;byte<chart->bitBytes;byte++){
+   unsigned char changed=chart->bits[byte]&(unsigned char)~(matching?wsVisibilityMapMemo.chartBits[byte]:0u);
+   for(uint32_t bit=0;bit<8;bit++)if(changed&(1u<<bit)){
+    uint32_t cell=byte*8u+bit,x=(cell%(v->width>>3))*8u,z=(cell/(v->width>>3))*8u;
+    wsVisibilityUnionRect(out,(int32_t)x,(int32_t)z,(int32_t)(x+8u),(int32_t)(z+8u));*flags|=3u;
+   }
   }
  }
  if(!v->enemy&&(!matching||wsVisibilityMapMemo.visionCount!=c->visionCount||
@@ -65,6 +66,7 @@ static void wsVisibilityMapRefreshCommit(const WSVisibilityMapView*m,const WSVis
  p->width=m->width;p->height=m->height;p->worldWidth=v->width;p->worldHeight=v->height;
  p->viewer=v->viewer;p->policy=v->flags&WS_VISIBILITY_POLICY_MASK;p->generation=generation;
  p->visionCount=c->visionCount;memcpy(p->vision,c->vision,(size_t)c->visionCount*sizeof(c->vision[0]));
+ const WSChartCore*chart=wsVisibilityChartReadSnapshot(v);p->chartGeneration=chart?chart->generation:0;memset(p->chartBits,0,sizeof p->chartBits);if(chart&&chart->bitBytes<=sizeof p->chartBits)memcpy(p->chartBits,chart->bits,chart->bitBytes);
  memset(p->islands,0,sizeof p->islands);
  for(uint32_t id=0;id<WS_VISIBILITY_ISLAND_LIMIT;id++)if(c->present[id]){
   const WSVisibilityIsland*s=&c->islands[id];WSVisibilityMapIslandMemo*to=&p->islands[id];

@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.1 adds map exploration and separate enemy-activity visibility; r8 World-only automatic startup, certified-save reload and sampled camera/visibility checks passed |
+| World Settings | Priority | Experimental 0.6.0-dev.2 adds charted land and sea, last-seen buildings and exploration history in saves; stock startup, sampled fog, building-memory/revisit observations and Save As file checks passed; restart/performance acceptance remains pending |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -68,12 +68,25 @@ The seven earlier menu additions are recorded in
 starting-position and resource controls have a separate
 [fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
 0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
-Its r8 World-only automatic startup and certified `wv63` reload passed; the
-user confirmed smooth camera movement and working visibility in the requested
-large-island and village-range sample. This is bounded acceptance, not an FPS
-measurement or proof of every setting and gameplay path. Food + World builds,
-isolated scene checks and installation/restoration passed; its actual
-visibility gameplay run was omitted at the user's request.
+The current 0.6.0-dev.2 candidate passed automated checks and three matching
+builds for each Food selection, and its installation/restoration cycle passed.
+The final V3 stock profile automatically started and loaded `wv63`; continuous
+fog over unknown land and sea was observed. An actual Save As checkpoint,
+`wc1`, passed independent checks of its stored exploration history and
+remembered buildings. The user confirmed that known buildings remain visible
+after sailing away and that new development appears on return. The subsequent
+`wc2` checkpoint also passed independent history and native-world file checks.
+These are bounded observations in the running game; fresh-world generation,
+restart/reload persistence and performance acceptance remain pending. The earlier
+0.6.0-dev.1 r8 World-only startup and certified
+`wv63` reload passed, and the user confirmed smooth camera movement and working
+visibility in a bounded large-island and village-range sample. Those historical
+results are not tests of the new charted-world behavior. Food + World actual
+visibility gameplay is not being repeated at the user's request; its automated
+evidence remains separate.
+
+The original `wv63` checkpoint was verified byte-for-byte in its automatic
+backup. The current named `wv63` checkpoint contains newer exploration history.
 
 A public clone can prepare Food-only installation inputs. World Settings also
 requires a local payload provider containing the complete preserved
@@ -124,17 +137,25 @@ choices, it provides:
 - **Saved presets:** save and load every world setting, including the seed and
   preferred starting island, from inside the game.
 - **Map visibility:** choose Unexplored (terra incognita), Geography revealed
-  (the default), or Fully explored. Unexplored hides unknown islands until
-  native contact reveals a whole island, which stays remembered. Geography
-  revealed shows island locations; Fully explored also unlocks their fertility
-  information. Terra incognita covers the setup preview and its island details,
+  (the default), or Fully explored. Unexplored covers uncharted land and sea
+  with an opaque layer in the main view. Your ships and settlements chart nearby
+  areas in eight-tile cells, which stay remembered. The minimap covers unknown areas uniformly,
+  without island outlines. Geography revealed shows the terrain layout;
+  Fully explored also unlocks island fertility information. Native island
+  contact still controls native fertility and gameplay knowledge; it does not
+  chart a whole island. Terra incognita also covers the setup preview, island details,
   start assignments and resource summaries; a preferred climate still works.
 - **Enemy activity:** separately choose Strict line of sight (the default) or
   Reveal all activity. Strict vision uses 48 tiles around controllable human
-  ships and owned settlements' building-anchor rectangles. Known islands stay
-  remembered when activity moves out of sight. Reveal all activity removes
-  this activity range limit. The selected policy is stored with the world;
-  certified native-save reload under the r8 World-only profile passed.
+  ships and owned settlements' building-anchor rectangles. Enemy ships and
+  units disappear outside that range. Buildings remain as last seen until
+  you revisit them. Reveal all activity shows live activity in charted areas.
+  Both choices keep uncharted areas covered when Unexplored is selected.
+- **Exploration in saves:** saving or using Save As stores the charted areas
+  and remembered buildings in that checkpoint. Loading an older save without
+  exploration history begins around your current ships and settlements; it
+  does not invent previously seen buildings. Compatible World Settings is
+  required to restore this history in-game.
 - **Island details:** with a revealed preview, click any island to inspect its climate, dimensions,
   estimated fertile land, planned crops and minerals, occupants and nearby
   resources. Inspection is separate from selecting a starting position;
@@ -170,11 +191,18 @@ map-generation feature, not a promise that AI events or a played game will
 unfold identically. Earlier presets remain on disk when a new generator
 refuses their fingerprint; they are not silently converted. Compilation,
 native fixtures and actual game acceptance are distinguished in the
-[visibility validation record](docs/WORLD_VISIBILITY_VALIDATION.md). R8 passed
-its automated suite and both profiles' build/install checks, plus the bounded
-World-only startup, reload and user camera/visibility sample above. Fresh
-Terra generation, broader interaction coverage and long-session behavior are
-not established by that sample. Earlier fairness
+[visibility validation record](docs/WORLD_VISIBILITY_VALIDATION.md). The current
+candidate completed 322 automated tests: 317 passed and five tests requiring
+Windows link privileges were skipped. It also passed 27 native/codec methods, 72
+isolated compiled-DLL scene stages across both Food selections, and three
+identical builds per selection with independent artifact review. The scene
+checks cover all six visibility combinations, 512/1024/2048 worlds and two
+seeds with zero ordinary AI; they do not run Anno or prove GPU behavior.
+Installation/restoration and the stock profile's startup, loaded-world fog
+sample and `wc1` Save As file certificate passed separately. Fresh-world and
+restart/reload persistence, revisit behavior and performance acceptance remain
+pending. The historical r8 sample does not establish those behaviors, broader interaction
+coverage or long-session stability. Earlier fairness
 acceptance remains bound to [its original build](docs/WORLD_FAIRNESS_VALIDATION.md).
 
 ## Source and local builds

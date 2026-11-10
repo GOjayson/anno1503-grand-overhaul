@@ -43,16 +43,21 @@ def pins(images):
 
 
 class VisibilityCallPreimageTests(unittest.TestCase):
-    def test_eight_complete_call_instructions_in_separate_pinned_module_images(self):
+    def test_thirteen_complete_branches_in_separate_pinned_module_images(self):
         images = call_images()
         before = {name: bytes(data) for name, data in images.items()}
         result = visibility.verify_visibility_call_preimages(images, pins(images))
         expected = {(name, rva, code.hex(), callback) for name, _, rva, code, callback in visibility.CALLS}
-        self.assertEqual(len(expected), 8)
-        self.assertEqual(result['call_count'], 8)
+        self.assertEqual(len(expected), 13)
+        self.assertEqual(result['call_count'], 13)
         self.assertEqual({(x['module'], x['rva'], x['before'], x['callback'])
                           for x in result['call_preimages']}, expected)
-        self.assertFalse(result['stack_or_argument_rewriting'])
+        self.assertFalse(result['stack_rewriting'])
+        self.assertTrue(result['stack_or_argument_rewriting'])
+        self.assertEqual(result['context_argument_copies'], [dict(
+            module='AnnoFrame.dll', rva=0x1ca76, source='RDI', destination='RDX')])
+        self.assertEqual([(x['module'], x['rva']) for x in result['call_preimages']
+                          if x['branch'] == 'tail-jump'], [('AnnoFrame.dll', 0x75b80)])
         self.assertTrue(result['allocation_and_unwind_in_existing_transaction'])
         self.assertEqual(images, before)
         spans = sorted((name, rva, rva + len(code)) for name, _, rva, code, _ in visibility.CALLS)
@@ -233,8 +238,8 @@ EXPORT int fixture_leaf(uint32_t blob,uint32_t hook,const uint64_t*args,uint64_t
         self.assertEqual(files[BLOBS], self.extended)
         self.assertEqual(SOURCE.read_bytes(), self.original)
 
-    def test_compiler_parses_all_old_metadata_unchanged_and_eight_new_leaf_calls(self):
-        self.assertEqual(sum(len(x['hooks']) for x in self.after), 17)
+    def test_compiler_preserves_old_metadata_and_all_new_branch_contracts(self):
+        self.assertEqual(sum(len(x['hooks']) for x in self.after), 22)
         actual = set()
         for prior, current in zip(self.before, self.after):
             self.assertEqual(prior['module'], current['module'])
@@ -252,14 +257,16 @@ EXPORT int fixture_leaf(uint32_t blob,uint32_t hook,const uint64_t*args,uint64_t
             self.assertEqual(len(new_hooks), len(new_imports))
             self.assertEqual(len(new_hooks), len(new_functions))
             for (rva, before, target, call), (begin, end, unwind) in zip(new_hooks, new_functions):
+                executable, import_offset, function_end = visibility.bridge_layout(current['module'], rva)
                 self.assertEqual(target % 16, 0)
-                self.assertEqual((begin, end, unwind), (target, target + 6, b'\x01\0\0\0'))
-                self.assertEqual(current['code'][target:target + 16], bytes.fromhex('ff25020000009090') + bytes(8))
-                self.assertEqual(call, 1)
-                actual.add((current['module'], rva, before, new_imports[target + 8]))
+                self.assertEqual((begin, end, unwind), (target, target + function_end, b'\x01\0\0\0'))
+                self.assertEqual(current['code'][target:target + import_offset + 8], executable + bytes(8))
+                self.assertEqual((target + import_offset) % 8, 0)
+                self.assertEqual(call, int(visibility.branch_is_call(current['module'], rva)))
+                actual.add((current['module'], rva, before, new_imports[target + import_offset]))
         self.assertEqual(actual, {(module, rva, before, callback) for module, _, rva, before, callback in visibility.CALLS})
 
-    def test_every_generated_leaf_preserves_six_register_and_stack_arguments_and_return(self):
+    def test_plain_leaves_preserve_six_register_and_stack_arguments_and_return(self):
         values = [0x1020304050607080, 0x2131415161718191, 0x32425262728292a2,
                   0x435363738393a3b3, 0x5464748494a4b4c4, 0x65758595a5b5c5d5]
         args = (C.c_uint64 * 6)(*values)
@@ -267,12 +274,67 @@ EXPORT int fixture_leaf(uint32_t blob,uint32_t hook,const uint64_t*args,uint64_t
         tested = 0
         for blob, (prior, current) in enumerate(zip(self.before, self.after)):
             for hook in range(len(prior['hooks']), len(current['hooks'])):
+                if (current['module'], current['hooks'][hook][0]) == ('AnnoFrame.dll', 0x1ca76):
+                    continue  # This separately proved bridge supplies the live RDI context.
                 with self.subTest(blob=blob, hook=hook):
                     out = (C.c_uint64 * 7)()
                     self.assertEqual(self.libs[1].fixture_leaf(blob, hook, args, out), 1)
                     self.assertEqual(list(out), [*values, checksum])
                     tested += 1
-        self.assertEqual(tested, 8)
+        self.assertEqual(tested, 12)
+
+    def test_generated_frame_context_leaf_preserves_native_stack_and_nonvolatiles(self):
+        private_tools = ROOT / '.local/toolchain/world-options-validation'
+        if private_tools.is_dir():
+            sys.path.insert(0, str(private_tools))
+        try:
+            import unicorn as U
+            from unicorn import x86_const as X
+        except ImportError:
+            self.skipTest('The native Win64 context-leaf check needs Unicorn.')
+        frame = next(x for x in self.after if any(hook[0] == 0x1ca76 for hook in x['hooks']))
+        hook = next(x for x in frame['hooks'] if x[0] == 0x1ca76)
+        _, _, target, _ = hook
+        code = bytearray(frame['code'][target:target + 24])
+        for base in (0x180000000, 0x280000000):
+            machine = U.Uc(U.UC_ARCH_X86, U.UC_MODE_64)
+            stack, callback, stop = 0x31000000, 0x32000000, 0x32000100
+            for at, length in ((base, 0x1000), (stack, 0x2000), (callback, 0x1000)):
+                machine.mem_map(at, length)
+            struct.pack_into('<Q', code, 16, callback)
+            machine.mem_write(base, bytes(code))
+            rsp = stack + 0x1008
+            stack_bytes = struct.pack('<Q', stop) + bytes(range(1, 97))
+            machine.mem_write(rsp, stack_bytes)
+            nonvolatile = (X.UC_X86_REG_RBX, X.UC_X86_REG_RBP, X.UC_X86_REG_RSI,
+                           X.UC_X86_REG_RDI, X.UC_X86_REG_R12, X.UC_X86_REG_R13,
+                           X.UC_X86_REG_R14, X.UC_X86_REG_R15)
+            values = {register: 0x102030400 + index * 0x100 for index, register in enumerate(nonvolatile)}
+            values.update({X.UC_X86_REG_RSP: rsp, X.UC_X86_REG_RCX: 0x44000000,
+                           X.UC_X86_REG_RDX: 0xdeadbeef, X.UC_X86_REG_R8: 123,
+                           X.UC_X86_REG_R9: 456})
+            for register, value in values.items():
+                machine.reg_write(register, value)
+            calls = []
+
+            def recorder(cpu, address, size, data):
+                if address != callback:
+                    return
+                calls.append((cpu.reg_read(X.UC_X86_REG_RCX), cpu.reg_read(X.UC_X86_REG_RDX),
+                              cpu.reg_read(X.UC_X86_REG_R8), cpu.reg_read(X.UC_X86_REG_R9)))
+                self.assertEqual(cpu.reg_read(X.UC_X86_REG_RSP), rsp)
+                self.assertEqual(bytes(cpu.mem_read(rsp, len(stack_bytes))), stack_bytes)
+                for register in nonvolatile:
+                    self.assertEqual(cpu.reg_read(register), values[register])
+                cpu.reg_write(X.UC_X86_REG_RAX, 0x12345678abcdef00)
+                cpu.reg_write(X.UC_X86_REG_RSP, rsp + 8)
+                cpu.reg_write(X.UC_X86_REG_RIP, stop)
+
+            machine.hook_add(U.UC_HOOK_CODE, recorder)
+            machine.emu_start(base, stop, count=20)
+            self.assertEqual(calls, [(0x44000000, values[X.UC_X86_REG_RDI], 123, 456)])
+            self.assertEqual(machine.reg_read(X.UC_X86_REG_RAX), 0x12345678abcdef00)
+            self.assertEqual(machine.reg_read(X.UC_X86_REG_RSP), rsp + 8)
 
     def test_missing_or_duplicate_staging_arrays_fail_without_partial_output(self):
         anchor = b'static const WSFunctionMeta world_policy_functions[]'

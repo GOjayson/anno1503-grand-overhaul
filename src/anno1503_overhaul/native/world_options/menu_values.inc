@@ -20,7 +20,7 @@ static void wsMenuPaintConcealed(DialogState*d,HDC dc,const RECT*client){
  HGDIOBJ font=SelectObject(dc,d->font);int oldMode=SetBkMode(dc,TRANSPARENT);COLORREF oldColor=GetTextColor(dc);
  SetTextColor(dc,RGB(225,224,211));RECT text=*client;text.left+=scaled(d,20);text.right-=scaled(d,20);
  int height=text.bottom-text.top;text.top+=height/2-scaled(d,52);text.bottom=text.top+scaled(d,120);
- DrawTextA(dc,"TERRA INCOGNITA\r\n\r\nThe world is hidden.\r\nExplore after starting to discover its islands.",-1,&text,DT_CENTER|DT_WORDBREAK);
+ DrawTextA(dc,"TERRA INCOGNITA\r\n\r\nLand and sea are hidden.\r\nChart the world after starting.",-1,&text,DT_CENTER|DT_WORDBREAK);
  SetTextColor(dc,oldColor);SetBkMode(dc,oldMode);SelectObject(dc,font);
 }
 
@@ -48,7 +48,7 @@ static void wsMenuFairControls(DialogState*d){
 static void wsMenuIslandInfo(DialogState*d){
  char text[4096],summary[768];WSIslandDetails details={0};details.size=sizeof details;
  if(wsMenuMapConcealed(d)){
-  SetDlgItemTextA(d->window,ID_ISLAND_DETAILS,"Terra incognita hides island locations, resources and occupants. Explore in the game to discover them.\r\n\r\nA preferred climate and balanced starts remain available; selecting a particular island is disabled.");
+  SetDlgItemTextA(d->window,ID_ISLAND_DETAILS,"Terra incognita keeps land, sea, resources and occupants hidden. Chart the world with your ships and settlements after starting.\r\n\r\nA preferred climate and balanced starts remain available; selecting a particular island is disabled.");
   SetDlgItemTextA(d->window,ID_FAIR_SUMMARY,"Starting-position and resource validation still apply. Their map details stay hidden until you explore.");
   EnableWindow(GetDlgItem(d->window,ID_USE_ISLAND),FALSE);return;
  }
@@ -85,7 +85,7 @@ static int wsMenuCollectAdvanced(DialogState*d,WSSettings*s){
 static void wsMenuStartHint(DialogState*d){
  char text[160];int climate=(int)SendDlgItemMessageA(d->window,ID_START_CLIMATE,CB_GETCURSEL,0,0)-1;
  if(wsMenuMapConcealed(d)){
-  snprintf(text,sizeof text,"Terra incognita: preview covered. Explore in the game to discover the world.");
+  snprintf(text,sizeof text,"Terra incognita: land and sea preview covered. Chart the world in game.");
   SetDlgItemTextA(d->window,ID_START_HINT,text);return;
  }
  if(d->preferredIsland>=0)snprintf(text,sizeof text,"Preferred start: island %d. Inspect islands to change it.",d->preferredIsland+1);

@@ -5,10 +5,26 @@
  * rewritten by the render filters. Discovery is the native island-level mask.
  */
 #include "start_visibility_policy.h"
+#include "start_visibility_chart.h"
 typedef struct WSVisibilityWorld {
  unsigned char*world,*module;uint32_t width,height,flags,viewer;
  int32_t map,enemy;int marked;
 } WSVisibilityWorld;
+typedef struct WSVisibilityChartReadView {
+ const WSChartCore*core;unsigned char*world;uint32_t width,height,viewer,policy,generation;int owned;
+ struct WSVisibilityChartReadView*previous;
+} WSVisibilityChartReadView;
+static int wsVisibilityChartEnsure(const WSVisibilityWorld*);
+static int wsVisibilityChartPoint(const WSVisibilityWorld*,float,float);
+static int wsVisibilityChartReadBegin(const WSVisibilityWorld*,WSVisibilityChartReadView*);
+static void wsVisibilityChartReadEnd(WSVisibilityChartReadView*);
+static void wsVisibilityChartRetire(void*);
+static int wsVisibilityChartSaveBlob(unsigned char**,uint32_t*,char*,uint32_t);
+static int wsVisibilityChartStageBlob(const void*,uint32_t,char*,uint32_t);
+static int wsVisibilityChartApplyBlob(void*,char*,uint32_t);
+static void wsVisibilityChartCancelBlob(void);
+static void wsVisibilityChartTransientReset(void);
+static int wsVisibilityChartPrepareFresh(const WSVisibilityWorld*,char*,uint32_t);
 typedef struct WSVisibilityIsland {
  unsigned char*object;uint32_t id,x,y,width,height;uint16_t discovered;
 } WSVisibilityIsland;
@@ -24,7 +40,17 @@ typedef struct WSVisibilityDrawContext {
  unsigned char*human;uint32_t visionCount;
  WSVisibilityVisionSource vision[WS_VISIBILITY_VISION_LIMIT];
  WSVisibilityFastDraw*fast;
+ WSVisibilityChartReadView chart;
+ void*chartDraw;
 } WSVisibilityDrawContext;
+static int wsVisibilityChartBeginDraw(WSVisibilityDrawContext*,void*,uint32_t,void*,int);
+static int wsVisibilityChartEndDraw(WSVisibilityDrawContext*);
+static int wsVisibilityChartGhostSprite(const WSVisibilityDrawContext*,void*,uint32_t,uintptr_t,const float*,uint32_t*,uint32_t*);
+static void wsVisibilityChartDrawStarted(WSVisibilityDrawContext*);
+static const WSChartCore*wsVisibilityChartReadSnapshot(const WSVisibilityWorld*);
+static int wsVisibilityChartMarkContext(const WSVisibilityDrawContext*);
+static int wsVisibilityChartLiveFigure(const WSVisibilityDrawContext*,const WSVisibilityIsland*,float,float);
+static int wsVisibilityChartRememberedAt(const WSVisibilityDrawContext*,float,float);
 typedef struct WSVisibilityFastDefinition {
  void*object,*vtable;int state;uint16_t kind,subtype;unsigned char mainClass,subtypeKnown,classTag;
 } WSVisibilityFastDefinition;
@@ -36,9 +62,11 @@ struct WSVisibilityFastDraw {
  int actorInterfacesReady;uintptr_t stackBegin,stackEnd;
  void*original180,*original188,*definitions[4000];
  WSVisibilityFastDefinition metadata[4000];WSVisibilityFastIsland islands[WS_VISIBILITY_ISLAND_LIMIT];
+ void*chartAssets[4000],*chartAssetList;
 };
 static int wsVisibilityFastPrepare(WSVisibilityDrawContext*,void*);
-static void wsVisibilityFastRelease(WSVisibilityDrawContext*c){if(c){free(c->fast);c->fast=0;}}
+static void wsVisibilityChartReleaseAssets(WSVisibilityFastDraw*);
+static void wsVisibilityFastRelease(WSVisibilityDrawContext*c){if(c){if(c->fast)wsVisibilityChartReleaseAssets(c->fast);free(c->fast);c->fast=0;}}
 static int wsVisibilityObserversRead(WSVisibilityDrawContext*);
 /* A pointer to the current wrapper's stack is visible only on its own thread
  * and only during that native draw. No object pointer is retained afterwards. */
@@ -101,7 +129,7 @@ static int wsVisibilityContextRead(const WSVisibilityWorld*v,WSVisibilityDrawCon
   if(!wsVisibilityIslandRead(v,id,&out->islands[id])||out->islands[id].object!=objects[id])return 0;
   out->present[id]=1;
  }
- return v->enemy?1:wsVisibilityObserversRead(out);
+ return v->enemy&&v->map!=0?1:wsVisibilityObserversRead(out);
 }
 #include "start_visibility_vision.inc"
 static int wsVisibilityListRead(void*list,uint32_t*count){
@@ -129,7 +157,7 @@ static int wsVisibilityRow(const WSVisibilityDrawContext*context,unsigned char*r
   const WSVisibilityIsland*island=&context->islands[id];
   uint32_t qx=x+(q&1u)*8u,qy=y+(q>>1)*8u;
   if(qx<island->x||qy<island->y||qx+8u>island->x+island->width||qy+8u>island->y+island->height)return 0;
-  if(!(island->discovered&(1u<<v->viewer)))result|=(unsigned char)(1u<<q);
+   if(!wsVisibilityChartPoint(v,(float)qx+4.0f,(float)qy+4.0f))result|=(unsigned char)(1u<<q);
  }
  *hidden=result;return 1;
 }
@@ -169,6 +197,7 @@ __declspec(dllexport) void WorldSettingsVisibilityReset(void){
  free(wsVisibilityBackups);wsVisibilityBackups=0;
  wsVisibilityBackupCount=wsVisibilityBackupCapacity=0;wsVisibilityBackupWorld=wsVisibilityBackupList=0;
  memset(&wsVisibilityRenderMemo,0,sizeof wsVisibilityRenderMemo);
+ wsVisibilityChartTransientReset();
  InterlockedIncrement(&wsVisibilityMapGeneration);
  InterlockedExchange(&wsVisibilityRenderBusy,0);
 }
@@ -224,10 +253,12 @@ static int wsVisibilityNormalizeFreshDiscovery(const WSVisibilityWorld*v,char*er
    n++;
   }
   if(!n)goto invalid;
+  if(!wsVisibilityChartPrepareFresh(v,error,cap))return 0;
   /* No discovery word is changed until every target has passed preflight. */
   for(uint32_t i=0;i<n;i++)__atomic_fetch_and((uint16_t*)(islands[i].object+0x12e),(uint16_t)~1u,__ATOMIC_RELAXED);
   InterlockedIncrement(&wsVisibilityMapGeneration);
  }
+ else if(!wsVisibilityChartPrepareFresh(v,error,cap))return 0;
  wsFreshVisibilityCode=0;return 1;
  invalid:InterlockedExchange(&wsVisibilityLastError,2);
  wsMessage(error,cap,"The fresh world cannot safely clear inherited island discovery.");return 0;
@@ -279,6 +310,7 @@ static int wsVisibilityMaskList(void*world,void*list){
  wsVisibilityBackupCount=0;wsVisibilityBackupWorld=wsVisibilityBackupList=0;return 0;
 }
 typedef struct WSVisibilityMapView {unsigned char*object,*pixels;uint32_t width,height;} WSVisibilityMapView;
+static int wsVisibilityChartMaskMap(const WSVisibilityMapView*,const WSVisibilityDrawContext*);
 static int wsVisibilityMapRead(void*map,const WSVisibilityWorld*v,WSVisibilityMapView*out){
  WSVisibilityMapView m={0};m.object=(unsigned char*)map;
  if(!v||!out||wsCertPointer(map,0)!=v->module+0xff5e0||wsCertPointer(map,0x18)!=v->world||
@@ -291,28 +323,7 @@ static void wsVisibilityClearMap(const WSVisibilityMapView*m){
  for(size_t i=0;i<(size_t)m->width*m->height;i++)m->pixels[i]=0x90u;
 }
 static int wsVisibilityMaskMapView(const WSVisibilityMapView*m,const WSVisibilityDrawContext*context){
- const WSVisibilityWorld*v=&context->view;
- for(uint32_t id=0;id<WS_VISIBILITY_ISLAND_LIMIT;id++)if(v->map==0&&context->present[id]){
-  const WSVisibilityIsland*p=&context->islands[id];if(p->discovered&(1u<<v->viewer))continue;
-  uint32_t left=p->x*m->width/v->width,top=p->y*m->height/v->height;
-  uint32_t right=((p->x+p->width)*m->width+v->width-1u)/v->width;
-  uint32_t bottom=((p->y+p->height)*m->height+v->height-1u)/v->height;
-  for(uint32_t y=top;y<bottom;y++)for(uint32_t x=left;x<right;x++){
-   unsigned char*pixel=m->pixels+(size_t)y*m->width+x;*pixel=v->enemy?(*pixel&0xf0u):0x90u;
-  }
- }
- if(!v->enemy){
-  for(uint32_t y=0;y<m->height;y++)for(uint32_t x=0;x<m->width;x++){
-   unsigned char*pixel=m->pixels+(size_t)y*m->width+x;uint32_t color=*pixel>>4;
-   /* Native player colors can alias. Activity tint follows current sight;
-    * color equality is never treated as proof of human ownership. */
-   if(color==9u)continue;
-   float wx=((float)x+0.5f)*(float)v->width/(float)m->width;
-   float wz=((float)y+0.5f)*(float)v->height/(float)m->height;
-   if(!wsVisibilityInSight(context,wx,wz))*pixel=(unsigned char)((*pixel&15u)|0x90u);
-  }
- }
- InterlockedIncrement(&wsVisibilityMaskedMaps);return 1;
+ if(!wsVisibilityChartMaskMap(m,context))return 0;InterlockedIncrement(&wsVisibilityMaskedMaps);return 1;
 }
 #include "start_visibility_map_refresh.inc"
 typedef void (__cdecl*WSVisibilityNativeDirtyViewport)(void*,const int32_t*);
@@ -382,7 +393,7 @@ typedef uintptr_t (__cdecl*WSVisibilityNativeWildlife)(void*,uint32_t,void*);
 #define WS_VISIBILITY_NATIVE_WILDLIFE_CLIPPED(module) ((WSVisibilityNativeWildlife)((module)+0x9eb0))
 #endif
 static int wsVisibilityMapRefreshFromDraw(const WSVisibilityDrawContext*);
-static int wsVisibilityBeginDraw(void*world,void*list,void*renderer,WSVisibilityDrawContext*context){
+static int wsVisibilityBeginDraw(void*world,void*list,void*renderer,WSVisibilityDrawContext*context,uint32_t time,int picking){
  WSVisibilityWorld v;
  if(!wsVisibilityWorldRead(world,&v))return wsVisibilityHasPolicy(world)?-1:0;
  if(!v.marked)return 0;
@@ -392,24 +403,26 @@ static int wsVisibilityBeginDraw(void*world,void*list,void*renderer,WSVisibility
  if(InterlockedCompareExchange(&wsVisibilityRenderBusy,1,0)){InterlockedExchange(&wsVisibilityLastError,6);return -1;}
  if(!wsVisibilityContextRead(&v,context)){wsVisibilityRenderMemo.valid=0;InterlockedExchange(&wsVisibilityLastError,3);InterlockedExchange(&wsVisibilityRenderBusy,0);return -1;}
  wsVisibilityDrawContext=context;
- if(!wsVisibilityMapRefreshFromDraw(context)){wsVisibilityRenderMemo.valid=0;wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityRenderBusy,0);return -1;}
  if(!wsVisibilityFastPrepare(context,renderer)){wsVisibilityRenderMemo.valid=0;wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityRenderBusy,0);return -1;}
- if(!wsVisibilityRenderRefresh(context,renderer)){wsVisibilityFastRelease(context);wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityRenderBusy,0);return -1;}
- if(v.map==0&&!wsVisibilityMaskList(world,list)){wsVisibilityRenderMemo.valid=0;wsVisibilityFastRelease(context);wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityRenderBusy,0);return -1;}
+ if(!wsVisibilityChartBeginDraw(context,list,time,renderer,picking)){wsVisibilityFastRelease(context);wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityLastError,13);InterlockedExchange(&wsVisibilityRenderBusy,0);return -1;}
+ if(!wsVisibilityMapRefreshFromDraw(context)||!wsVisibilityRenderRefresh(context,renderer)||(v.map==0&&!wsVisibilityMaskList(world,list))){
+  wsVisibilityRenderMemo.valid=0;wsVisibilityChartEndDraw(context);wsVisibilityFastRelease(context);wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityRenderBusy,0);return -1;
+ }
  return 1;
 }
 static void wsVisibilityEndDraw(int owned){
- if(owned>0){if(!wsVisibilityRestore())wsVisibilityRenderMemo.valid=0;wsVisibilityFastRelease(wsVisibilityDrawContext);wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityRenderBusy,0);}
+ if(owned>0){int chart=wsVisibilityChartEndDraw(wsVisibilityDrawContext);if(!wsVisibilityRestore()||!chart)wsVisibilityRenderMemo.valid=0;if(!chart)InterlockedExchange(&wsVisibilityLastError,14);wsVisibilityFastRelease(wsVisibilityDrawContext);wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityRenderBusy,0);}
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDrawTerrain(void*world,void*list,uint32_t flags,uint32_t property,void*renderer){
  unsigned char*w=(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!w)return 0;
- WSVisibilityDrawContext context;int owned=wsVisibilityBeginDraw(world,list,renderer,&context);if(owned<0)return 0;
+ WSVisibilityDrawContext context;int owned=wsVisibilityBeginDraw(world,list,renderer,&context,property,0);if(owned<0)return 0;
+ if(owned>0)wsVisibilityChartDrawStarted(&context);
  uintptr_t result=WS_VISIBILITY_NATIVE_DRAW5(w)(world,list,flags,property,renderer);
  wsVisibilityEndDraw(owned);return result;
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDrawTerrainClipped(void*world,void*list,uint32_t flags,const int32_t*rect,uint32_t property,void*renderer){
  unsigned char*w=(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!w)return 0;
- WSVisibilityDrawContext context;int owned=wsVisibilityBeginDraw(world,list,renderer,&context);if(owned<0)return 0;
+ WSVisibilityDrawContext context;int owned=wsVisibilityBeginDraw(world,list,renderer,&context,property,1);if(owned<0)return 0;
  uintptr_t result=WS_VISIBILITY_NATIVE_DRAW6(w)(world,list,flags,rect,property,renderer);
  wsVisibilityEndDraw(owned);return result;
 }
@@ -440,8 +453,10 @@ static int wsVisibilityWildlifeHidden(void*actor,void*world){
  for(uint32_t id=0;id<WS_VISIBILITY_ISLAND_LIMIT;id++)if(context->present[id]){
   const WSVisibilityIsland*island=&context->islands[id];
   if(x>=(float)island->x&&y>=(float)island->y&&
-     x<(float)(island->x+island->width)&&y<(float)(island->y+island->height))
-   return !(island->discovered&(1u<<context->view.viewer));
+     x<(float)(island->x+island->width)&&y<(float)(island->y+island->height)){
+   WSVisibilityChartReadView chart;if(!wsVisibilityChartReadBegin(&context->view,&chart))return -1;
+   int visible=wsVisibilityChartMarkContext(context)&&wsVisibilityChartPoint(&context->view,x,y);wsVisibilityChartReadEnd(&chart);return !visible;
+  }
  }
  return -1; /* A verified land actor outside every verified island is refused. */
 }
@@ -547,15 +562,17 @@ static int wsVisibilityFastRenderer(const WSVisibilityDrawContext*c,void*rendere
 }
 static int wsVisibilityActorDecision(void*actor,const WSVisibilityActorLayout*a,unsigned char*module){
  void*world=wsCertPointer(actor,a->worldOffset);WSVisibilityWorld view;WSVisibilityDrawContext local;
- const WSVisibilityDrawContext*context=wsVisibilityDrawContext;
+ const WSVisibilityDrawContext*context=wsVisibilityDrawContext;int separate=0;
  if(context&&context->view.marked&&context->view.world!=world)return 0;
  if(!context||context->view.world!=world){
   if(!wsVisibilityWorldRead(world,&view))return !wsVisibilityHasPolicy(world);
   if(!view.marked)return 1;
   if(view.marked<0||!WorldSettingsVisibilityWorldLoaded(world,0,0)||!wsVisibilityContextRead(&view,&local))return 0;
-  context=&local;
+  context=&local;separate=1;
  }
  if(context->view.module!=module)return 0;
+ if(separate){WSVisibilityChartReadView read;if(!wsVisibilityChartReadBegin(&context->view,&read))return 0;
+  int visible=wsVisibilityChartMarkContext(context)&&wsVisibilityActorInContext(context,actor,a);wsVisibilityChartReadEnd(&read);return visible;}
  return wsVisibilityActorInContext(context,actor,a);
 }
 /* A successful probe certifies all audited actor fields once for THIS call.
@@ -622,17 +639,21 @@ __declspec(dllexport) int __cdecl WorldSettingsVisibilitySpriteVisible(const flo
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityRenderStatic180(void*,void*,uint32_t,uint32_t,uint32_t,const float*);
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityRenderStatic188(void*,void*,uint32_t,uint32_t,uint32_t,const float*);
-static uintptr_t wsVisibilityStaticInvoke(void*target,void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot){
+#ifndef WS_CHART_CALLER
+#define WS_CHART_CALLER() ((uintptr_t)__builtin_return_address(0))
+#endif
+static uintptr_t wsVisibilityStaticInvoke(void*target,void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot,uintptr_t caller){
  if(slot==0x180u)InterlockedExchange64(&wsVisibilityRenderTarget180,(LONG64)(uintptr_t)target);
  else if(slot==0x188u)InterlockedExchange64(&wsVisibilityRenderTarget188,(LONG64)(uintptr_t)target);
  int marked=wsVisibilityDrawContext&&wsVisibilityDrawContext->view.marked;
  int known=marked&&wsVisibilityFastRenderer(wsVisibilityDrawContext,renderer)&&
   target==(slot==0x180u?wsVisibilityDrawContext->fast->original180:wsVisibilityDrawContext->fast->original188);
  if(!target||(!known&&!(marked?WS_VISIBILITY_STATIC_TARGET_OK(target):WS_VISIBILITY_LEGACY_STATIC_TARGET_OK(target)))){InterlockedExchange(&wsVisibilityLastError,8);return 0;}
- if(!WorldSettingsVisibilitySpriteVisible(position))return 0;
+ int remembered=marked?wsVisibilityChartGhostSprite(wsVisibilityDrawContext,frame,orientation,caller,position,&phase,&flags):0;
+ if(remembered<0||(!remembered&&!WorldSettingsVisibilitySpriteVisible(position)))return 0;
  return WS_VISIBILITY_NATIVE_STATIC(target)(renderer,frame,orientation,phase,flags,position);
 }
-static uintptr_t wsVisibilityStaticDraw(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot){
+static uintptr_t wsVisibilityStaticDraw(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot,uintptr_t caller){
  const WSVisibilityDrawContext*c=wsVisibilityDrawContext;int fast=wsVisibilityFastRenderer(c,renderer);
  void*target=fast?wsVisibilityFastPointer(c->fast->display+0xf63740,slot):wsCertPointer(wsCertPointer(renderer,0),slot);
  void*hook=slot==0x180u?(void*)WorldSettingsVisibilityRenderStatic180:(void*)WorldSettingsVisibilityRenderStatic188;
@@ -641,26 +662,26 @@ static uintptr_t wsVisibilityStaticDraw(void*renderer,void*frame,uint32_t orient
   if(!display||(!fast&&wsCertPointer(renderer,0)!=display+0xf63740)){InterlockedExchange(&wsVisibilityLastError,8);return 0;}
   target=display+(slot==0x180u?0x49410u:0x49bd0u);
  }
- return wsVisibilityStaticInvoke(target,renderer,frame,orientation,phase,flags,position,slot);
+ return wsVisibilityStaticInvoke(target,renderer,frame,orientation,phase,flags,position,slot,caller);
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDrawStatic180(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position){
- return wsVisibilityStaticDraw(renderer,frame,orientation,phase,flags,position,0x180);
+ return wsVisibilityStaticDraw(renderer,frame,orientation,phase,flags,position,0x180,WS_CHART_CALLER());
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDrawStatic188(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position){
- return wsVisibilityStaticDraw(renderer,frame,orientation,phase,flags,position,0x188);
+ return wsVisibilityStaticDraw(renderer,frame,orientation,phase,flags,position,0x188,WS_CHART_CALLER());
 }
-static uintptr_t wsVisibilityRenderStatic(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot){
+static uintptr_t wsVisibilityRenderStatic(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot,uintptr_t caller){
  const WSVisibilityDrawContext*c=wsVisibilityDrawContext;
- if(wsVisibilityFastRenderer(c,renderer))return wsVisibilityStaticInvoke(slot==0x180u?c->fast->original180:c->fast->original188,renderer,frame,orientation,phase,flags,position,slot);
+ if(wsVisibilityFastRenderer(c,renderer))return wsVisibilityStaticInvoke(slot==0x180u?c->fast->original180:c->fast->original188,renderer,frame,orientation,phase,flags,position,slot,caller);
  unsigned char*display=(unsigned char*)WS_CERT_MODULE("AnnoDisplay.dll");
  if(!display||wsCertPointer(renderer,0)!=display+0xf63740){InterlockedExchange(&wsVisibilityLastError,8);return 0;}
- return wsVisibilityStaticInvoke(display+(slot==0x180u?0x49410u:0x49bd0u),renderer,frame,orientation,phase,flags,position,slot);
+ return wsVisibilityStaticInvoke(display+(slot==0x180u?0x49410u:0x49bd0u),renderer,frame,orientation,phase,flags,position,slot,caller);
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityRenderStatic180(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position){
- return wsVisibilityRenderStatic(renderer,frame,orientation,phase,flags,position,0x180);
+ return wsVisibilityRenderStatic(renderer,frame,orientation,phase,flags,position,0x180,WS_CHART_CALLER());
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityRenderStatic188(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position){
- return wsVisibilityRenderStatic(renderer,frame,orientation,phase,flags,position,0x188);
+ return wsVisibilityRenderStatic(renderer,frame,orientation,phase,flags,position,0x188,WS_CHART_CALLER());
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityCreateMap(void*map,uint32_t flags,void*rect){
  unsigned char*w=(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");WSVisibilityWorld v;
@@ -676,12 +697,15 @@ __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityCreateMap(void*ma
  if(!context||context->view.world!=world||context->view.viewer!=v.viewer||context->view.flags!=v.flags){
   if(!wsVisibilityContextRead(&v,&local)){wsVisibilityClearMap(&before);InterlockedIncrement(&wsVisibilityMapGeneration);InterlockedExchange(&wsVisibilityLastError,4);return 0;}context=&local;
  }
+ WSVisibilityChartReadView chart;
+ if(!wsVisibilityChartReadBegin(&v,&chart)){wsVisibilityClearMap(&before);InterlockedIncrement(&wsVisibilityMapGeneration);return 0;}
+ if(!wsVisibilityChartMarkContext(context)){wsVisibilityChartReadEnd(&chart);return 0;}
  int32_t refresh[4];uint32_t nativeFlags=flags;int locked=0;LONG generation=InterlockedCompareExchange(&wsVisibilityMapGeneration,0,0);
  if(v.map==0||!v.enemy){
-  if(InterlockedCompareExchange(&wsVisibilityMapRefreshBusy,1,0)){InterlockedExchange(&wsVisibilityLastError,10);return 0;}
+  if(InterlockedCompareExchange(&wsVisibilityMapRefreshBusy,1,0)){InterlockedExchange(&wsVisibilityLastError,10);wsVisibilityChartReadEnd(&chart);return 0;}
   locked=1;
   if(!wsVisibilityMapRefreshPlan(&before,context,rect,&nativeFlags,refresh)){
-   wsVisibilityClearMap(&before);InterlockedIncrement(&wsVisibilityMapGeneration);InterlockedExchange(&wsVisibilityLastError,4);InterlockedExchange(&wsVisibilityMapRefreshBusy,0);return 0;
+   wsVisibilityClearMap(&before);InterlockedIncrement(&wsVisibilityMapGeneration);InterlockedExchange(&wsVisibilityLastError,4);InterlockedExchange(&wsVisibilityMapRefreshBusy,0);wsVisibilityChartReadEnd(&chart);return 0;
   }
   rect=refresh;
  }
@@ -690,12 +714,13 @@ __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityCreateMap(void*ma
   * that ownership still matches instead of writing a retained pre-call buffer. */
  if(!wsVisibilityMapRead(map,&v,&after)||after.pixels!=before.pixels||after.width!=before.width||after.height!=before.height){
   if(wsVisibilityMapRead(map,&v,&after))wsVisibilityClearMap(&after);
-  InterlockedIncrement(&wsVisibilityMapGeneration);InterlockedExchange(&wsVisibilityLastError,4);if(locked)InterlockedExchange(&wsVisibilityMapRefreshBusy,0);return 0;
+  InterlockedIncrement(&wsVisibilityMapGeneration);InterlockedExchange(&wsVisibilityLastError,4);if(locked)InterlockedExchange(&wsVisibilityMapRefreshBusy,0);wsVisibilityChartReadEnd(&chart);return 0;
  }
  if(!wsVisibilityMaskMapView(&after,context)){
-  InterlockedIncrement(&wsVisibilityMapGeneration);if(locked)InterlockedExchange(&wsVisibilityMapRefreshBusy,0);return 0;
+  InterlockedIncrement(&wsVisibilityMapGeneration);if(locked)InterlockedExchange(&wsVisibilityMapRefreshBusy,0);wsVisibilityChartReadEnd(&chart);return 0;
  }
  if(locked){wsVisibilityMapRefreshCommit(&after,context,generation);InterlockedExchange(&wsVisibilityMapRefreshBusy,0);}
+ wsVisibilityChartReadEnd(&chart);
  return result;
 }
 static int wsVisibilityMapRefreshFromDraw(const WSVisibilityDrawContext*context){
@@ -735,3 +760,4 @@ __declspec(dllexport) DWORD WINAPI WorldSettingsCopyVisibilityRenderTargets(void
   (uint64_t)InterlockedCompareExchange64(&wsVisibilityRenderTarget188,0,0)};
  memcpy(out,targets,sizeof targets);return sizeof targets;
 }
+#include "start_visibility_chart.inc"

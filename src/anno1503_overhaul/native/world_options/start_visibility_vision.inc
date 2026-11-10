@@ -91,6 +91,7 @@ static int wsVisibilityActorValuesInContext(const WSVisibilityDrawContext*c,cons
  void*player=0;
  int knownOwner=wsVisibilityOwner(owner,c->view.module,&player);
  if(player&&player==c->human)return wsCertPointer(player,0x10)==c->view.world;
+ if(c->view.map==0&&!wsVisibilityChartPoint(&c->view,x,z))return 0;
  if(c->view.enemy&&owner&&(player||!knownOwner))return 1;
  int wildlife=a->vtable==0xf0ed0u||a->vtable==0xf13d0u||a->vtable==0xf1738u||a->vtable==0xf0570u;
  if(!wildlife&&!c->view.enemy&&owner&&(!knownOwner||player))return wsVisibilityInSight(c,x,z);
@@ -98,10 +99,7 @@ static int wsVisibilityActorValuesInContext(const WSVisibilityDrawContext*c,cons
   const WSVisibilityIsland*island=wsVisibilityIslandAt(c,x,z);void*cityOwner=0;
   if(island&&wsVisibilityOwnedBuilding(c,island,x,z,&cityOwner)&&cityOwner!=c->human)return wsVisibilityInSight(c,x,z);
  }
- if(c->view.map==0){
-  const WSVisibilityIsland*island=wsVisibilityIslandAt(c,x,z);
-  if(island&&!(island->discovered&(1u<<c->view.viewer)))return 0;
- }
+ if(!c->view.enemy&&wsVisibilityChartRememberedAt(c,x,z))return 0;
  return 1;
 }
 static int wsVisibilityActorInContext(const WSVisibilityDrawContext*c,void*actor,const WSVisibilityActorLayout*a){
@@ -266,17 +264,24 @@ static int wsVisibilityOwnedBuilding(const WSVisibilityDrawContext*c,const WSVis
  *owner=wsCertPointer(city,0x28);
  return *owner&&wsCertPointer(*owner,0)==c->view.module+0xfabe0?1:-1;
 }
-static int wsVisibilitySpritePoint(const WSVisibilityDrawContext*c,const float*position){
- float xyz[3];uintptr_t at=(uintptr_t)position;
+static int wsVisibilitySpriteCoordinates(const WSVisibilityDrawContext*c,const float*position,float xyz[3]){
+ uintptr_t at=(uintptr_t)position;
  if(!position)return 0;
- if(c->fast&&c->fast->stackBegin&&at>=c->fast->stackBegin&&at<c->fast->stackEnd&&sizeof xyz<=c->fast->stackEnd-at)
-  memcpy(xyz,position,sizeof xyz);
- else if(!wsCertRead(position,xyz,sizeof xyz))return 0;
+ if(c->fast&&c->fast->stackBegin&&at>=c->fast->stackBegin&&at<c->fast->stackEnd&&12u<=c->fast->stackEnd-at)
+  memcpy(xyz,position,12);
+ else if(!wsCertRead(position,xyz,12))return 0;
  if(!wsVisibilityPointValid(&c->view,xyz[0],xyz[2]))return 0;
+ return 1;
+}
+static int wsVisibilitySpritePoint(const WSVisibilityDrawContext*c,const float*position){
+ float xyz[3];if(!wsVisibilitySpriteCoordinates(c,position,xyz))return 0;
+ if(c->view.map==0&&!wsVisibilityChartPoint(&c->view,xyz[0],xyz[2]))return 0;
  if(c->view.enemy)return 1;
+ if(wsVisibilityChartRememberedAt(c,xyz[0],xyz[2]))return 0;
  const WSVisibilityIsland*island=wsVisibilityIslandAt(c,xyz[0],xyz[2]);if(!island)return 1;
  void*owner=0;int building=wsVisibilityOwnedBuilding(c,island,xyz[0],xyz[2],&owner);
  if(!building)return 1;
  if(owner==c->human)return 1;
+ int live=wsVisibilityChartLiveFigure(c,island,xyz[0],xyz[2]);if(live!=-2)return live>0;
  return wsVisibilityInSight(c,xyz[0],xyz[2]);
 }

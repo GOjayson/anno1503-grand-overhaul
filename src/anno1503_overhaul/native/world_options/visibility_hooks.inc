@@ -1,5 +1,5 @@
 /* Part of the existing paused-thread transaction. Seven dispatch pointers and
- * eight already-prepared code calls share preflight, commit and rollback. */
+ * thirteen prepared branches share preflight, commit and rollback. */
 #include "visibility_native_pins.h"
 typedef struct WSVisibilityHook {const wchar_t*module;uint32_t slot,target;const char*exportName;} WSVisibilityHook;
 static const WSVisibilityHook wsVisibilityHookPlan[]={
@@ -11,16 +11,21 @@ static const WSVisibilityHook wsVisibilityHookPlan[]={
  {L"AnnoDisplay.dll",0xf638c0u,0x49410u,"WorldSettingsVisibilityRenderStatic180"},
  {L"AnnoDisplay.dll",0xf638c8u,0x49bd0u,"WorldSettingsVisibilityRenderStatic188"}
 };
-typedef struct WSVisibilityCall {const wchar_t*module;uint32_t rva,length;unsigned char before[7];const char*exportName;} WSVisibilityCall;
+typedef struct WSVisibilityCall {const wchar_t*module;uint32_t rva,length;unsigned char before[7];const char*exportName;int call,contextArgument;} WSVisibilityCall;
 static const WSVisibilityCall wsVisibilityCallPlan[]={
- {L"AnnoWelt.dll",0xcbf15u,6,{0xff,0x90,0,1,0,0},"WorldSettingsVisibilityDispatchResident100"},
- {L"AnnoWelt.dll",0xcdb1cu,6,{0xff,0x90,8,1,0,0},"WorldSettingsVisibilityDispatchResident108"},
- {L"AnnoWelt.dll",0xcbe60u,6,{0xff,0x90,0,1,0,0},"WorldSettingsVisibilityDispatchOccurrence100"},
- {L"AnnoFrame.dll",0x1bc1fu,6,{0xff,0x90,0x20,1,0,0},"WorldSettingsVisibilityMinimapExclude"},
- {L"AnnoWelt.dll",0xcb91au,7,{0x41,0xff,0x92,0x88,1,0,0},"WorldSettingsVisibilityDrawStatic188"},
- {L"AnnoWelt.dll",0xcb9ccu,7,{0x41,0xff,0x92,0x80,1,0,0},"WorldSettingsVisibilityDrawStatic180"},
- {L"AnnoWelt.dll",0xcbc89u,6,{0xff,0x90,0x80,1,0,0},"WorldSettingsVisibilityDrawStatic180"},
- {L"AnnoWelt.dll",0xcde09u,6,{0xff,0x90,0x80,1,0,0},"WorldSettingsVisibilityDrawStatic180"}
+ {L"AnnoWelt.dll",0xcbf15u,6,{0xff,0x90,0,1,0,0},"WorldSettingsVisibilityDispatchResident100",1,0},
+ {L"AnnoWelt.dll",0xcdb1cu,6,{0xff,0x90,8,1,0,0},"WorldSettingsVisibilityDispatchResident108",1,0},
+ {L"AnnoWelt.dll",0xcbe60u,6,{0xff,0x90,0,1,0,0},"WorldSettingsVisibilityDispatchOccurrence100",1,0},
+ {L"AnnoFrame.dll",0x1bc1fu,6,{0xff,0x90,0x20,1,0,0},"WorldSettingsVisibilityMinimapExclude",1,0},
+ {L"AnnoWelt.dll",0xcb91au,7,{0x41,0xff,0x92,0x88,1,0,0},"WorldSettingsVisibilityDrawStatic188",1,0},
+ {L"AnnoWelt.dll",0xcb9ccu,7,{0x41,0xff,0x92,0x80,1,0,0},"WorldSettingsVisibilityDrawStatic180",1,0},
+ {L"AnnoWelt.dll",0xcbc89u,6,{0xff,0x90,0x80,1,0,0},"WorldSettingsVisibilityDrawStatic180",1,0},
+ {L"AnnoWelt.dll",0xcde09u,6,{0xff,0x90,0x80,1,0,0},"WorldSettingsVisibilityDrawStatic180",1,0},
+ {L"AnnoFrame.dll",0x75b80u,5,{0xe9,0x0b,0,0,0},"WorldSettingsVisibilitySave",0,0},
+ {L"AnnoFrame.dll",0x7666cu,5,{0xe8,0x1f,0xf5,0xff,0xff},"WorldSettingsVisibilitySave",1,0},
+ {L"AnnoFrame.dll",0x7e713u,5,{0xe8,0x78,0x74,0xff,0xff},"WorldSettingsVisibilitySave",1,0},
+ {L"AnnoFrame.dll",0x8040au,5,{0xe8,0x81,0x57,0xff,0xff},"WorldSettingsVisibilitySave",1,0},
+ {L"AnnoFrame.dll",0x1ca76u,6,{0xff,0x90,0x18,1,0,0},"WorldSettingsVisibilityFinishFrame",1,1}
 };
 _Static_assert(sizeof wsVisibilityHookPlan/sizeof wsVisibilityHookPlan[0]==WS_VISIBILITY_POINTER_COUNT,"Visibility pointer count differs");
 _Static_assert(sizeof wsVisibilityCallPlan/sizeof wsVisibilityCallPlan[0]==WS_VISIBILITY_CALL_COUNT,"Visibility call count differs");
@@ -31,6 +36,7 @@ static uint32_t wsVisibilityLengths[WS_VISIBILITY_HOOK_COUNT];
 static unsigned char*wsVisibilityBridges[WS_VISIBILITY_CALL_COUNT];
 static uintptr_t wsVisibilityCallbacks[WS_VISIBILITY_CALL_COUNT];
 static const unsigned char wsVisibilityLeaf[8]={0xff,0x25,2,0,0,0,0x90,0x90};
+static const unsigned char wsVisibilityContextLeaf[16]={0x48,0x89,0xfa,0xff,0x25,7,0,0,0,0x90,0x90,0x90,0x90,0x90,0x90,0x90};
 
 static int wsPrepareVisibility(HMODULE self,WSPatch*patches,uint32_t*count){
  HMODULE module=wsEngineModules[WS_ENGINE_MODULE_WORLD];uint32_t imageSize=0;
@@ -52,18 +58,20 @@ static int wsPrepareVisibility(HMODULE self,WSPatch*patches,uint32_t*count){
    const WSBlob*blob=&wsBlobs[j];
    for(uint32_t k=0;k<blob->hookCount;k++){
     const WSHook*h=&blob->hooks[k];if(h->rva!=entry->rva)continue;
-    if(h->length!=entry->length||h->call!=1||memcmp(h->before,entry->before,entry->length)||
-       !wsSpan(h->target,16,blob->codeSize)||!wsInstalled[j].registered)
+    if(h->length!=entry->length||h->call!=entry->call||memcmp(h->before,entry->before,entry->length)||
+       !wsSpan(h->target,entry->contextArgument?24u:16u,blob->codeSize)||!wsInstalled[j].registered)
      return wsError("Strict visibility call metadata differs from its reviewed instruction and leaf.");
     bridge=wsInstalled[j].allocation+h->target;matches++;
    }
   }
-  if(matches!=1||!bridge||!wsReadable(bridge,16)||memcmp(bridge,wsVisibilityLeaf,8))
+  uint32_t importOffset=entry->contextArgument?16u:8u;
+  const unsigned char*head=entry->contextArgument?wsVisibilityContextLeaf:wsVisibilityLeaf;
+  if(matches!=1||!bridge||!wsReadable(bridge,importOffset+8u)||memcmp(bridge,head,importOffset))
    return wsError("Strict visibility requires one complete registered native leaf bridge.");
   uintptr_t target=(uintptr_t)callback;
-  if(memcmp(bridge+8,&target,8))return wsError("A strict visibility bridge has the wrong compiled delegate.");
+  if(memcmp(bridge+importOffset,&target,8))return wsError("A strict visibility bridge has the wrong compiled delegate.");
   for(uint32_t j=0;j<*count;j++)if(patches[j].address==(unsigned char*)owner+entry->rva){if(found)return wsError("Duplicate strict visibility call edit.");found=&patches[j];}
-  if(!found||found->length!=entry->length||memcmp(found->before,entry->before,entry->length)||found->after[0]!=0xe8)
+  if(!found||found->length!=entry->length||memcmp(found->before,entry->before,entry->length)||found->after[0]!=(entry->call?0xe8:0xe9))
    return wsError("A strict visibility call is missing from the guarded transaction.");
   int32_t displacement=0;memcpy(&displacement,found->after+1,4);
   if((uintptr_t)(found->address+5)+(intptr_t)displacement!=(uintptr_t)bridge)
@@ -100,10 +108,13 @@ static DWORD wsVisibilityPatchStatusUnlocked(void){
   if(!wsVisibilitySites[i]||!wsVisibilityLengths[i]||wsVisibilityLengths[i]>WS_MAX_PATCH||
      !wsReadable(wsVisibilitySites[i],wsVisibilityLengths[i])||
      memcmp(wsVisibilitySites[i],wsVisibilityExpected[i],wsVisibilityLengths[i]))return 0;
- for(uint32_t i=0;i<WS_VISIBILITY_CALL_COUNT;i++)
-  if(!wsVisibilityBridges[i]||!wsReadable(wsVisibilityBridges[i],16)||
-     memcmp(wsVisibilityBridges[i],wsVisibilityLeaf,8)||
-     memcmp(wsVisibilityBridges[i]+8,&wsVisibilityCallbacks[i],8))return 0;
+ for(uint32_t i=0;i<WS_VISIBILITY_CALL_COUNT;i++){
+  uint32_t offset=wsVisibilityCallPlan[i].contextArgument?16u:8u;
+  const unsigned char*head=wsVisibilityCallPlan[i].contextArgument?wsVisibilityContextLeaf:wsVisibilityLeaf;
+  if(!wsVisibilityBridges[i]||!wsReadable(wsVisibilityBridges[i],offset+8u)||
+     memcmp(wsVisibilityBridges[i],head,offset)||
+     memcmp(wsVisibilityBridges[i]+offset,&wsVisibilityCallbacks[i],8))return 0;
+ }
  return WS_VISIBILITY_HOOK_COUNT;
 }
 __declspec(dllexport) DWORD WorldSettingsVisibilityPatchStatus(void){

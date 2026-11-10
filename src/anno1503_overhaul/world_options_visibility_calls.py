@@ -1,9 +1,10 @@
-"""Reviewed HE rendering calls redirected through bounded leaf bridges.
+"""Reviewed HE visibility and save branches through bounded leaf bridges.
 
 Only fresh staged blob metadata is extended. Existing code, native-relative
 relocations, imports, hooks and chained unwind parents retain their original
-bytes. Each additional bridge tail-jumps to an ordinary compiled DLL export;
-it neither changes registers/stack arguments nor adds a new native frame.
+bytes. Each bridge tail-jumps to an ordinary compiled DLL export without a
+new native frame. Only the proved final-frame site copies live context RDI
+to volatile argument RDX; all other register and stack arguments stay intact.
 """
 import hashlib
 import re
@@ -23,7 +24,25 @@ CALLS = (
     ('AnnoWelt.dll', 'world_policy', 0xcb9cc, bytes.fromhex('41ff9280010000'), 'WorldSettingsVisibilityDrawStatic180'),
     ('AnnoWelt.dll', 'world_policy', 0xcbc89, bytes.fromhex('ff9080010000'), 'WorldSettingsVisibilityDrawStatic180'),
     ('AnnoWelt.dll', 'world_policy', 0xcde09, bytes.fromhex('ff9080010000'), 'WorldSettingsVisibilityDrawStatic180'),
+    ('AnnoFrame.dll', 'native_attempt', 0x75b80, bytes.fromhex('e90b000000'), 'WorldSettingsVisibilitySave'),
+    ('AnnoFrame.dll', 'native_attempt', 0x7666c, bytes.fromhex('e81ff5ffff'), 'WorldSettingsVisibilitySave'),
+    ('AnnoFrame.dll', 'native_attempt', 0x7e713, bytes.fromhex('e87874ffff'), 'WorldSettingsVisibilitySave'),
+    ('AnnoFrame.dll', 'native_attempt', 0x8040a, bytes.fromhex('e88157ffff'), 'WorldSettingsVisibilitySave'),
+    ('AnnoFrame.dll', 'native_attempt', 0x1ca76, bytes.fromhex('ff9018010000'), 'WorldSettingsVisibilityFinishFrame'),
 )
+
+
+def branch_is_call(module: str, rva: int) -> bool:
+    """Retain the proved save wrapper's tail branch, not a synthetic call."""
+    return (module, rva) != ('AnnoFrame.dll', 0x75b80)
+
+
+def bridge_layout(module: str, rva: int):
+    """Executable prefix, aligned import cell and leaf function extent."""
+    if (module, rva) == ('AnnoFrame.dll', 0x1ca76):
+        # MOV RDX,RDI; JMP [RIP+7]; seven NOPs; aligned import cell.
+        return bytes.fromhex('4889faff2507000000') + b'\x90' * 7, 16, 9
+    return bytes.fromhex('ff25020000009090'), 8, 6
 
 
 def verify_visibility_call_preimages(images: dict[str, bytes], pins: dict[str, str]):
@@ -40,9 +59,16 @@ def verify_visibility_call_preimages(images: dict[str, bytes], pins: dict[str, s
                 raise RuntimeBuildError('A strict-visibility native dispatch instruction differs: ' + name)
             if not any(begin <= rva and rva + len(before) <= end for begin, end, unwind in ranges):
                 raise RuntimeBuildError('A visibility dispatch crosses a native function boundary.')
+            prefix_bytes, import_offset, function_end = bridge_layout(name, rva)
             rows.append(dict(module=name, rva=rva, before=before.hex(), callback=callback,
-                             native_sha256=pins[name]))
-    return dict(call_count=len(rows), call_preimages=rows, stack_or_argument_rewriting=False,
+                             branch='call' if branch_is_call(name, rva) else 'tail-jump',
+                             live_context_argument=(name, rva) == ('AnnoFrame.dll', 0x1ca76),
+                             bridge_prefix=prefix_bytes.hex(), import_offset=import_offset,
+                             leaf_function_bytes=function_end, native_sha256=pins[name]))
+    return dict(call_count=len(rows), call_preimages=rows, stack_rewriting=False,
+                stack_or_argument_rewriting=True,
+                context_argument_copies=[dict(module='AnnoFrame.dll', rva=0x1ca76,
+                                              source='RDI', destination='RDX')],
                 allocation_and_unwind_in_existing_transaction=True)
 
 
@@ -69,18 +95,18 @@ def apply_visibility_calls(files: dict[str, bytes]) -> None:
         code_match = _one(text, r'static const unsigned char ' + prefix + r'_code\[\] = \{([^}]*)\};', prefix + ' code')
         old_code = _hex_bytes(code_match.group(1))
         code = bytearray(old_code)
-        code.extend(b'\x90' * ((-len(code)) % 16))
         new_imports, new_functions, new_hooks, declarations = [], [], [], []
         for index, (_, _, rva, before, callback) in enumerate(selected):
+            code.extend(b'\x90' * ((-len(code)) % 16))
             offset = len(code)
-            # JMP [RIP+2], two alignment NOPs and an eight-byte import cell.
-            # The original CALL pushes its native return address normally.
-            code.extend(bytes.fromhex('ff25020000009090') + bytes(8))
-            new_imports.append('{%d,"%s"}' % (offset + 8, callback))
-            new_functions.append('{%d,%d,%s_visibility_leaf,4}' % (offset, offset + 6, prefix))
+            executable, import_offset, function_end = bridge_layout(module, rva)
+            code.extend(executable + bytes(8))
+            new_imports.append('{%d,"%s"}' % (offset + import_offset, callback))
+            new_functions.append('{%d,%d,%s_visibility_leaf,4}' % (offset, offset + function_end, prefix))
             name = prefix + '_visibility_before_' + str(index)
             declarations.append('static const unsigned char %s[] = {%s};\n' % (name, _array(before)))
-            new_hooks.append('{%d,%d,%s,%d,1}' % (rva, len(before), name, offset))
+            new_hooks.append('{%d,%d,%s,%d,%d}' % (rva, len(before), name, offset,
+                                                 int(branch_is_call(module, rva))))
         if len(record[0]['functions']) + len(selected) > 32 or len(code) > 0x100000:
             raise RuntimeBuildError('Strict visibility bridge metadata exceeds native bounds.')
         replacement = 'static const unsigned char %s_code[] = {%s};' % (prefix, _array(code))
