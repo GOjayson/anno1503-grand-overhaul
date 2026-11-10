@@ -676,9 +676,15 @@ __declspec(dllexport) int memory_case(uint32_t which){
   wsPut16(islandBytes+0x12e,1);spyMasked=1;
   if(WorldSettingsVisibilityDrawTerrainClipped(worldBytes,listBytes,17,(int32_t*)tableBytes,29,drawRendererBytes)!=0x1235||spyFailure||spyCalls!=2)return 3;
   if(wsVisibilityBackupCount||wsVisibilityRenderBusy||memcmp(listBefore,listBytes,sizeof listBytes))return 4;
-  float observerNear=20.0f;memcpy(humanShip+0x28,&observerNear,4);memcpy(humanShip+0x30,&observerNear,4);spyMasked=0;
+  float observerNear=20.0f;memcpy(humanShip+0x28,&observerNear,4);memcpy(humanShip+0x30,&observerNear,4);spyMasked=1;
+  uint64_t chartBefore=wsChHash(wsChartActive.bits,wsChartActive.bitBytes);uint32_t generation=wsChartActive.generation;
   if(WorldSettingsVisibilityDrawTerrainClipped(worldBytes,listBytes,17,(int32_t*)tableBytes,29,drawRendererBytes)!=0x1235||spyFailure||spyCalls!=3)return 5;
-  if(wsVisibilityBackupCount||wsVisibilityRenderBusy||memcmp(listBefore,listBytes,sizeof listBytes))return 6;
+  if(wsVisibilityBackupCount||wsVisibilityRenderBusy||memcmp(listBefore,listBytes,sizeof listBytes)||chartBefore!=wsChHash(wsChartActive.bits,wsChartActive.bitBytes)||generation!=wsChartActive.generation)return 6;
+  /* Picking reads remembered exploration. Only a normal draw observes the
+   * moved ship, after which a later pick can see the newly charted terrain. */
+  spyMasked=0;if(WorldSettingsVisibilityDrawTerrain(worldBytes,listBytes,17,29,drawRendererBytes)!=0x1234||spyFailure||spyCalls!=4||chartBefore==wsChHash(wsChartActive.bits,wsChartActive.bitBytes))return 7;
+  generation=wsChartActive.generation;if(WorldSettingsVisibilityDrawTerrainClipped(worldBytes,listBytes,17,(int32_t*)tableBytes,29,drawRendererBytes)!=0x1235||spyFailure||spyCalls!=5)return 8;
+  if(wsVisibilityBackupCount||wsVisibilityRenderBusy||memcmp(listBefore,listBytes,sizeof listBytes)||generation!=wsChartActive.generation)return 9;
   return 0;
  }
  if(which==8){

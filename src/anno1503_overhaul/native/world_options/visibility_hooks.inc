@@ -1,5 +1,5 @@
-/* Part of the existing paused-thread transaction. Seven dispatch pointers and
- * thirteen prepared branches share preflight, commit and rollback. */
+/* Part of the existing paused-thread transaction. Eleven dispatch pointers and
+ * fifteen prepared branches share preflight, commit and rollback. */
 #include "visibility_native_pins.h"
 typedef struct WSVisibilityHook {const wchar_t*module;uint32_t slot,target;const char*exportName;} WSVisibilityHook;
 static const WSVisibilityHook wsVisibilityHookPlan[]={
@@ -9,7 +9,11 @@ static const WSVisibilityHook wsVisibilityHookPlan[]={
  {L"AnnoWelt.dll",0xff818u,0xcd470u,"WorldSettingsVisibilityDrawTerrainClipped"},
  {L"AnnoWelt.dll",0xff5f8u,0xd2620u,"WorldSettingsVisibilityCreateMap"},
  {L"AnnoDisplay.dll",0xf638c0u,0x49410u,"WorldSettingsVisibilityRenderStatic180"},
- {L"AnnoDisplay.dll",0xf638c8u,0x49bd0u,"WorldSettingsVisibilityRenderStatic188"}
+ {L"AnnoDisplay.dll",0xf638c8u,0x49bd0u,"WorldSettingsVisibilityRenderStatic188"},
+ {L"AnnoFrame.dll",0xa7248u,0x78630u,"WorldSettingsVisibilityBuildingCommand"},
+ {L"AnnoFrame.dll",0xa7250u,0x785d0u,"WorldSettingsVisibilityShipQueue"},
+ {L"AnnoFrame.dll",0xa74f0u,0x7d340u,"WorldSettingsVisibilityBuildingCommand"},
+ {L"AnnoFrame.dll",0xa74f8u,0x7d230u,"WorldSettingsVisibilityShipQueue"}
 };
 typedef struct WSVisibilityCall {const wchar_t*module;uint32_t rva,length;unsigned char before[7];const char*exportName;int call,contextArgument;} WSVisibilityCall;
 static const WSVisibilityCall wsVisibilityCallPlan[]={
@@ -25,7 +29,9 @@ static const WSVisibilityCall wsVisibilityCallPlan[]={
  {L"AnnoFrame.dll",0x7666cu,5,{0xe8,0x1f,0xf5,0xff,0xff},"WorldSettingsVisibilitySave",1,0},
  {L"AnnoFrame.dll",0x7e713u,5,{0xe8,0x78,0x74,0xff,0xff},"WorldSettingsVisibilitySave",1,0},
  {L"AnnoFrame.dll",0x8040au,5,{0xe8,0x81,0x57,0xff,0xff},"WorldSettingsVisibilitySave",1,0},
- {L"AnnoFrame.dll",0x1ca76u,6,{0xff,0x90,0x18,1,0,0},"WorldSettingsVisibilityFinishFrame",1,1}
+ {L"AnnoFrame.dll",0x1ca76u,6,{0xff,0x90,0x18,1,0,0},"WorldSettingsVisibilityFinishFrame",1,1},
+ {L"AnnoFrame.dll",0x169acu,6,{0xff,0x90,0xf0,0,0,0},"WorldSettingsVisibilityInteractionProperty",1,0},
+ {L"AnnoFrame.dll",0x16a72u,6,{0xff,0x90,0xf0,0,0,0},"WorldSettingsVisibilityInteractionProperty",1,0}
 };
 _Static_assert(sizeof wsVisibilityHookPlan/sizeof wsVisibilityHookPlan[0]==WS_VISIBILITY_POINTER_COUNT,"Visibility pointer count differs");
 _Static_assert(sizeof wsVisibilityCallPlan/sizeof wsVisibilityCallPlan[0]==WS_VISIBILITY_CALL_COUNT,"Visibility call count differs");

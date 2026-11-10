@@ -30,7 +30,9 @@ typedef struct WSVisibilityIsland {
 } WSVisibilityIsland;
 #define WS_VISIBILITY_SHIP_LIMIT 512u
 #define WS_VISIBILITY_CITY_LIMIT 255u
-#define WS_VISIBILITY_VISION_LIMIT (WS_VISIBILITY_SHIP_LIMIT+WS_VISIBILITY_CITY_LIMIT)
+/* Bounded observer traversal, not a claimed native recruitment limit. */
+#define WS_VISIBILITY_UNIT_LIMIT 4096u
+#define WS_VISIBILITY_VISION_LIMIT (WS_VISIBILITY_SHIP_LIMIT+WS_VISIBILITY_CITY_LIMIT+WS_VISIBILITY_UNIT_LIMIT)
 #define WS_VISIBILITY_SIGHT_RADIUS 48.0f
 typedef struct WSVisibilityVisionSource {float left,top,right,bottom;} WSVisibilityVisionSource;
 typedef struct WSVisibilityFastDraw WSVisibilityFastDraw;
@@ -394,10 +396,14 @@ typedef uintptr_t (__cdecl*WSVisibilityNativeWildlife)(void*,uint32_t,void*);
 #endif
 static int wsVisibilityMapRefreshFromDraw(const WSVisibilityDrawContext*);
 static int wsVisibilityBeginDraw(void*world,void*list,void*renderer,WSVisibilityDrawContext*context,uint32_t time,int picking){
- WSVisibilityWorld v;
+ WSVisibilityWorld v;uint32_t mode=0;
  if(!wsVisibilityWorldRead(world,&v))return wsVisibilityHasPolicy(world)?-1:0;
  if(!v.marked)return 0;
- if(!WorldSettingsVisibilityWorldLoaded(world,0,0))return -1;
+ if(v.marked<0||!wsCertRead((unsigned char*)renderer+0x498,&mode,4)||mode>5u)return -1;
+ picking=picking||mode==4u||mode==5u;
+ /* Hit tests consult the existing chart. They never observe buildings,
+  * chart a moved observer, or refresh the normal rendered-world cache. */
+ if(!picking&&!WorldSettingsVisibilityWorldLoaded(world,0,0))return -1;
  /* A concurrent/reentrant Terra draw is refused rather than reading another
   * invocation's temporary masking or deadlocking on a rendering callback. */
  if(InterlockedCompareExchange(&wsVisibilityRenderBusy,1,0)){InterlockedExchange(&wsVisibilityLastError,6);return -1;}
@@ -405,7 +411,7 @@ static int wsVisibilityBeginDraw(void*world,void*list,void*renderer,WSVisibility
  wsVisibilityDrawContext=context;
  if(!wsVisibilityFastPrepare(context,renderer)){wsVisibilityRenderMemo.valid=0;wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityRenderBusy,0);return -1;}
  if(!wsVisibilityChartBeginDraw(context,list,time,renderer,picking)){wsVisibilityFastRelease(context);wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityLastError,13);InterlockedExchange(&wsVisibilityRenderBusy,0);return -1;}
- if(!wsVisibilityMapRefreshFromDraw(context)||!wsVisibilityRenderRefresh(context,renderer)||(v.map==0&&!wsVisibilityMaskList(world,list))){
+ if((!picking&&(!wsVisibilityMapRefreshFromDraw(context)||!wsVisibilityRenderRefresh(context,renderer)))||(v.map==0&&!wsVisibilityMaskList(world,list))){
   wsVisibilityRenderMemo.valid=0;wsVisibilityChartEndDraw(context);wsVisibilityFastRelease(context);wsVisibilityDrawContext=0;InterlockedExchange(&wsVisibilityRenderBusy,0);return -1;
  }
  return 1;

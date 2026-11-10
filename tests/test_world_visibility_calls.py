@@ -43,13 +43,13 @@ def pins(images):
 
 
 class VisibilityCallPreimageTests(unittest.TestCase):
-    def test_thirteen_complete_branches_in_separate_pinned_module_images(self):
+    def test_fifteen_complete_branches_in_separate_pinned_module_images(self):
         images = call_images()
         before = {name: bytes(data) for name, data in images.items()}
         result = visibility.verify_visibility_call_preimages(images, pins(images))
         expected = {(name, rva, code.hex(), callback) for name, _, rva, code, callback in visibility.CALLS}
-        self.assertEqual(len(expected), 13)
-        self.assertEqual(result['call_count'], 13)
+        self.assertEqual(len(expected), 15)
+        self.assertEqual(result['call_count'], 15)
         self.assertEqual({(x['module'], x['rva'], x['before'], x['callback'])
                           for x in result['call_preimages']}, expected)
         self.assertFalse(result['stack_rewriting'])
@@ -239,7 +239,7 @@ EXPORT int fixture_leaf(uint32_t blob,uint32_t hook,const uint64_t*args,uint64_t
         self.assertEqual(SOURCE.read_bytes(), self.original)
 
     def test_compiler_preserves_old_metadata_and_all_new_branch_contracts(self):
-        self.assertEqual(sum(len(x['hooks']) for x in self.after), 22)
+        self.assertEqual(sum(len(x['hooks']) for x in self.after), 24)
         actual = set()
         for prior, current in zip(self.before, self.after):
             self.assertEqual(prior['module'], current['module'])
@@ -281,7 +281,7 @@ EXPORT int fixture_leaf(uint32_t blob,uint32_t hook,const uint64_t*args,uint64_t
                     self.assertEqual(self.libs[1].fixture_leaf(blob, hook, args, out), 1)
                     self.assertEqual(list(out), [*values, checksum])
                     tested += 1
-        self.assertEqual(tested, 12)
+        self.assertEqual(tested, 14)
 
     def test_generated_frame_context_leaf_preserves_native_stack_and_nonvolatiles(self):
         private_tools = ROOT / '.local/toolchain/world-options-validation'

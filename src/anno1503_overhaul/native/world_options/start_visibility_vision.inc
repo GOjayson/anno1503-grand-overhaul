@@ -58,6 +58,50 @@ static int wsVisibilityObserverList(WSVisibilityDrawContext*c,void*human,size_t 
  }
  return previous==wsCertPointer(human,headOffset+8u);
 }
+static int wsVisibilityUnitObserversRead(WSVisibilityDrawContext*c){
+ /* This is an adapter traversal bound, not a claimed native unit limit.
+  * Native Player+110(selector0) selects this 24-byte owned-unit list.
+  * A thief's generic owner getter returns its espionage object; all six
+  * controlling-player backlinks are independently native-proven at+B8. */
+ static const uint32_t classes[6]={0xeb5f0u,0xeeff8u,0xef3a8u,0xef750u,0xefb00u,0xefeb8u};
+ void*ends[2]={0};if(!wsCertRead(c->human+0x2b8,ends,sizeof ends))return 0;
+ void*node=ends[0],*previous=0;uint32_t count=0,checked=0;
+ uintptr_t seen[WS_VISIBILITY_UNIT_LIMIT*2u];if(node)memset(seen,0,sizeof seen);
+ while(node){
+  void*links[3];if(count>=WS_VISIBILITY_UNIT_LIMIT||!wsCertRead(node,links,sizeof links)||links[0]!=previous||!links[2])return 0;
+  uintptr_t key=(uintptr_t)links[2],slot=((key>>4)^(key>>17))%(WS_VISIBILITY_UNIT_LIMIT*2u);
+  while(seen[slot]&&seen[slot]!=key)slot=(slot+1u)%(WS_VISIBILITY_UNIT_LIMIT*2u);
+  if(seen[slot])return 0;seen[slot]=key;count++;
+  void*vt=0;if(!wsCertRead(links[2],&vt,sizeof vt))return 0;
+  uint32_t kind=0;while(kind<6u&&vt!=c->view.module+classes[kind])kind++;
+  if(kind<6u){
+   if(!(checked&(1u<<kind))){
+    if(!wsVisibilityActorLayout(links[2],c->view.module)||
+       wsCertPointer(vt,0x138)!=c->view.module+(kind<4u?0xaf00u:0x27360u))return 0;
+    checked|=1u<<kind;
+   }
+   unsigned char raw[0xc0];void*world=0,*owner=0,*island=0,*copiedVt=0;
+   uint16_t flags=0;int16_t health=0;float x=0,z=0;
+   if(!wsCertRead(links[2],raw,sizeof raw))return 0;
+   memcpy(&copiedVt,raw,8);memcpy(&flags,raw+0xc,2);memcpy(&health,raw+0x18,2);
+   memcpy(&world,raw+0x28,8);memcpy(&island,raw+0x30,8);memcpy(&owner,raw+0xb8,8);
+   memcpy(&x,raw+0x40,4);memcpy(&z,raw+0x48,4);if(copiedVt!=vt)return 0;
+   /* Native bit80 is transported crew; bit08 is hidden animation19, and
+    * bits02/04 are death/cleanup. Bit01 means movement, so stationary
+    * observers must not require it. Excluded units leave other vision intact. */
+   if(owner==c->human&&world==c->view.world&&health>0&&!(flags&0x8eu)&&wsVisibilityPointValid(&c->view,x,z)){
+    const WSVisibilityIsland*known=0;
+    for(uint32_t n=0;n<WS_VISIBILITY_ISLAND_LIMIT;n++)if(c->present[n]&&c->islands[n].object==island){known=c->islands+n;break;}
+    if(known&&x>=(float)known->x&&z>=(float)known->y&&x<(float)(known->x+known->width)&&z<(float)(known->y+known->height)){
+     if(c->visionCount>=WS_VISIBILITY_VISION_LIMIT)return 0;
+     WSVisibilityVisionSource*s=c->vision+c->visionCount++;s->left=s->right=x;s->top=s->bottom=z;
+    }
+   }
+  }
+  previous=node;node=links[1];
+ }
+ void*current[2]={0};return previous==ends[1]&&wsCertRead(c->human+0x2b8,current,sizeof current)&&current[0]==ends[0]&&current[1]==ends[1];
+}
 static int wsVisibilityObserversRead(WSVisibilityDrawContext*c){
  void*table=wsCertPointer(c->view.world,0x210);uint32_t id=UINT32_MAX;
  if(wsCertPointer(table,0)!=c->view.module+0xfdbc0)return 0;
@@ -65,7 +109,7 @@ static int wsVisibilityObserversRead(WSVisibilityDrawContext*c){
  if(wsCertPointer(c->human,0)!=c->view.module+0xfabe0||wsCertPointer(c->human,0x10)!=c->view.world||
     !wsCertRead(c->human+8,&id,4)||id)return 0;
  return wsVisibilityObserverList(c,c->human,0x2e8,WS_VISIBILITY_SHIP_LIMIT,0)&&
-  wsVisibilityObserverList(c,c->human,0x318,WS_VISIBILITY_CITY_LIMIT,1);
+  wsVisibilityObserverList(c,c->human,0x318,WS_VISIBILITY_CITY_LIMIT,1)&&wsVisibilityUnitObserversRead(c);
 }
 static int wsVisibilityInSight(const WSVisibilityDrawContext*c,float x,float z){
  if(!wsVisibilityPointValid(&c->view,x,z))return 0;

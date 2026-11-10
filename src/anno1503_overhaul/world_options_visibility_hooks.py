@@ -22,6 +22,12 @@ RENDER_HOOKS = (
     (0xf638c0, 0x49410, 'WorldSettingsVisibilityRenderStatic180'),
     (0xf638c8, 0x49bd0, 'WorldSettingsVisibilityRenderStatic188'),
 )
+CONTROL_HOOKS = (
+    (0xa7248, 0x78630, 'WorldSettingsVisibilityBuildingCommand'),
+    (0xa7250, 0x785d0, 'WorldSettingsVisibilityShipQueue'),
+    (0xa74f0, 0x7d340, 'WorldSettingsVisibilityBuildingCommand'),
+    (0xa74f8, 0x7d230, 'WorldSettingsVisibilityShipQueue'),
+)
 INSTALLER = 'developer/source/engine_resume/ai_loader/install_test_hooks.c'
 
 
@@ -58,15 +64,20 @@ def verify_renderer_visibility_preimages(data: bytes, expected_sha: str):
     return _verify_dispatch_preimages(data, expected_sha, RENDER_HOOKS, 'Display')
 
 
+def verify_control_visibility_preimages(data: bytes, expected_sha: str):
+    """Prove both local and network client building-command dispatches."""
+    return _verify_dispatch_preimages(data, expected_sha, CONTROL_HOOKS, 'Frame')
+
+
 def apply_visibility_hooks(files: dict[str, bytes]) -> None:
     value = files[INSTALLER]
     value = replace(value, b'#define WS_MAX_HOOKS (16+WS_ENGINE_PATCH_COUNT)',
-        b'#define WS_MAX_HOOKS (29+WS_ENGINE_PATCH_COUNT)', 'bounded visibility dispatch transaction capacity')
+        b'#define WS_MAX_HOOKS (35+WS_ENGINE_PATCH_COUNT)', 'bounded visibility dispatch transaction capacity')
     value = replace(value, b'static char wsInstallError[512];',
         b'static char wsInstallError[512];\n'
-        b'#define WS_VISIBILITY_POINTER_COUNT 7u\n'
-        b'#define WS_VISIBILITY_CALL_COUNT 13u\n'
-        b'#define WS_VISIBILITY_HOOK_COUNT 20u\n'
+        b'#define WS_VISIBILITY_POINTER_COUNT 11u\n'
+        b'#define WS_VISIBILITY_CALL_COUNT 15u\n'
+        b'#define WS_VISIBILITY_HOOK_COUNT 26u\n'
         b'static DWORD wsVisibilityPatchStatusUnlocked(void);',
         'visibility readiness declarations')
     value = replace(value, b' ReleaseSRWLockShared(&wsInstallLock);return result;',

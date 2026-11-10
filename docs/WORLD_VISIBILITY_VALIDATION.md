@@ -1,13 +1,92 @@
 # Map visibility and terra incognita validation
 
-## 0.6.0-dev.2 chart memory: candidate verification
+## 0.6.0-dev.3 repair in progress
 
-The development candidate adds continuous exploration of land and sea,
-and last-seen building memory. Source review, reproducible compilation and
-isolated native checks, the full suite and installation/restoration have passed.
-The managed copy now has **World Settings enabled and Food disabled**. Actual
-game rendering and save/reload acceptance are still in progress. The accepted
-r8 baseline and its evidence below remain separate.
+The latest source addresses three user-reported failures in V3. Automated
+checks, reproduced builds, independent artifact review and the production
+installation/restoration cycle passed. A fresh automatic World-only startup
+loaded `wc3`. The user confirmed that foreign controls are blocked, own
+controls work and a deployed scout reveals land. This is bounded hands-on
+acceptance of those two repairs. The user saved `wc4`; its independent file
+inspection is pending. Lag improved but remains noticeable, so **performance
+is unresolved and complete repair acceptance has not passed**. No Food + World
+gameplay run is being repeated, at the user's request.
+
+| Identity | Reviewed 0.6.0-dev.3 repair |
+| --- | --- |
+| Generator | `ws6-0394e0a1e15da31501da912e6760f36c8ffcc1651e624c98138b46d6c3ad9375` |
+| World-only runtime SHA-256 | `3dd5d6fad83c33aded8e0b8b96b0fa2cd12234601e917674fcbcb92df5cff80f` |
+| Food + World runtime SHA-256 | `5ad71345ce2f23ed45c77206423052c769f921bb72fd84cedef00e44674f1207` |
+
+Each profile has three byte-identical completed builds: two candidates and
+one publication build. The independent pre/post-publication artifact audits
+passed all six actual DLLs, **34 raw LF/index generator inputs, 85 exports,
+11 pointer hooks, 15 code branches, 26 visibility components and all 208
+transaction components**. The 173 existing engine edits remain intact.
+
+The complete suite ran **350 tests in 182.664 seconds: 345 passed and five
+Windows link-privilege tests were skipped**. It finished without failures or
+errors. Actual compiled DLL APIs also passed **72 isolated scene stages**
+across both Food selections, all six policies, 512/1024/2048 worlds and two
+seeds, with zero ordinary AI. These checks neither start Anno nor establish
+rendered behavior, gameplay performance or active-AI acceptance.
+
+The completed production cycle restored/installed the reviewed profiles and
+finished with World Settings enabled and Food disabled. It retained **42 named
+worlds / 43 native saves, 56 protected save-directory files, five presets,
+23 original source inputs, 297 historical backups and all 488/43 imported
+inputs**. The 38 preceding backup generations remained intact; three newly
+restored generations give **41**. This closed-game cycle does not establish
+rendering or performance.
+
+Automatic startup and the certified `wc3` load then passed in a fresh process,
+with the bounded activation/error checks clear. The separate 96-byte chart
+diagnostic was busy during rendering and has **not** passed its live read yet;
+a successful history diagnostic is not inferred from the other checks.
+
+| Repair | Source and automated scope | Actual game status |
+| --- | --- | --- |
+| Dense building-memory lag | Mix aligned coordinate bits before hash-table indexing; preserve exact key comparisons and remembered appearance. Picking passes read history without observing or updating it, and skip presentation refresh work. Dense native lookup and full-wrapper fixtures pass. | The user reports improvement but still-noticeable lag. Performance remains unresolved; CPU-fixture speedup is not game FPS. |
+| Foreign building control | Restore the ordinary native ownership-selection test at two interaction consumers. Independently authorize the two shared production/food-sale and ship-queue command interfaces using the current registered building/city/island/player ownership graph. Reveal and remembered appearance grant no command authority. Unmarked native worlds keep their original delegation. | The user confirmed foreign controls blocked and own controls working. This is a bounded check; stale selections, broader command paths and read-only information/trade still need extended coverage. |
+| Missing military/scout exploration | Add eligible human-owned deployed scouts and military units to charting/current sight at the unchanged 48-tile radius. Six audited native classes share a bounded 4,096-record adapter traversal; this is not a native recruitment cap. Dead, transported, foreign, stale and malformed records are excluded. | The user confirmed a deployed scout reveals land and saved `wc4`. Independent save inspection, other unit classes and embarked/dead-unit behavior remain to be checked in the game. |
+
+The completed targeted groups contain **40 visibility/performance/land-unit
+methods**, **43 hook/branch checks** and **six ownership-command methods**.
+The command tests cover all 28 positively audited native building classes,
+all six policies, both native World/Frame/client types, current-owner changes,
+malformed graphs, real Windows page/execute protection, legacy irregular map
+dimensions, all four arguments and the complete native return value. These are
+isolated fixtures; the final original command/getter invocation is a spy.
+
+Separate exact History Edition instruction probes exercised **384 interaction
+cases** using the original property getter and selection blocks, and **432
+land-unit cases**. Their stock/Food module identities and original preimages
+are pinned; classic-version patch addresses are not assumed. The existing
+173-edit engine plan is preserved. Source tests are in
+[`test_world_visibility_control.py`](../tests/test_world_visibility_control.py),
+[`test_world_visibility_land_units.py`](../tests/test_world_visibility_land_units.py)
+and [`test_world_visibility_performance.py`](../tests/test_world_visibility_performance.py).
+The repair does not establish arbitrary multiplayer replay, every command
+interface, combat/navigation behavior or full rendering/selection coverage.
+
+V3’s user-confirmed last-seen retention and revisit updates remain bounded
+positive evidence. Its later lag, foreign shipyard queues, production sleep
+and food-sale controls, and absent military/scout exploration remain recorded
+failures. The independently inspected `wc1`, `wc2` and `wc3` files are native
+game-produced checkpoints; their validity does not establish repair acceptance.
+The `wc1` to `wc2` stored-data comparison retained all 947 control anchors in
+four foreign owner/island groups byte-for-byte, including observation times.
+It does not prove the ship’s intervening route or a complete GPU frame.
+
+## Historical 0.6.0-dev.2 V3 chart-memory verification
+
+This preceding candidate added continuous exploration of land and sea, and
+last-seen building memory. Source review, reproducible compilation, isolated
+native checks, its full suite and installation/restoration passed. Its bounded
+World-only building-memory checks passed, but actual lag, foreign control and
+missing land-unit exploration reports prevent release acceptance. These V3
+results do not certify the dev.3 repair. The accepted older r8 baseline and its
+evidence below remain separate.
 
 | Identity | Reviewed chart-memory candidate |
 | --- | --- |
@@ -26,9 +105,10 @@ revealed geography and fully explored modes retain global activity reveal.
 Strict line of sight keeps the existing 48-tile activity range. Observed
 buildings remain as visual snapshots outside sight, including their last-seen
 appearance and ownership colour; they update on observation. Enemy ships and
-units still require current sight. Remembered buildings do not become selectable
-live objects. Renderer/picking fixtures do not establish every tooltip or
-interaction path; those require actual game checks.
+units still require current sight. Remembered draws do not create native live
+objects, but V3’s interaction path still allowed foreign native buildings to
+be controlled. Its renderer/picking fixtures did not establish ownership
+authorization; the dev.3 repair and its pending game checks are separate.
 
 Chart and building memory belong to each native checkpoint, using a bounded,
 checksummed `WSCHART` extension rather than a sidecar. Save As carries the
@@ -122,9 +202,12 @@ were zero, and the save-memory error was empty; error 16 remained sticky.
 The pause/presentation case remains under investigation and is not recorded
 as an entirely error-free live run.
 
-Actual distant-building rendering, exploration-memory restart/revisit and
-hands-on performance acceptance remain pending. No additional Food-profile
-gameplay run is planned, as requested by the user.
+The user subsequently confirmed that remembered buildings stay visible when
+sailing away and update on returning. Independent `wc2` and `wc3` checkpoint
+checks passed. Lag, foreign production/shipyard control and missing land-unit
+exploration were then reported. V3 therefore remains unaccepted; broader
+rendering, fresh-world and fresh-process persistence coverage remain pending.
+No additional Food-profile gameplay run is planned, as requested by the user.
 
 ## Accepted 0.6.0-dev.1 baseline
 
@@ -443,7 +526,7 @@ discovery on a subsequent normal tick. That native discovery query is
 independent of the mod's **48-tile current activity sight**. R5 does not
 replace permanent island discovery with its activity-range predicate.
 
-## Current native implementation
+## Historical r6–r8 native implementation
 
 The implementation uses exact History Edition **AMD64** interfaces and
 profile-specific preimages. It does not assume classic-version addresses.
@@ -1255,6 +1338,7 @@ World-only smoothness/visibility sample does not stand in for a Food live
 test. The 14-tile native discovery query remains distinct from the 48-tile
 current activity sight in both profiles.
 
-There is no per-tile exploration implementation or multiplayer visibility
-support in this work. Long-session economy, AI strategy, combat, navigation
-and performance are not established by the targeted fixtures above.
+The historical r8 baseline above has whole-island discovery rather than the
+new charted-cell implementation. Neither baseline establishes multiplayer
+visibility support. Long-session economy, AI strategy, combat, navigation and
+performance are not established by the targeted fixtures above.

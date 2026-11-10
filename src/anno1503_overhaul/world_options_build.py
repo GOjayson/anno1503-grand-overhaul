@@ -22,10 +22,10 @@ from .world_options_visibility_calls import CALLS, DISPLAY_SHA256, verify_visibi
 
 
 PINNED_RUNTIMES = {
-    'world-only': '2d2cfeb38245bcdd6d68bf20b42e40d039b57969f0628df96414a28ebc0b276b',
-    'food-world': 'b538559cf2c3be0a39f24db2e783370859aee5fdb4edd7d08e4cfdb8d4c70007',
+    'world-only': '3dd5d6fad83c33aded8e0b8b96b0fa2cd12234601e917674fcbcb92df5cff80f',
+    'food-world': '5ad71345ce2f23ed45c77206423052c769f921bb72fd84cedef00e44674f1207',
 }
-PINNED_GENERATOR = 'ws6-315c8830e9685ede73a466ad8ad7bd9ce39786f22446ede1de709c028cc2da5a'
+PINNED_GENERATOR = 'ws6-0394e0a1e15da31501da912e6760f36c8ffcc1651e624c98138b46d6c3ad9375'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
     'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',
@@ -41,6 +41,7 @@ REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSe
     'WorldSettingsVisibilityBeforeLoad', 'WorldSettingsVisibilityAfterLoad',
     'WorldSettingsVisibilityCancelLoad', 'WorldSettingsVisibilityReleaseUnpublishedScene',
     'WorldSettingsVisibilityCommitFresh', 'WorldSettingsVisibilityCancelFresh',
+    'WorldSettingsVisibilityBuildingCommand', 'WorldSettingsVisibilityShipQueue',
     'WorldSettingsCopyMemoryError',
     'WorldSettingsCopyVisibilityChartDiagnostics'} | {row[4] for row in CALLS}
 UNITS = [PRIVATE + name for name in ('WorldSettings.c', 'world_backend.c', 'world_ai.c')]
@@ -77,11 +78,14 @@ def derive_sources(profile: str, files: dict[str, bytes], game: Path):
     files[old.ENGINE_PLAN] = plan
     proof = old.verify_native_preimages(game, files[old.BLOBS], plan, expected_hashes=expected)
     from .world_options_visibility_hooks import (verify_visibility_preimages,
-                                                verify_renderer_visibility_preimages)
+                                                verify_renderer_visibility_preimages,
+                                                verify_control_visibility_preimages)
     proof['visibility_dispatch'] = verify_visibility_preimages(
         (game / 'AnnoWelt.dll').read_bytes(), expected['AnnoWelt.dll'])
     proof['visibility_renderer_dispatch'] = verify_renderer_visibility_preimages(
         (game / 'AnnoDisplay.dll').read_bytes(), expected['AnnoDisplay.dll'])
+    proof['visibility_control_dispatch'] = verify_control_visibility_preimages(
+        (game / 'AnnoFrame.dll').read_bytes(), expected['AnnoFrame.dll'])
     proof['strict_visibility_calls'] = verify_visibility_call_preimages(
         {name: (game / name).read_bytes() for name in {row[0] for row in CALLS}}, expected)
     result = apply_options(files)

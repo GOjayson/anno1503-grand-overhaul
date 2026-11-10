@@ -346,7 +346,10 @@ typedef void (__cdecl*WSChartNativeColor)(void*,const uint16_t*,uint32_t,uint32_
 #endif
 static uint32_t wsChartGhostHash(void*frame,uint32_t orientation,uint32_t kind,const uint32_t xyz[3],uint32_t flags){
  uintptr_t p=(uintptr_t)frame;uint32_t n=(uint32_t)p^(uint32_t)(p>>32)^orientation*31u^kind*131u^flags;
- for(uint32_t k=0;k<3;k++)n=(n^xyz[k])*16777619u;return n;
+ for(uint32_t k=0;k<3;k++)n=(n^xyz[k])*16777619u;
+ /* Tile/half-tile IEEE coordinates share low mantissa bits. Mix high bits
+  * down before a power-of-two mask, rather than clustering whole towns. */
+ n^=n>>16;n*=0x7feb352du;n^=n>>15;n*=0x846ca68bu;n^=n>>16;return n;
 }
 static int wsChartGhostInsert(WSChartDraw*d,const WSChartGhost*record){
  if(!d->ghostCapacity||d->ghostCount*2u>=d->ghostCapacity){
@@ -455,9 +458,10 @@ static int wsChartPrepareCopies(WSVisibilityDrawContext*c,WSChartDraw*d){
 }
 static int wsVisibilityChartBeginDraw(WSVisibilityDrawContext*c,void*list,uint32_t time,void*renderer,int picking){
  if(!wsVisibilityChartReadBegin(&c->view,&c->chart))return 0;
- if(!wsChartObserve(c,time)){wsVisibilityChartReadEnd(&c->chart);return 0;}
  uint32_t mode=0;if(!wsCertRead((unsigned char*)renderer+0x498,&mode,4)||mode>5u){wsVisibilityChartReadEnd(&c->chart);return 0;}
- c->chart.generation=wsChartActive.generation;if(picking||mode==4u||mode==5u)return 1;
+ if(picking||mode==4u||mode==5u)return 1;
+ if(!wsChartObserve(c,time)){wsVisibilityChartReadEnd(&c->chart);return 0;}
+ c->chart.generation=wsChartActive.generation;
  WSChartDraw*d=(WSChartDraw*)calloc(1,sizeof(*d));if(!d){wsVisibilityChartReadEnd(&c->chart);return 0;}
  d->list=list;d->renderer=renderer;d->renderMode=mode;d->captureVtable[0x180/8]=(void*)wsChartCaptureSprite;d->captureVtable[0x188/8]=(void*)wsChartCaptureSprite;d->captureObject[0]=d->captureVtable;d->captureObject[1]=d;c->chartDraw=d;
  if(!wsChartPrepareCopies(c,d)){wsVisibilityChartEndDraw(c);return 0;}return 1;

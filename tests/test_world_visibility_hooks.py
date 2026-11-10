@@ -24,17 +24,19 @@ from anno1503_overhaul.world_runtime_build import PE, RuntimeBuildError
 SOURCE = ROOT / 'legacy/world_settings' / visibility.INSTALLER
 DISPATCH = tuple((slot, target) for slot, target, _ in visibility.HOOKS)
 RENDER_DISPATCH = tuple((slot, target) for slot, target, _ in visibility.RENDER_HOOKS)
+CONTROL_DISPATCH = tuple((slot, target) for slot, target, _ in visibility.CONTROL_HOOKS)
 POINTERS = (tuple(('AnnoWelt.dll', slot, target) for slot, target in DISPATCH) +
-            tuple(('AnnoDisplay.dll', slot, target) for slot, target in RENDER_DISPATCH))
+            tuple(('AnnoDisplay.dll', slot, target) for slot, target in RENDER_DISPATCH) +
+            tuple(('AnnoFrame.dll', slot, target) for slot, target in CONTROL_DISPATCH))
 COMPONENTS = len(POINTERS) + len(call_visibility.CALLS)
-TRANSACTION_CAPACITY = 29 + 173
+TRANSACTION_CAPACITY = 35 + 173
 PREPARED_COMPONENTS = 9 + len(call_visibility.CALLS) + 173
 
 
-def fixture_pe(profile=0, image_base=0x180000000, renderer=False):
+def fixture_pe(profile=0, image_base=0x180000000, renderer=False, control=False):
     """Fixture-only digests bind different synthetic profile envelopes."""
-    sections = ((b'.text', 0x1000, 0xdf000, 0x400, 0x60000020),
-                (b'.rdata', 0xf60000 if renderer else 0xf0000, 0x10000, 0xdf400, 0x40000040),
+    sections = ((b'.text', 0x1000, 0x8f000 if control else 0xdf000, 0x400, 0x60000020),
+                (b'.rdata', 0xf60000 if renderer else 0xa0000 if control else 0xf0000, 0x10000, 0xdf400, 0x40000040),
                 (b'.pdata', 0x100000, 0x1000, 0xef400, 0x40000040))
     data = bytearray(0xf0400)
     data[:2] = b'MZ'
@@ -47,7 +49,7 @@ def fixture_pe(profile=0, image_base=0x180000000, renderer=False):
     struct.pack_into('<Q', data, optional + 24, image_base)
     struct.pack_into('<II', data, optional + 56, 0xf70000 if renderer else 0x101000, 0x400)
     struct.pack_into('<I', data, optional + 108, 16)
-    dispatch = RENDER_DISPATCH if renderer else DISPATCH
+    dispatch = RENDER_DISPATCH if renderer else CONTROL_DISPATCH if control else DISPATCH
     targets = sorted({target for _, target in dispatch})
     struct.pack_into('<II', data, optional + 112 + 3 * 8, 0x100000, len(targets) * 12)
     for index, (name, rva, size, raw, flags) in enumerate(sections):
@@ -194,6 +196,24 @@ class RendererVisibilityPreimageTests(VisibilityPreimageTests):
                     verifier(data, hashlib.sha256(data).hexdigest())
 
 
+class ControlVisibilityPreimageTests(VisibilityPreimageTests):
+    fixture = staticmethod(lambda profile=0, image_base=0x180000000:
+                           fixture_pe(profile, image_base, control=True))
+    dispatch = CONTROL_DISPATCH
+    verifier = staticmethod(visibility.verify_control_visibility_preimages)
+
+    def test_both_native_clients_have_separate_queue_and_production_bindings(self):
+        self.assertEqual(visibility.CONTROL_HOOKS, (
+            (0xa7248, 0x78630, 'WorldSettingsVisibilityBuildingCommand'),
+            (0xa7250, 0x785d0, 'WorldSettingsVisibilityShipQueue'),
+            (0xa74f0, 0x7d340, 'WorldSettingsVisibilityBuildingCommand'),
+            (0xa74f8, 0x7d230, 'WorldSettingsVisibilityShipQueue'),
+        ))
+        for data in (bytes(fixture_pe()), bytes(fixture_pe(renderer=True))):
+            with self.assertRaises(RuntimeBuildError):
+                self.verify(data)
+
+
 class VisibilityStagingTests(unittest.TestCase):
     def test_staging_preserves_inputs_and_original_commit_rollback_thread_guards(self):
         original = SOURCE.read_bytes()
@@ -216,7 +236,7 @@ class VisibilityStagingTests(unittest.TestCase):
             self.assertEqual(result.count(token), 1)
         for macro, count in ((b'POINTER', len(POINTERS)), (b'CALL', len(call_visibility.CALLS)), (b'HOOK', COMPONENTS)):
             self.assertIn(b'#define WS_VISIBILITY_' + macro + b'_COUNT ' + str(count).encode() + b'u', result)
-        self.assertEqual(PREPARED_COMPONENTS + len(POINTERS), 202)
+        self.assertEqual(PREPARED_COMPONENTS + len(POINTERS), 208)
         self.assertLess(result.index(b'wsPrepareVisibility(self,patches,'),
                         result.index(b'if(!wsSuspendThreads('))
         pause = result.index(b'if(!wsSuspendThreads(')
@@ -330,7 +350,7 @@ static int wsReadable(const void*p,size_t n){
  o=at-(uintptr_t)displayImage;if(o<=sizeof displayImage&&n<=sizeof displayImage-o)return displayFault!=4;
  o=at-(uintptr_t)allocations;return o<=sizeof allocations&&n<=sizeof allocations-o;}
 '''
-        exports = list(dict.fromkeys([export for _, _, export in (*visibility.HOOKS, *visibility.RENDER_HOOKS)]
+        exports = list(dict.fromkeys([export for _, _, export in (*visibility.HOOKS, *visibility.RENDER_HOOKS, *visibility.CONTROL_HOOKS)]
                                     + [row[4] for row in call_visibility.CALLS]))
         for index in range(len(exports)):
             source += f'static void callback_{index}(void){{}}\n'
@@ -354,6 +374,7 @@ __declspec(dllexport) void fixture_reset(void){memset(image,0,sizeof image);mems
 __declspec(dllexport) uintptr_t fixture_base(void){return(uintptr_t)image;}
 __declspec(dllexport) uint32_t fixture_image_bytes(void){return sizeof image;}
 __declspec(dllexport) uintptr_t fixture_display_base(void){return(uintptr_t)displayImage;}
+__declspec(dllexport) uintptr_t fixture_frame_base(void){return(uintptr_t)frameImage;}
 __declspec(dllexport) uint32_t fixture_display_bytes(void){return sizeof displayImage;}
 __declspec(dllexport) int fixture_prepare(uint32_t count){preparedCount=initialCount=count;return wsPrepareVisibility((HMODULE)1,prepared,&preparedCount);}
 __declspec(dllexport) int fixture_null_argument(int which){uint32_t count=0;return wsPrepareVisibility((HMODULE)1,which==0?NULL:prepared,which==1?NULL:&count);}
@@ -365,6 +386,7 @@ __declspec(dllexport) const void*fixture_after(uint32_t i){return prepared[i].af
 __declspec(dllexport) const char*fixture_error(void){return lastError;}
 __declspec(dllexport) void fixture_fault(int kind,int value){if(kind==0)missingExport=value;if(kind==1)unreadable=value;if(kind==2)missingImage=value;if(kind==3)image[value]^=1;if(kind==4){prepared[0].address=image+value;prepared[0].length=8;}if(kind==5)wsInstallState=value;}
 __declspec(dllexport) void fixture_display_fault(int kind,uint32_t value){if(kind==0)displayFault=(int)value;if(kind==1)displayImage[value]^=1;if(kind==2){prepared[0].address=displayImage+value;prepared[0].length=8;}}
+__declspec(dllexport) void fixture_frame_fault(int kind,uint32_t value){if(kind==0)frameImage[value]^=1;if(kind==1){prepared[0].address=frameImage+value;prepared[0].length=8;}}
 __declspec(dllexport) void fixture_call_fault(int kind,uint32_t i){WSPatch*p=fixture_call(i);if(!p)return;unsigned char*bridge=NULL;int32_t d;memcpy(&d,p->after+1,4);bridge=p->address+5+d;
  if(kind==0)p->after[0]^=1;if(kind==1)p->before[0]^=1;if(kind==2)bridge[0]^=1;if(kind==3)bridge[wsVisibilityCallPlan[i].contextArgument?16:8]^=1;
  if(kind==4)for(uint32_t j=0;j<WS_BLOB_COUNT;j++)wsInstalled[j].registered=0;
@@ -383,13 +405,14 @@ __declspec(dllexport) void fixture_restore_only(void){for(uint32_t i=preparedCou
             cls.temp.cleanup()
             raise AssertionError(result.stdout + result.stderr)
         cls.lib = C.CDLL(str(output))
-        for name in ('fixture_base', 'fixture_display_base', 'fixture_address', 'fixture_before', 'fixture_after'):
+        for name in ('fixture_base', 'fixture_display_base', 'fixture_frame_base', 'fixture_address', 'fixture_before', 'fixture_after'):
             getattr(cls.lib, name).restype = C.c_size_t
         for name in ('fixture_count', 'fixture_length', 'fixture_image_bytes', 'fixture_display_bytes', 'WorldSettingsVisibilityPatchStatus', 'WorldSettingsEnginePatchStatus'):
             getattr(cls.lib, name).restype = C.c_uint32
         cls.lib.fixture_prepare.argtypes = [C.c_uint32]
         cls.lib.fixture_fault.argtypes = [C.c_int, C.c_int]
         cls.lib.fixture_display_fault.argtypes = [C.c_int, C.c_uint32]
+        cls.lib.fixture_frame_fault.argtypes = [C.c_int, C.c_uint32]
         cls.lib.fixture_call_fault.argtypes = [C.c_int, C.c_uint32]
         cls.lib.fixture_null_argument.argtypes = [C.c_int]
         cls.lib.fixture_error.restype = C.c_char_p
@@ -404,19 +427,21 @@ __declspec(dllexport) void fixture_restore_only(void){for(uint32_t i=preparedCou
     def image_hash(self):
         return tuple(hashlib.sha256(C.string_at(base, size)).digest() for base, size in
                      ((self.lib.fixture_base(), self.lib.fixture_image_bytes()),
-                      (self.lib.fixture_display_base(), self.lib.fixture_display_bytes())))
+                      (self.lib.fixture_display_base(), self.lib.fixture_display_bytes()),
+                      (self.lib.fixture_frame_base(), self.lib.fixture_image_bytes())))
 
     def test_prepare_records_exact_reversible_pointer_edits_without_publishing(self):
         before = self.image_hash()
         self.assertEqual(self.lib.fixture_count(), PREPARED_COMPONENTS)
         self.assertEqual(self.lib.fixture_prepare(PREPARED_COMPONENTS), 1)
-        self.assertEqual(self.lib.fixture_count(), 202)
+        self.assertEqual(self.lib.fixture_count(), 208)
         self.lib.fixture_reset()
         initial = TRANSACTION_CAPACITY - len(POINTERS)
         self.assertEqual(self.lib.fixture_prepare(initial), 1)
         self.assertEqual(self.lib.fixture_count(), TRANSACTION_CAPACITY)
         for index, (module, slot, target) in enumerate(POINTERS, initial):
-            base = self.lib.fixture_display_base() if module == 'AnnoDisplay.dll' else self.lib.fixture_base()
+            base = (self.lib.fixture_display_base() if module == 'AnnoDisplay.dll' else
+                    self.lib.fixture_frame_base() if module == 'AnnoFrame.dll' else self.lib.fixture_base())
             self.assertEqual(self.lib.fixture_address(index), base + slot)
             self.assertEqual(self.lib.fixture_length(index), 8)
             self.assertEqual(C.string_at(self.lib.fixture_before(index), 8),
@@ -491,6 +516,12 @@ __declspec(dllexport) void fixture_restore_only(void){for(uint32_t i=preparedCou
                 self.assertEqual(self.lib.WorldSettingsVisibilityPatchStatus(), 0)
                 self.assertEqual(self.lib.WorldSettingsEnginePatchStatus(), 0)
                 self.lib.fixture_display_fault(1, slot)
+        for slot, _ in CONTROL_DISPATCH:
+            with self.subTest(control_slot=slot):
+                self.lib.fixture_frame_fault(0, slot)
+                self.assertEqual(self.lib.WorldSettingsVisibilityPatchStatus(), 0)
+                self.assertEqual(self.lib.WorldSettingsEnginePatchStatus(), 0)
+                self.lib.fixture_frame_fault(0, slot)
         self.lib.fixture_display_fault(0, 4)
         self.assertEqual(self.lib.WorldSettingsVisibilityPatchStatus(), 0)
         self.assertEqual(self.lib.WorldSettingsEnginePatchStatus(), 0)
@@ -504,6 +535,24 @@ __declspec(dllexport) void fixture_restore_only(void){for(uint32_t i=preparedCou
         self.assertEqual(self.lib.WorldSettingsVisibilityPatchStatus(), COMPONENTS)
         self.lib.fixture_fault(5, -1)
         self.assertEqual(self.lib.WorldSettingsVisibilityPatchStatus(), 0)
+
+    def test_control_dispatch_preimages_exports_and_overlap_refuse_before_commit(self):
+        for slot, _ in CONTROL_DISPATCH:
+            for fault, at in ((0, slot), (1, slot), (1, slot + 7)):
+                with self.subTest(slot=slot, fault=fault, address=at):
+                    self.lib.fixture_reset()
+                    self.lib.fixture_frame_fault(fault, at)
+                    before = self.image_hash()
+                    self.assertEqual(self.lib.fixture_prepare(PREPARED_COMPONENTS), 0)
+                    self.assertEqual(self.image_hash(), before)
+                    self.assertEqual(self.lib.WorldSettingsVisibilityPatchStatus(), 0)
+        first = len(dict.fromkeys(row[2] for row in (*visibility.HOOKS, *visibility.RENDER_HOOKS)))
+        for missing in (first, first + 1):
+            self.lib.fixture_reset()
+            self.lib.fixture_fault(0, missing)
+            before = self.image_hash()
+            self.assertEqual(self.lib.fixture_prepare(PREPARED_COMPONENTS), 0)
+            self.assertEqual(self.image_hash(), before)
 
     def test_call_linkage_registered_leaf_import_and_profile_pin_fail_closed(self):
         for call in range(len(call_visibility.CALLS)):

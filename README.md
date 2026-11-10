@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.2 adds charted land and sea, last-seen buildings and exploration history in saves; stock startup, sampled fog, building-memory/revisit observations and Save As file checks passed; restart/performance acceptance remains pending |
+| World Settings | Priority | Experimental 0.6.0-dev.3 repairs lag, foreign-building controls and missing land-unit exploration; automated builds and installer cycling passed; ownership/scout checks passed in a bounded game sample, with lag still unresolved |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -68,22 +68,27 @@ The seven earlier menu additions are recorded in
 starting-position and resource controls have a separate
 [fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
 0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
-The current 0.6.0-dev.2 candidate passed automated checks and three matching
-builds for each Food selection, and its installation/restoration cycle passed.
-The final V3 stock profile automatically started and loaded `wv63`; continuous
-fog over unknown land and sea was observed. An actual Save As checkpoint,
-`wc1`, passed independent checks of its stored exploration history and
-remembered buildings. The user confirmed that known buildings remain visible
-after sailing away and that new development appears on return. The subsequent
-`wc2` checkpoint also passed independent history and native-world file checks.
-These are bounded observations in the running game; fresh-world generation,
-restart/reload persistence and performance acceptance remain pending. The earlier
-0.6.0-dev.1 r8 World-only startup and certified
-`wv63` reload passed, and the user confirmed smooth camera movement and working
-visibility in a bounded large-island and village-range sample. Those historical
-results are not tests of the new charted-world behavior. Food + World actual
-visibility gameplay is not being repeated at the user's request; its automated
-evidence remains separate.
+Development **0.6.0-dev.3 is a repair in progress**, with targeted automated
+checks for dense building-memory lookups, ownership checks on building and
+shipyard commands, and exploration by deployed scouts and military units.
+Its full suite passed: 350 tests, with 345 passing and five Windows
+link-privilege skips. Each Food selection has three identical reviewed builds,
+and 72 isolated compiled-DLL scene stages passed. Both installer packages are
+prepared and validated, and the production installation/restoration cycle
+passed. A fresh automatic launch loaded `wc3`; the user confirmed that foreign
+controls are blocked, own controls work and a deployed scout reveals land. The
+user saved `wc4`, whose independent file inspection is pending. Lag improved
+but is still noticeable, so performance acceptance remains unresolved. Food +
+World gameplay is not being repeated at the user's request.
+
+The preceding 0.6.0-dev.2 V3 candidate passed automated and installer checks.
+Its stock profile loaded `wv63`, displayed fog over unknown land and sea, and
+produced independently checked `wc1`, `wc2` and `wc3` checkpoints. The user
+confirmed that known buildings remain visible while away and update on return,
+then reported lag, foreign shipyard/production controls and missing exploration
+by land units. Those failures prevent release acceptance of V3. The earlier
+0.6.0-dev.1 r8 smoothness and visibility sample remains historical evidence;
+it does not validate the new charted-world behavior.
 
 The original `wv63` checkpoint was verified byte-for-byte in its automatic
 backup. The current named `wv63` checkpoint contains newer exploration history.
@@ -139,7 +144,9 @@ choices, it provides:
 - **Map visibility:** choose Unexplored (terra incognita), Geography revealed
   (the default), or Fully explored. Unexplored covers uncharted land and sea
   with an opaque layer in the main view. Your ships and settlements chart nearby
-  areas in eight-tile cells, which stay remembered. The minimap covers unknown areas uniformly,
+  areas in eight-tile cells, which stay remembered. The dev.3 repair also adds
+  deployed scouts and military units as observers; actual-game confirmation is
+  pending. The minimap covers unknown areas uniformly,
   without island outlines. Geography revealed shows the terrain layout;
   Fully explored also unlocks island fertility information. Native island
   contact still controls native fertility and gameplay knowledge; it does not
@@ -191,19 +198,30 @@ map-generation feature, not a promise that AI events or a played game will
 unfold identically. Earlier presets remain on disk when a new generator
 refuses their fingerprint; they are not silently converted. Compilation,
 native fixtures and actual game acceptance are distinguished in the
-[visibility validation record](docs/WORLD_VISIBILITY_VALIDATION.md). The current
-candidate completed 322 automated tests: 317 passed and five tests requiring
-Windows link privileges were skipped. It also passed 27 native/codec methods, 72
-isolated compiled-DLL scene stages across both Food selections, and three
-identical builds per selection with independent artifact review. The scene
-checks cover all six visibility combinations, 512/1024/2048 worlds and two
-seeds with zero ordinary AI; they do not run Anno or prove GPU behavior.
-Installation/restoration and the stock profile's startup, loaded-world fog
-sample and `wc1` Save As file certificate passed separately. Fresh-world and
-restart/reload persistence, revisit behavior and performance acceptance remain
-pending. The historical r8 sample does not establish those behaviors, broader interaction
-coverage or long-session stability. Earlier fairness
-acceptance remains bound to [its original build](docs/WORLD_FAIRNESS_VALIDATION.md).
+[visibility validation record](docs/WORLD_VISIBILITY_VALIDATION.md). The dev.3
+repair has passed 40 targeted visibility/performance/land-unit methods, 43
+hook/branch checks and six ownership-command methods. These include isolated
+native instruction and Windows memory fixtures; they do not prove game FPS or
+actual UI behavior. The full suite completed 350 tests in 182.664 seconds:
+345 passed and five Windows link-privilege tests were skipped. Independent
+review passed all six actual DLL builds, three identical builds per Food
+selection. Seventy-two isolated scene stages passed across both selections,
+all six policies, 512/1024/2048 worlds and two seeds, with zero ordinary AI.
+These stages do not run Anno. Both installer packages are prepared and
+validated, and the production installation/restoration cycle passed. Automatic
+startup and the `wc3` load passed in a fresh process. The user confirmed foreign
+controls blocked, own controls working and scout exploration, then saved `wc4`;
+its independent file check is pending. Lag remains noticeable despite an
+improvement. Broader gameplay and performance acceptance remain incomplete.
+
+The preceding V3 suite ran 322 tests: 317 passed and five Windows link-privilege
+tests were skipped. Its 72 isolated compiled-DLL scene stages and three identical
+builds per Food selection remain evidence for that build only. Its bounded
+building-memory observations do not resolve the reported lag, foreign controls
+or missing land-unit exploration. Fresh-world generation, restart/reload
+persistence, broader interactions and long-session stability need separate
+acceptance. Earlier fairness acceptance remains bound to
+[its original build](docs/WORLD_FAIRNESS_VALIDATION.md).
 
 ## Source and local builds
 
