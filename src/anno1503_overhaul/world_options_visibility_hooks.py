@@ -72,12 +72,14 @@ def verify_control_visibility_preimages(data: bytes, expected_sha: str):
 def apply_visibility_hooks(files: dict[str, bytes]) -> None:
     value = files[INSTALLER]
     value = replace(value, b'#define WS_MAX_HOOKS (16+WS_ENGINE_PATCH_COUNT)',
-        b'#define WS_MAX_HOOKS (36+WS_ENGINE_PATCH_COUNT)', 'bounded visibility dispatch transaction capacity')
+        b'#define WS_MAX_HOOKS (37+WS_ENGINE_PATCH_COUNT)', 'bounded visibility dispatch transaction capacity')
     value = replace(value, b'static char wsInstallError[512];',
         b'static char wsInstallError[512];\n'
-        b'#define WS_VISIBILITY_POINTER_COUNT 11u\n'
+        b'#define WS_VISIBILITY_NATIVE_POINTER_COUNT 11u\n'
+        b'#define WS_VISIBILITY_IMPORT_COUNT 1u\n'
+        b'#define WS_VISIBILITY_POINTER_COUNT 12u\n'
         b'#define WS_VISIBILITY_CALL_COUNT 16u\n'
-        b'#define WS_VISIBILITY_HOOK_COUNT 27u\n'
+        b'#define WS_VISIBILITY_HOOK_COUNT 28u\n'
         b'static DWORD wsVisibilityPatchStatusUnlocked(void);',
         'visibility readiness declarations')
     value = replace(value, b' ReleaseSRWLockShared(&wsInstallLock);return result;',
@@ -97,3 +99,119 @@ def apply_visibility_hooks(files: dict[str, bytes]) -> None:
         'visibility joins the single guarded complete transaction')
     files[INSTALLER] = value
     files['developer/source/engine_resume/ai_loader/visibility_hooks.inc'] = authored('visibility_hooks.inc')
+
+
+IMPORT_HOOKS = (
+    ('View.dll', 0xa1098, 'AnnoScene.dll', 'CreateAnnoSceneInstance',
+     0x11a0, 'WorldSettingsVisibilityCreateSceneFromView'),
+)
+
+FACTORY_HEAD = bytes.fromhex('41564883ec3048c7442420feffffff')
+
+def need(value, message):
+    if not value:
+        raise RuntimeBuildError(message)
+
+
+def cstring(pe, rva, maximum=256):
+    result = bytearray()
+    for offset in range(maximum):
+        value = pe.read(rva + offset, 1)[0]
+        if not value:
+            return result.decode('ascii')
+        need(value < 128, 'Native import/export name is not bounded ASCII.')
+        result.append(value)
+    raise RuntimeBuildError('Native import/export name is unterminated.')
+
+
+def import_binding(pe, slot):
+    rva, size = pe.directory(1)
+    need(rva and 40 <= size <= 20 * 4096 and size % 20 == 0,
+         'Native import descriptor directory is absent or unbounded.')
+    matches = []
+    terminated = False
+    for offset in range(0, size, 20):
+        lookup, stamp, forwarder, name, first = struct.unpack('<5I', pe.read(rva + offset, 20))
+        if not any((lookup, stamp, forwarder, name, first)):
+            terminated = True
+            break
+        if not first or slot < first or (slot - first) % 8 or (slot - first) // 8 >= 8192:
+            continue
+        need(lookup, 'The reviewed import requires a separate original lookup table.')
+        index = (slot - first) // 8
+        stopped = False
+        for at in range(index + 1):
+            thunk, = struct.unpack('<Q', pe.read(lookup + at * 8, 8))
+            if not thunk:
+                stopped = True
+                break
+        if stopped:
+            continue
+        need(not thunk & (1 << 63) and thunk <= 0xffffffff,
+             'The reviewed import must have one named lookup thunk.')
+        matches.append(dict(module=cstring(pe, name), name=cstring(pe, thunk + 2),
+                            lookup_rva=lookup + index * 8, hint_name_rva=thunk,
+                            thunk=thunk, descriptor_rva=rva + offset))
+    need(terminated and len(matches) == 1,
+         'Native import slot lacks one terminated descriptor/lookup owner.')
+    return matches[0]
+
+
+def exported_function(pe, name):
+    rva, size = pe.directory(0)
+    need(rva and size >= 40, 'Native export directory is absent.')
+    fields = struct.unpack('<IIHH7I', pe.read(rva, 40))
+    _, _, _, _, _, ordinal_base, functions, names, address_table, name_table, ordinals = fields
+    need(0 < functions <= 65536 and 0 < names <= 65536,
+         'Native export tables are unbounded.')
+    found = []
+    for i in range(names):
+        text_rva, = struct.unpack('<I', pe.read(name_table + i * 4, 4))
+        if cstring(pe, text_rva) != name:
+            continue
+        ordinal, = struct.unpack('<H', pe.read(ordinals + i * 2, 2))
+        need(ordinal < functions, 'Native export ordinal leaves its function table.')
+        target, = struct.unpack('<I', pe.read(address_table + ordinal * 4, 4))
+        need(not rva <= target < rva + size, 'Native factory export must not be forwarded.')
+        found.append(target)
+    need(len(found) == 1, 'Native factory export is absent or ambiguous.')
+    return found[0]
+
+
+def verify_import_visibility_preimages(images, expected_hashes):
+    parsed = {}
+    for name in {entry[i] for entry in IMPORT_HOOKS for i in (0, 2)}:
+        need(name in images and hashlib.sha256(images[name]).hexdigest() == expected_hashes[name],
+             'Visibility import requires the exact reviewed native ' + name + ' image.')
+        parsed[name] = PE(images[name])
+    rows = []
+    for owner, slot, imported, symbol, target, wrapper in IMPORT_HOOKS:
+        pe, dependency = parsed[owner], parsed[imported]
+        binding = import_binding(pe, slot)
+        need(binding['module'] == imported and binding['name'] == symbol,
+             'The reviewed View import descriptor/name differs.')
+        before = pe.read(slot, 8)
+        need(struct.unpack('<Q', before)[0] == binding['thunk'] and not pe.executable(slot, 8),
+             'The on-disk View thunk is not its exact nonexecutable named import.')
+        need(exported_function(dependency, symbol) == target,
+             'The imported Scene factory export RVA differs.')
+        entries = [row for row in dependency.function_table() if row[0] == target]
+        need(len(entries) == 1 and entries[0][1] > target and
+             dependency.executable(target, entries[0][1] - target),
+             'The imported Scene factory lacks complete executable function bounds.')
+        dependency.read(entries[0][2], 4)
+        need(dependency.read(target, len(FACTORY_HEAD)) == FACTORY_HEAD,
+             'The imported Scene factory instruction preimage differs.')
+        rows.append(dict(owner_module=owner, slot_rva=slot, imported_module=imported,
+                         imported_export=symbol, original_target_rva=target,
+                         wrapper_export=wrapper, disk_preimage=before.hex(),
+                         import_descriptor_rva=binding['descriptor_rva'],
+                         import_lookup_rva=binding['lookup_rva'], hint_name_rva=binding['hint_name_rva'],
+                         original_function_end_rva=entries[0][1],
+                         original_function_head=FACTORY_HEAD.hex(),
+                         disk_thunk_is_absolute_function_address=False))
+    return dict(machine='AMD64', pointer_bytes=8, dispatch_count=len(rows),
+                native_sha256={name: expected_hashes[name] for name in sorted(parsed)},
+                import_dispatch_preimages=rows, original_functions_not_patched=True,
+                loaded_preimage_rule='View IAT slot equals loaded AnnoScene.dll base plus its exact named export RVA')
+

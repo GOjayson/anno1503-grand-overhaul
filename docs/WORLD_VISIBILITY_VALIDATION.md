@@ -1,5 +1,133 @@
 # Map visibility and terra incognita validation
 
+## 0.6.0-dev.9 replacement-world loading
+
+V9's mineral fix was accepted, but its Frame filename hook did not cover the
+normal in-game Load menu. Exact native tracing identifies a different loader
+in **View.dll**, function `0x867F0`: it releases the current world, calls
+`CreateAnnoSceneInstance` through IAT `0xA1098` at `0x869B8`, obtains the new
+world from Scene `+D8`, then publishes it to the native Game. Read-only V9
+inspection found exploration bound to a discarded object while the actual
+render/control world was its replacement. This observation establishes the
+stale binding in that captured state; it does not supply a missing before/after
+pointer timeline for the earlier asynchronous test.
+
+V10 adds one separately verified **cross-module import pointer**. Its seven
+native arguments enter a small adapter that supplies the independently pinned
+original Scene factory as the eighth argument to the existing guarded factory
+wrapper. That wrapper stages and restores the selected checkpoint before the
+new scene can be published. The View disk import thunk is checked as a named
+import, never interpreted as an absolute same-module function pointer. Runtime
+preflight independently checks the loaded import lookup, named Scene export,
+instruction preimage and exact resolved pointer before the existing paused-thread
+transaction stages the reversible edit. Original game DLLs remain unchanged.
+
+| Identity | Published dev.9 build |
+| --- | --- |
+| Generator | `ws6-e980d1f2563739790004625336b4a6f243c94fb0e00bc59bb80662f4546693ae` |
+| World-only runtime SHA-256 | `06d3ba48a7afb4c697f4046eb722f0da265d4085acf9e2a3b92c9d6edfdbb3cd` |
+| Food + World runtime SHA-256 | `1492266e16f67a99e5b000a6f0b0e1f2214d5f6921dbe77de365d09f901a503e` |
+
+All **208 visibility tests passed in 39.443 seconds**, with no skips or failures.
+The new fixtures exercise actual Windows checkpoint files, unchanged chart
+lifecycle code, retired-world replacement, earlier-checkpoint rollback,
+same-GUID 1024-to-2048 transitions, failure cleanup and all seven Win64 arguments.
+Separate import fixtures check native named-import/export identity, cross-module
+ASLR, missing/mismatched images, modified descriptors, transaction capacity,
+overlap refusal and synthetic commit/restoration. They do not execute Anno or
+prove its display. The suite transcript SHA-256 is
+`5de3feb80ef9f1b277ac0268f86dcfc65da90e88d96ce1e70ae757d48262774a`.
+
+Independent pre/post-pin review passed **six builds**, with three identical
+runtimes per feature selection. The actual contract is **88 exports / 62 required,
+11 retained native pointers + one import pointer + 16 retained code branches =
+28 visibility components**, and **210 transaction components** including 173
+engine edits and nine original hooks. All 35 generator inputs / 66 staged sources
+retain their membership, and all 488 imported files / 43 original compiled
+inputs remain exact. Full V9 staged code-blob headers are byte-identical:
+this change adds no new native code bridge. The complete V9 mineral/runtime,
+chart, vision, camera/performance and ownership/scout sources are byte-identical;
+memory I/O retains its exact V9 prefix plus the small View adapter.
+The independent six-build audit SHA-256 is
+`5bca93dbf3cba5fa676b895ed53bf32d6a926673153f838f378e37eba624b938`.
+
+The new closed-game World-only restore/install/restore/install cycle passed.
+Two protected-state passes retained **48 named / 49 native saves, all 104
+save-directory files, five presets, 23 original source inputs, 297 historical
+backup files and all 488/43 imported inputs**. All **53** preceding managed
+backup generations remain exact; two newly restored generations give **55**.
+Both restores verified 23 stock inputs and removed the 19 introduced files;
+both installations passed the production exact no-op preparation check.
+`wc6`, `wc7` and `wr1` retain their certified hashes. The current autosave was
+archived exclusively and never rolled back. Both packages were validated;
+Food was not installed. The desktop shortcut preserves its V9 version and
+targets the newly installed self-contained V10 World-only launcher.
+
+Five portable package/installer/profile suites ran **87 tests in 67.004 seconds:
+84 passed and three Windows symlink-privilege checks were skipped**, with no
+failures or errors. These used isolated fixtures. Food gameplay is not being
+retested.
+
+Fresh automatic startup passed with the exact V10 runtime and all 173 engine
+edits, without retrying activation. `wr1` loaded visibly from the menu. An exact
+read-only native observation **before** the subsequent reload verified 28
+visibility components, all 50 islands and exploration bound to the loaded World.
+The in-game **Load** button then reloaded `wr1` with explored terrain still
+visible; mineral icons were observed above mountains. The following read-only
+inspection verified a **different replacement World**, with its exploration
+binding equal to that new World and all 28 / 173 components active. Generation
+returned from 1967 to 1957, charted cells from 3216 to 3203 and known minimap
+pixels from 3007 to 2992; the saved checkpoint has 1956 / 3202 / 2991. These are
+post-draw observations, allowing current observers to update the loaded history;
+they do not certify its exact bytes before the first draw. The post-load
+observer report SHA-256 is
+`8262c7770b8214383f4bd308bd857517a8bf8e82c7947aef4e5c1b482e95ad79`.
+
+The user saved the reloaded world separately as `wr2`. Its exclusive archive
+SHA-256 is `2f89b13227062b973646438f2fa977db9d31ef057e45162aed64c63603a3d5f3`.
+Independent disk parsers validated the complete native/checkpoint identity and
+all chart checksums, lengths and records. All 50 island geometry/climate/harvest
+and positive-mineral masks match the `wr1` save-derived reference. Charted
+knowledge increased **3202 to 3294**, and known minimap pixels **2991 to 3084**,
+with zero lost bits; previously observed cells remain present. This claims no
+original generated-preview or starting-option provenance. The native and
+archived `wr1` retain their exact earlier hash. The save validation report
+SHA-256 is `fb3639ce839dd9e714e65eae77f2d6356143623502f783be50006e9892541aba`.
+
+The loading/memory error field remained empty, but the post-load renderer
+diagnostic retained **16**. Source review confirms this value is sticky and is
+not cleared by successful frames or visibility reset; its value alone cannot
+locate or count a failure. The user separately reported a split-second black
+flash, without yet identifying its timing. Detailed chart diagnostics take the
+same nonblocking lock used by drawing; contention can make the explored-sea
+overlay cover a frame black. This is a plausible test-tool interference path,
+**not yet proof of the user's flash cause**. Those heavy getters are excluded
+from the next normal-play observation. Five existing isolated native fixture
+tests confirmed the mechanism: contention refuses chart reading, the validated
+world viewport is covered black, and final flush records 16. Detailed diagnostics
+scan the complete 2048-world cell array while holding that lock; the lightweight
+timing getter does not. These fixture checks do not prove when the user's flash
+occurred. Their report SHA-256 is
+`a154e687aec7fa78286d308ae97f460b826c6109d4dada044b7669602decde86`.
+
+Anno closed normally and restarted through its automatic World-only launcher,
+with a new process identity and all startup guards passing. `wr2` loaded with
+explored terrain visible. With the detailed chart getters stopped, the user
+reported **"No flash during this check"** after approximately one minute of
+normal play and panning/zooming. This supports diagnostic contention as an
+explanation, without attributing every earlier flash to it or establishing
+long-session absence. The detailed getters remain excluded from normal-play
+observation.
+
+A subsequent **VM_READ-only** native inspection executed no remote getters and
+verified all 28 visibility / 173 engine edits, all 50 saved islands/resources,
+and exploration bound to the fresh process's loaded World. Its exact checkpoint
+and geometry references belong to `wr2`; substituting the correctly SHA-pinned
+`wr1` certificate was refused offline. The restart observer report SHA-256 is
+`79171b082553393130f1040bee9d2ca12de8cdb100f93b063e3c0b564657d1d8`.
+The game remains open for testing. No zero-renderer-error or long-session
+performance acceptance is claimed.
+
 ## 0.6.0-dev.8 mineral symbols and in-game file loading
 
 V9 targets two failures found after V8's bounded 1024-world acceptance:

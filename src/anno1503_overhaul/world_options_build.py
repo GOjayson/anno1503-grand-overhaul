@@ -19,13 +19,14 @@ from . import world_runtime_build as old
 from .filesystem import checked_path
 from .world_options import apply_options, generator_id, PRIVATE, SETTINGS_SIZE, PREVIEW_SIZE, VERSION
 from .world_options_visibility_calls import CALLS, DISPLAY_SHA256, verify_visibility_call_preimages
+from .world_options_visibility_hooks import IMPORT_HOOKS, verify_import_visibility_preimages
 
 
 PINNED_RUNTIMES = {
-    'world-only': '06f0c2e3f8b67559aae34ba938dc6625a9dba4235cd83b0f11cc8ded54e7a160',
-    'food-world': 'b21de828431791b8fa0a928bc47bf4c6621229f6d0deed56bc909c3d1df2f796',
+    'world-only': '06d3ba48a7afb4c697f4046eb722f0da265d4085acf9e2a3b92c9d6edfdbb3cd',
+    'food-world': '1492266e16f67a99e5b000a6f0b0e1f2214d5f6921dbe77de365d09f901a503e',
 }
-PINNED_GENERATOR = 'ws6-a3e06d19042a3029a92dac09b02b693f32afe50324c9ca940cd3fbe9e22b2586'
+PINNED_GENERATOR = 'ws6-e980d1f2563739790004625336b4a6f243c94fb0e00bc59bb80662f4546693ae'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
     'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',
@@ -44,7 +45,7 @@ REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSe
     'WorldSettingsVisibilityBuildingCommand', 'WorldSettingsVisibilityShipQueue',
     'WorldSettingsCopyMemoryError',
     'WorldSettingsCopyVisibilityChartDiagnostics',
-    'WorldSettingsCopyVisibilityPerformance'} | {row[4] for row in CALLS}
+    'WorldSettingsCopyVisibilityPerformance'} | {row[4] for row in CALLS} | {row[5] for row in IMPORT_HOOKS}
 UNITS = [PRIVATE + name for name in ('WorldSettings.c', 'world_backend.c', 'world_ai.c')]
 UNITS += ['developer/source/world_factory.c', old.AI_LOADER,
           'developer/source/engine_resume/route_coverage/selection.c',
@@ -87,6 +88,8 @@ def derive_sources(profile: str, files: dict[str, bytes], game: Path):
         (game / 'AnnoDisplay.dll').read_bytes(), expected['AnnoDisplay.dll'])
     proof['visibility_control_dispatch'] = verify_control_visibility_preimages(
         (game / 'AnnoFrame.dll').read_bytes(), expected['AnnoFrame.dll'])
+    proof['visibility_import_dispatch'] = verify_import_visibility_preimages(
+        {name: (game / name).read_bytes() for row in IMPORT_HOOKS for name in (row[0], row[2])}, expected)
     proof['strict_visibility_calls'] = verify_visibility_call_preimages(
         {name: (game / name).read_bytes() for name in {row[0] for row in CALLS}}, expected)
     result = apply_options(files)

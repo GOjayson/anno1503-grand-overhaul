@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.8; mineral symbols accepted in-game; loading from inside a running game still produces a black map |
+| World Settings | Priority | Experimental 0.6.0-dev.9; mineral fix retained; in-game and restart reloads passed; brief flash absent during the check without detailed diagnostics |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -68,7 +68,24 @@ The seven earlier menu additions are recorded in
 starting-position and resource controls have a separate
 [fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
 0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
-Development **0.6.0-dev.8** repairs mineral-symbol visibility and adds checkpoint
+Development **0.6.0-dev.9** connects the separate loader used by the running
+game's Load menu to exploration checkpoint restoration. All **208 visibility
+tests** and independent review of **six matching builds** passed. It retains
+the exact preceding mineral, camera, ownership and scout implementation.
+World-only installation/restoration passed, preserving all saves, presets and
+53 preceding backup generations; two restored generations give 55. The automatic
+shortcut is updated. Actual `wr1` loading from both the menu and the running game
+passed, with exploration attached to the correct replacement world. The new
+`wr2` checkpoint retains the earlier charted knowledge and all 50 islands/resources.
+A separately reported brief black flash has a confirmed possible testing cause:
+detailed chart diagnostics contend with drawing and can black out a frame.
+With those checks stopped, the user reported no flash during a minute of normal
+play and camera movement. This supports that explanation without establishing
+all earlier flashes had that cause. Fresh-process `wr2` loading and native reads
+passed with no remote getter calls. Food gameplay was not retested. See the
+[validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
+
+The preceding **0.6.0-dev.8** repairs mineral-symbol visibility and adds checkpoint
 handling for the inspected in-game filename path. All 187 visibility tests and independent review of six matching
 builds passed. World-only installation/restoration passed, preserving saves,
 presets and all 51 preceding backup generations; two restored generations give

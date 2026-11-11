@@ -1,5 +1,6 @@
-/* Part of the existing paused-thread transaction. Eleven dispatch pointers and
- * sixteen prepared branches share preflight, commit and rollback. */
+/* Part of the existing paused-thread transaction. Eleven native dispatch
+ * pointers, one cross-module import and sixteen prepared branches share
+ * preflight, commit and rollback. */
 #include "visibility_native_pins.h"
 typedef struct WSVisibilityHook {const wchar_t*module;uint32_t slot,target;const char*exportName;} WSVisibilityHook;
 static const WSVisibilityHook wsVisibilityHookPlan[]={
@@ -14,6 +15,10 @@ static const WSVisibilityHook wsVisibilityHookPlan[]={
  {L"AnnoFrame.dll",0xa7250u,0x785d0u,"WorldSettingsVisibilityShipQueue"},
  {L"AnnoFrame.dll",0xa74f0u,0x7d340u,"WorldSettingsVisibilityBuildingCommand"},
  {L"AnnoFrame.dll",0xa74f8u,0x7d230u,"WorldSettingsVisibilityShipQueue"}
+};
+typedef struct WSVisibilityImportHook {const wchar_t*module;uint32_t slot;const wchar_t*targetModule;const char*importName;uint32_t target;const char*exportName;} WSVisibilityImportHook;
+static const WSVisibilityImportHook wsVisibilityImportHookPlan[]={
+ {L"View.dll",0xa1098u,L"AnnoScene.dll","CreateAnnoSceneInstance",0x11a0u,"WorldSettingsVisibilityCreateSceneFromView"}
 };
 typedef struct WSVisibilityCall {const wchar_t*module;uint32_t rva,length;unsigned char before[7];const char*exportName;int call,contextArgument;} WSVisibilityCall;
 static const WSVisibilityCall wsVisibilityCallPlan[]={
@@ -34,14 +39,57 @@ static const WSVisibilityCall wsVisibilityCallPlan[]={
  {L"AnnoFrame.dll",0x16a72u,6,{0xff,0x90,0xf0,0,0,0},"WorldSettingsVisibilityInteractionProperty",1,0},
  {L"AnnoFrame.dll",0x76b50u,6,{0xff,0x90,0xa8,0,0,0},"WorldSettingsVisibilityLoadFileA8",1,0}
 };
-_Static_assert(sizeof wsVisibilityHookPlan/sizeof wsVisibilityHookPlan[0]==WS_VISIBILITY_POINTER_COUNT,"Visibility pointer count differs");
+_Static_assert(sizeof wsVisibilityHookPlan/sizeof wsVisibilityHookPlan[0]==WS_VISIBILITY_NATIVE_POINTER_COUNT,"Visibility pointer count differs");
 _Static_assert(sizeof wsVisibilityCallPlan/sizeof wsVisibilityCallPlan[0]==WS_VISIBILITY_CALL_COUNT,"Visibility call count differs");
+_Static_assert(sizeof wsVisibilityImportHookPlan/sizeof wsVisibilityImportHookPlan[0]==WS_VISIBILITY_IMPORT_COUNT,"Visibility import count differs");
+_Static_assert(WS_VISIBILITY_NATIVE_POINTER_COUNT+WS_VISIBILITY_IMPORT_COUNT==WS_VISIBILITY_POINTER_COUNT,"Visibility pointer family total differs");
 _Static_assert(WS_VISIBILITY_POINTER_COUNT+WS_VISIBILITY_CALL_COUNT==WS_VISIBILITY_HOOK_COUNT,"Visibility total differs");
 static unsigned char*wsVisibilitySites[WS_VISIBILITY_HOOK_COUNT];
 static unsigned char wsVisibilityExpected[WS_VISIBILITY_HOOK_COUNT][WS_MAX_PATCH];
 static uint32_t wsVisibilityLengths[WS_VISIBILITY_HOOK_COUNT];
 static unsigned char*wsVisibilityBridges[WS_VISIBILITY_CALL_COUNT];
 static uintptr_t wsVisibilityCallbacks[WS_VISIBILITY_CALL_COUNT];
+
+static const unsigned char wsVisibilityViewFactoryHead[15]={0x41,0x56,0x48,0x83,0xec,0x30,0x48,0xc7,0x44,0x24,0x20,0xfe,0xff,0xff,0xff};
+static uint32_t wsVisibilityRead32(const unsigned char*p){uint32_t v;memcpy(&v,p,4);return v;}
+static uint64_t wsVisibilityRead64(const unsigned char*p){uint64_t v;memcpy(&v,p,8);return v;}
+static int wsVisibilityImportString(unsigned char*base,uint32_t size,uint32_t rva,const char*text){
+ size_t n=strlen(text)+1u;return n<=256u&&wsSpan(rva,(uint32_t)n,size)&&wsReadable(base+rva,n)&&!memcmp(base+rva,text,n);
+}
+static int wsVisibilityImportIdentity(HMODULE owner,uint32_t slot,const char*dll,const char*name){
+ unsigned char*base=(unsigned char*)owner;uint32_t size=0;if(!wsModuleImage(owner,&size)||!wsReadable(base,64))return 0;
+ uint32_t nt=wsVisibilityRead32(base+60);if(!wsSpan(nt,0x98u,size)||!wsReadable(base+nt,0x98u))return 0;
+ if(memcmp(base,"MZ",2)||memcmp(base+nt,"PE\0\0",4)||base[nt+4]!=0x64||base[nt+5]!=0x86||base[nt+24]!=0x0b||base[nt+25]!=2)return 0;
+ uint32_t rva=wsVisibilityRead32(base+nt+0x90u),bytes=wsVisibilityRead32(base+nt+0x94u);
+ if(!rva||bytes<40u||bytes>4096u*20u||bytes%20u||!wsSpan(rva,bytes,size)||!wsReadable(base+rva,bytes))return 0;
+ uint32_t matches=0;int terminated=0;
+ for(uint32_t at=0;at<bytes;at+=20u){unsigned char*d=base+rva+at;uint32_t lookup=wsVisibilityRead32(d),first=wsVisibilityRead32(d+16);
+  if(!lookup&&!wsVisibilityRead32(d+4)&&!wsVisibilityRead32(d+8)&&!wsVisibilityRead32(d+12)&&!first){terminated=1;break;}
+  if(!first||slot<first||(slot-first)%8u||(slot-first)/8u>=8192u)continue;
+  if(!lookup)return 0;uint32_t index=(slot-first)/8u;uint64_t thunk=0;int stopped=0;
+  for(uint32_t i=0;i<=index;i++){if(i>(UINT32_MAX-lookup)/8u||!wsSpan(lookup+i*8u,8,size)||!wsReadable(base+lookup+i*8u,8))return 0;thunk=wsVisibilityRead64(base+lookup+i*8u);if(!thunk){stopped=1;break;}}
+  if(stopped)continue;if(thunk>UINT32_MAX-2u||(thunk>>63))return 0;
+  if(!wsVisibilityImportString(base,size,wsVisibilityRead32(d+12),dll)||!wsVisibilityImportString(base,size,(uint32_t)thunk+2u,name))return 0;matches++;
+ }
+ return terminated&&matches==1u;
+}
+static int wsPrepareVisibilityImports(HMODULE self,WSPatch*patches,uint32_t*count){
+ if(!patches||!count||*count>WS_MAX_HOOKS||WS_VISIBILITY_IMPORT_COUNT>WS_MAX_HOOKS-*count)return wsError("Visibility import exceeds the native transaction bounds.");
+ for(uint32_t i=0;i<WS_VISIBILITY_IMPORT_COUNT;i++){
+  const WSVisibilityImportHook*entry=&wsVisibilityImportHookPlan[i];uint32_t ownerSize=0,targetSize=0;
+  HMODULE owner=GetModuleHandleW(entry->module),dependency=GetModuleHandleW(entry->targetModule);
+  if(!owner||!dependency||!wsModuleImage(owner,&ownerSize)||!wsModuleImage(dependency,&targetSize)||!wsSpan(entry->slot,8,ownerSize)||!wsSpan(entry->target,sizeof wsVisibilityViewFactoryHead,targetSize)||
+     !wsVisibilityImportIdentity(owner,entry->slot,"AnnoScene.dll",entry->importName))return wsError("The exact View Scene-factory import descriptor differs.");
+  unsigned char*site=(unsigned char*)owner+entry->slot;uintptr_t before=(uintptr_t)dependency+entry->target;
+  if(GetProcAddress(dependency,entry->importName)!=(FARPROC)before||!wsReadable((void*)before,sizeof wsVisibilityViewFactoryHead)||memcmp((void*)before,wsVisibilityViewFactoryHead,sizeof wsVisibilityViewFactoryHead)||!wsReadable(site,8)||memcmp(site,&before,8))
+   return wsError("The View Scene-factory import has a different cross-module export/preimage.");
+  FARPROC callback=GetProcAddress(self,entry->exportName);if(!callback)return wsError("The runtime lacks its View Scene-factory adapter.");uintptr_t after=(uintptr_t)callback;
+  for(uint32_t j=0;j<*count;j++){uintptr_t a=(uintptr_t)site,b=(uintptr_t)patches[j].address;if(a<b+patches[j].length&&b<a+8u)return wsError("Visibility import overlaps another native transaction edit.");}
+  WSPatch*patch=&patches[(*count)++];patch->address=site;patch->length=8;memcpy(patch->before,&before,8);memcpy(patch->after,&after,8);
+  uint32_t index=WS_VISIBILITY_NATIVE_POINTER_COUNT+i;wsVisibilitySites[index]=site;wsVisibilityLengths[index]=8;memcpy(wsVisibilityExpected[index],&after,8);
+ }return 1;
+}
+
 static const unsigned char wsVisibilityLeaf[8]={0xff,0x25,2,0,0,0,0x90,0x90};
 static const unsigned char wsVisibilityContextLeaf[16]={0x48,0x89,0xfa,0xff,0x25,7,0,0,0,0x90,0x90,0x90,0x90,0x90,0x90,0x90};
 
@@ -88,7 +136,7 @@ static int wsPrepareVisibility(HMODULE self,WSPatch*patches,uint32_t*count){
   wsVisibilityLengths[index]=found->length;memcpy(wsVisibilityExpected[index],found->after,found->length);
   wsVisibilityBridges[i]=bridge;wsVisibilityCallbacks[i]=target;
  }
- for(uint32_t i=0;i<WS_VISIBILITY_POINTER_COUNT;i++){
+ for(uint32_t i=0;i<WS_VISIBILITY_NATIVE_POINTER_COUNT;i++){
   const WSVisibilityHook*entry=&wsVisibilityHookPlan[i];uint32_t ownerSize=0;
   HMODULE owner=GetModuleHandleW(entry->module);
   if(!owner||!wsModuleImage(owner,&ownerSize)||!wsSpan(entry->slot,8,ownerSize)||!wsSpan(entry->target,1,ownerSize))
@@ -107,6 +155,7 @@ static int wsPrepareVisibility(HMODULE self,WSPatch*patches,uint32_t*count){
   memcpy(patch->before,&before,8);memcpy(patch->after,&after,8);
   wsVisibilitySites[i]=site;wsVisibilityLengths[i]=8;memcpy(wsVisibilityExpected[i],&after,8);
  }
+ if(!wsPrepareVisibilityImports(self,patches,count))return 0;
  return 1;
 }
 static DWORD wsVisibilityPatchStatusUnlocked(void){

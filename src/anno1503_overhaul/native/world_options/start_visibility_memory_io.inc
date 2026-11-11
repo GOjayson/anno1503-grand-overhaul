@@ -298,3 +298,20 @@ __declspec(dllexport) int32_t WorldSettingsVisibilityLoadFileA8(
  snprintf(wsMemoryIOError,sizeof wsMemoryIOError,"%s",error[0]?error:"The exploration checkpoint could not be loaded.");
  WS_MEMORY_REPORT_FAILURE(wsMemoryIOError);return failure;
 }
+
+/* Exact HE View CreateAnnoSceneInstance import only.
+ * View 869B8 calls a seven-argument native factory through IAT A1098.
+ * The existing WorldSettingsCreateScene boundary takes EIGHT arguments;
+ * supply the independently pinned Scene factory as its final argument.
+ * Never resolve that original through the replaced View import cell. */
+typedef int32_t (*WSMemorySceneFactory)(int32_t,const char*,void*,void**,void*,uint32_t,uint32_t);
+extern __declspec(dllexport) int32_t WorldSettingsCreateScene(int32_t,const char*,void*,void**,void*,uint32_t,uint32_t,WSMemorySceneFactory);
+__declspec(dllexport) int32_t WorldSettingsVisibilityCreateSceneFromView(
+ int32_t mode,const char*path,void*saveList,void**out,void*metadata,uint32_t index,uint32_t flags){
+ unsigned char*module=(unsigned char*)WS_CERT_MODULE("AnnoScene.dll");
+ WSMemorySceneFactory original=NULL;MEMORY_BASIC_INFORMATION region;
+ if(module&&wsCertMemory(module+0x11a0u,0x20u,1)&&
+    VirtualQuery(module+0x11a0u,&region,sizeof region)&&region.AllocationBase==module)
+  original=(WSMemorySceneFactory)(module+0x11a0u);
+ return WorldSettingsCreateScene(mode,path,saveList,out,metadata,index,flags,original);
+}

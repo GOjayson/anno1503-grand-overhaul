@@ -25,11 +25,13 @@ SOURCE = ROOT / 'legacy/world_settings' / visibility.INSTALLER
 DISPATCH = tuple((slot, target) for slot, target, _ in visibility.HOOKS)
 RENDER_DISPATCH = tuple((slot, target) for slot, target, _ in visibility.RENDER_HOOKS)
 CONTROL_DISPATCH = tuple((slot, target) for slot, target, _ in visibility.CONTROL_HOOKS)
-POINTERS = (tuple(('AnnoWelt.dll', slot, target) for slot, target in DISPATCH) +
+NATIVE_POINTERS = (tuple(('AnnoWelt.dll', slot, target) for slot, target in DISPATCH) +
             tuple(('AnnoDisplay.dll', slot, target) for slot, target in RENDER_DISPATCH) +
             tuple(('AnnoFrame.dll', slot, target) for slot, target in CONTROL_DISPATCH))
+IMPORT_POINTERS = tuple((owner, slot, dependency, target) for owner, slot, dependency, name, target, wrapper in visibility.IMPORT_HOOKS)
+POINTERS = NATIVE_POINTERS + tuple((owner, slot, target) for owner, slot, dependency, target in IMPORT_POINTERS)
 COMPONENTS = len(POINTERS) + len(call_visibility.CALLS)
-TRANSACTION_CAPACITY = 36 + 173
+TRANSACTION_CAPACITY = 37 + 173
 PREPARED_COMPONENTS = 9 + len(call_visibility.CALLS) + 173
 
 
@@ -236,7 +238,7 @@ class VisibilityStagingTests(unittest.TestCase):
             self.assertEqual(result.count(token), 1)
         for macro, count in ((b'POINTER', len(POINTERS)), (b'CALL', len(call_visibility.CALLS)), (b'HOOK', COMPONENTS)):
             self.assertIn(b'#define WS_VISIBILITY_' + macro + b'_COUNT ' + str(count).encode() + b'u', result)
-        self.assertEqual(PREPARED_COMPONENTS + len(POINTERS), 209)
+        self.assertEqual(PREPARED_COMPONENTS + len(POINTERS), 210)
         self.assertLess(result.index(b'wsPrepareVisibility(self,patches,'),
                         result.index(b'if(!wsSuspendThreads('))
         pause = result.index(b'if(!wsSuspendThreads(')
@@ -299,7 +301,7 @@ class VisibilityNativePreparationTests(unittest.TestCase):
         call_visibility.apply_visibility_calls(blob_files)
         (folder / 'visibility_native_pins.h').write_text(
             'typedef struct {const wchar_t*name;unsigned char sha256[32];} WSVisibilityModulePin;\n'
-            'static const WSVisibilityModulePin wsVisibilityModulePins[]={{L"AnnoDisplay.dll",{0}}};\n', encoding='ascii')
+            'static const WSVisibilityModulePin wsVisibilityModulePins[]={{L"AnnoDisplay.dll",{0}},{L"View.dll",{0}},{L"AnnoScene.dll",{0}}};\n', encoding='ascii')
         source = r'''
 #include <stdint.h>
 #include <stddef.h>
@@ -309,6 +311,8 @@ class VisibilityNativePreparationTests(unittest.TestCase):
 #endif
 typedef void* HMODULE; typedef void(*FARPROC)(void); typedef uint32_t DWORD;
 typedef int SRWLOCK;
+#define WS_VISIBILITY_NATIVE_POINTER_COUNT FIXTURE_NATIVE_POINTER_COUNT
+#define WS_VISIBILITY_IMPORT_COUNT FIXTURE_IMPORT_COUNT
 #define WS_VISIBILITY_POINTER_COUNT FIXTURE_POINTER_COUNT
 #define WS_VISIBILITY_CALL_COUNT FIXTURE_CALL_COUNT
 #define WS_VISIBILITY_HOOK_COUNT FIXTURE_COMPONENT_COUNT
@@ -320,18 +324,20 @@ typedef int SRWLOCK;
 #define WS_ENGINE_PATCH_COUNT 173u
 typedef struct {unsigned char*address;uint32_t length;unsigned char before[32],after[32];uint32_t page;int written;} WSPatch;
 typedef struct {uint32_t module,rva,length;unsigned char after[1];} WSEngineEdit;
-static unsigned char image[0x110000],frameImage[0x110000],sceneImage[0x110000],displayImage[0x1000000];
+static unsigned char image[0x110000],frameImage[0x110000],sceneImage[0x110000],displayImage[0x1000000],viewImage[0xe0000];
 static HMODULE wsEngineModules[2]; static int wsInstallState; static SRWLOCK wsInstallLock;
 static WSEngineEdit wsEngineEdits[WS_ENGINE_PATCH_COUNT];
 static WSPatch prepared[WS_MAX_HOOKS];static uint32_t preparedCount,initialCount;
-static int missingExport=-1,missingImage,unreadable=-1,badHash,displayFault;static char lastError[256];
+static int missingExport=-1,missingImage,unreadable=-1,badHash,displayFault,viewFault;static char lastError[256];
 static int wsError(const char*s){strncpy(lastError,s,sizeof lastError-1);return 0;}
 static void AcquireSRWLockShared(SRWLOCK*p){(void)p;}
 static void ReleaseSRWLockShared(SRWLOCK*p){(void)p;}
 static int wsSpan(uint32_t o,uint32_t n,uint32_t size){return o<=size&&n<=size-o;}
-static int wsModuleImage(HMODULE m,uint32_t*n){if(missingImage||(m==displayImage&&displayFault==1)||(m!=image&&m!=frameImage&&m!=sceneImage&&m!=displayImage))return 0;*n=m==displayImage?sizeof displayImage:sizeof image;return 1;}
-static int wsHashModule(HMODULE m,const unsigned char*pin){(void)pin;return!badHash&&!(m==displayImage&&displayFault==2);}
+static int wsModuleImage(HMODULE m,uint32_t*n){if((m==viewImage&&viewFault==3)||(m==sceneImage&&viewFault==4)||missingImage||(m==displayImage&&displayFault==1)||(m!=image&&m!=frameImage&&m!=sceneImage&&m!=displayImage&&m!=viewImage))return 0;*n=m==displayImage?sizeof displayImage:m==viewImage?sizeof viewImage:sizeof image;return 1;}
+static int wsHashModule(HMODULE m,const unsigned char*pin){(void)pin;return !(m==viewImage&&viewFault==10)&&!(m==sceneImage&&viewFault==11)&&!badHash&&!(m==displayImage&&displayFault==2);}
 '''
+        source = source.replace('FIXTURE_NATIVE_POINTER_COUNT', str(len(NATIVE_POINTERS)) + 'u')
+        source = source.replace('FIXTURE_IMPORT_COUNT', str(len(IMPORT_POINTERS)) + 'u')
         source = source.replace('FIXTURE_POINTER_COUNT', str(len(POINTERS)) + 'u')
         source = source.replace('FIXTURE_CALL_COUNT', str(len(call_visibility.CALLS)) + 'u')
         source = source.replace('FIXTURE_COMPONENT_COUNT', str(COMPONENTS) + 'u')
@@ -341,30 +347,38 @@ static int wsHashModule(HMODULE m,const unsigned char*pin){(void)pin;return!badH
 typedef struct {HMODULE module;unsigned char*allocation;int registered;} WSInstalledBlob;
 static WSInstalledBlob wsInstalled[WS_BLOB_COUNT];
 static unsigned char allocations[WS_BLOB_COUNT][0x10000];
-static HMODULE GetModuleHandleW(const wchar_t*n){if(!wcscmp(n,L"AnnoFrame.dll"))return frameImage;if(!wcscmp(n,L"AnnoScene.dll"))return sceneImage;if(!wcscmp(n,L"AnnoDisplay.dll"))return displayFault==3?NULL:displayImage;return image;}
+static HMODULE GetModuleHandleW(const wchar_t*n){if(!wcscmp(n,L"View.dll"))return viewFault==1?NULL:viewImage;if(!wcscmp(n,L"AnnoFrame.dll"))return frameImage;if(!wcscmp(n,L"AnnoScene.dll"))return viewFault==2?NULL:sceneImage;if(!wcscmp(n,L"AnnoDisplay.dll"))return displayFault==3?NULL:displayImage;return image;}
 static int wsReadable(const void*p,size_t n){
  uintptr_t at=(uintptr_t)p,o=at-(uintptr_t)image;
  if(o<=sizeof image&&n<=sizeof image-o)return unreadable<0||o!=(uint32_t)unreadable;
  o=at-(uintptr_t)frameImage;if(o<=sizeof frameImage&&n<=sizeof frameImage-o)return 1;
- o=at-(uintptr_t)sceneImage;if(o<=sizeof sceneImage&&n<=sizeof sceneImage-o)return 1;
+ o=at-(uintptr_t)viewImage;if(o<=sizeof viewImage&&n<=sizeof viewImage-o)return viewFault!=5;
+ o=at-(uintptr_t)sceneImage;if(o<=sizeof sceneImage&&n<=sizeof sceneImage-o)return viewFault!=6;
  o=at-(uintptr_t)displayImage;if(o<=sizeof displayImage&&n<=sizeof displayImage-o)return displayFault!=4;
  o=at-(uintptr_t)allocations;return o<=sizeof allocations&&n<=sizeof allocations-o;}
 '''
         exports = list(dict.fromkeys([export for _, _, export in (*visibility.HOOKS, *visibility.RENDER_HOOKS, *visibility.CONTROL_HOOKS)]
+                                    + [row[5] for row in visibility.IMPORT_HOOKS]
                                     + [row[4] for row in call_visibility.CALLS]))
         for index in range(len(exports)):
             source += f'static void callback_{index}(void){{}}\n'
-        source += 'static FARPROC GetProcAddress(HMODULE m,const char*n){(void)m;\n'
+        source += 'static FARPROC GetProcAddress(HMODULE m,const char*n){if(m==sceneImage)return !strcmp(n,"CreateAnnoSceneInstance")&&viewFault!=7?(FARPROC)(sceneImage+0x11a0+(viewFault==8)):NULL;\n'
         for index, name in enumerate(exports):
             source += (f'if(!strcmp(n,"{name}"))'
-                       f'return missingExport=={index}?NULL:callback_{index};\n')
+                       f'return missingExport=={index}||(!strcmp(n,"WorldSettingsVisibilityCreateSceneFromView")&&viewFault==9)?NULL:callback_{index};\n')
         source += 'return NULL;}\n'
         source += include + '\n' + status + r'''
 static WSPatch*fixture_call(uint32_t i){if(i>=WS_VISIBILITY_CALL_COUNT)return NULL;const WSVisibilityCall*c=&wsVisibilityCallPlan[i];unsigned char*owner=GetModuleHandleW(c->module);for(uint32_t j=0;j<WS_MAX_HOOKS;j++)if(prepared[j].address==owner+c->rva)return&prepared[j];return NULL;}
-__declspec(dllexport) void fixture_reset(void){memset(image,0,sizeof image);memset(frameImage,0,sizeof frameImage);memset(sceneImage,0,sizeof sceneImage);memset(displayImage,0,sizeof displayImage);memset(prepared,0,sizeof prepared);memset(lastError,0,sizeof lastError);wsInstallState=0;missingExport=unreadable=-1;missingImage=badHash=displayFault=0;preparedCount=initialCount=0;
+__declspec(dllexport) void fixture_reset(void){memset(image,0,sizeof image);memset(frameImage,0,sizeof frameImage);memset(sceneImage,0,sizeof sceneImage);memset(displayImage,0,sizeof displayImage);memset(viewImage,0,sizeof viewImage);viewFault=0;memset(prepared,0,sizeof prepared);memset(lastError,0,sizeof lastError);wsInstallState=0;missingExport=unreadable=-1;missingImage=badHash=displayFault=0;preparedCount=initialCount=0;
  memset(wsVisibilitySites,0,sizeof wsVisibilitySites);memset(wsVisibilityExpected,0,sizeof wsVisibilityExpected);memset(wsVisibilityLengths,0,sizeof wsVisibilityLengths);memset(wsVisibilityBridges,0,sizeof wsVisibilityBridges);memset(wsVisibilityCallbacks,0,sizeof wsVisibilityCallbacks);
  wsEngineModules[0]=image;wsEngineModules[1]=frameImage;
- for(uint32_t i=0;i<WS_VISIBILITY_POINTER_COUNT;i++){const WSVisibilityHook*h=&wsVisibilityHookPlan[i];unsigned char*owner=GetModuleHandleW(h->module);uintptr_t p=(uintptr_t)owner+h->target;memcpy(owner+h->slot,&p,8);}
+ for(uint32_t i=0;i<WS_VISIBILITY_NATIVE_POINTER_COUNT;i++){const WSVisibilityHook*h=&wsVisibilityHookPlan[i];unsigned char*owner=GetModuleHandleW(h->module);uintptr_t p=(uintptr_t)owner+h->target;memcpy(owner+h->slot,&p,8);}
+
+ viewImage[0]='M';viewImage[1]='Z';uint32_t nt=0x80;memcpy(viewImage+60,&nt,4);memcpy(viewImage+nt,"PE\0\0",4);viewImage[nt+4]=0x64;viewImage[nt+5]=0x86;viewImage[nt+24]=0x0b;viewImage[nt+25]=2;
+ uint32_t imports=0x200,importBytes=40;memcpy(viewImage+nt+0x90,&imports,4);memcpy(viewImage+nt+0x94,&importBytes,4);
+ uint32_t descriptor[5]={0x300,0,0,0x400,0xa1090};memcpy(viewImage+0x200,descriptor,20);memcpy(viewImage+0x400,"AnnoScene.dll",14);
+ uint64_t lookup[3]={0x500,0x540,0};memcpy(viewImage+0x300,lookup,24);memcpy(viewImage+0x502,"CreateAnnoSaveGameInstance",26);memcpy(viewImage+0x542,"CreateAnnoSceneInstance",23);
+ uintptr_t imported=(uintptr_t)sceneImage+0x11a0;memcpy(viewImage+0xa1098,&imported,8);memcpy(sceneImage+0x11a0,wsVisibilityViewFactoryHead,sizeof wsVisibilityViewFactoryHead);
  for(uint32_t j=0;j<WS_BLOB_COUNT;j++){
   const WSBlob*b=&wsBlobs[j];wsInstalled[j].module=GetModuleHandleW(b->module);wsInstalled[j].allocation=allocations[j];wsInstalled[j].registered=1;memcpy(allocations[j],b->code,b->codeSize);
   for(uint32_t k=0;k<b->importCount;k++){uintptr_t p=(uintptr_t)GetProcAddress(NULL,b->imports[k].name);memcpy(allocations[j]+b->imports[k].offset,&p,8);}
@@ -375,6 +389,12 @@ __declspec(dllexport) uintptr_t fixture_base(void){return(uintptr_t)image;}
 __declspec(dllexport) uint32_t fixture_image_bytes(void){return sizeof image;}
 __declspec(dllexport) uintptr_t fixture_display_base(void){return(uintptr_t)displayImage;}
 __declspec(dllexport) uintptr_t fixture_frame_base(void){return(uintptr_t)frameImage;}
+__declspec(dllexport) uintptr_t fixture_view_base(void){return(uintptr_t)viewImage;}
+__declspec(dllexport) uintptr_t fixture_scene_base(void){return(uintptr_t)sceneImage;}
+__declspec(dllexport) void fixture_view_fault(int kind){viewFault=kind;}
+__declspec(dllexport) void fixture_view_mutate(uint32_t at){if(at<sizeof viewImage)viewImage[at]^=1;}
+__declspec(dllexport) void fixture_scene_mutate(uint32_t at){if(at<sizeof sceneImage)sceneImage[at]^=1;}
+__declspec(dllexport) void fixture_view_overlap(uint32_t offset){prepared[initialCount-1].address=viewImage+0xa1098+offset;prepared[initialCount-1].length=1;}
 __declspec(dllexport) uint32_t fixture_display_bytes(void){return sizeof displayImage;}
 __declspec(dllexport) int fixture_prepare(uint32_t count){preparedCount=initialCount=count;return wsPrepareVisibility((HMODULE)1,prepared,&preparedCount);}
 __declspec(dllexport) int fixture_null_argument(int which){uint32_t count=0;return wsPrepareVisibility((HMODULE)1,which==0?NULL:prepared,which==1?NULL:&count);}
@@ -405,7 +425,7 @@ __declspec(dllexport) void fixture_restore_only(void){for(uint32_t i=preparedCou
             cls.temp.cleanup()
             raise AssertionError(result.stdout + result.stderr)
         cls.lib = C.CDLL(str(output))
-        for name in ('fixture_base', 'fixture_display_base', 'fixture_frame_base', 'fixture_address', 'fixture_before', 'fixture_after'):
+        for name in ('fixture_base', 'fixture_display_base', 'fixture_frame_base', 'fixture_view_base', 'fixture_scene_base', 'fixture_address', 'fixture_before', 'fixture_after'):
             getattr(cls.lib, name).restype = C.c_size_t
         for name in ('fixture_count', 'fixture_length', 'fixture_image_bytes', 'fixture_display_bytes', 'WorldSettingsVisibilityPatchStatus', 'WorldSettingsEnginePatchStatus'):
             getattr(cls.lib, name).restype = C.c_uint32
@@ -415,6 +435,9 @@ __declspec(dllexport) void fixture_restore_only(void){for(uint32_t i=preparedCou
         cls.lib.fixture_frame_fault.argtypes = [C.c_int, C.c_uint32]
         cls.lib.fixture_call_fault.argtypes = [C.c_int, C.c_uint32]
         cls.lib.fixture_null_argument.argtypes = [C.c_int]
+        cls.lib.fixture_view_fault.argtypes = [C.c_int]
+        for name in ('fixture_view_mutate', 'fixture_scene_mutate', 'fixture_view_overlap'):
+            getattr(cls.lib, name).argtypes = [C.c_uint32]
         cls.lib.fixture_error.restype = C.c_char_p
 
     @classmethod
@@ -428,24 +451,28 @@ __declspec(dllexport) void fixture_restore_only(void){for(uint32_t i=preparedCou
         return tuple(hashlib.sha256(C.string_at(base, size)).digest() for base, size in
                      ((self.lib.fixture_base(), self.lib.fixture_image_bytes()),
                       (self.lib.fixture_display_base(), self.lib.fixture_display_bytes()),
-                      (self.lib.fixture_frame_base(), self.lib.fixture_image_bytes())))
+                      (self.lib.fixture_frame_base(), self.lib.fixture_image_bytes()),
+                      (self.lib.fixture_scene_base(), self.lib.fixture_image_bytes()),
+                      (self.lib.fixture_view_base(), 0xe0000)))
 
     def test_prepare_records_exact_reversible_pointer_edits_without_publishing(self):
         before = self.image_hash()
         self.assertEqual(self.lib.fixture_count(), PREPARED_COMPONENTS)
         self.assertEqual(self.lib.fixture_prepare(PREPARED_COMPONENTS), 1)
-        self.assertEqual(self.lib.fixture_count(), 209)
+        self.assertEqual(self.lib.fixture_count(), 210)
         self.lib.fixture_reset()
         initial = TRANSACTION_CAPACITY - len(POINTERS)
         self.assertEqual(self.lib.fixture_prepare(initial), 1)
         self.assertEqual(self.lib.fixture_count(), TRANSACTION_CAPACITY)
         for index, (module, slot, target) in enumerate(POINTERS, initial):
             base = (self.lib.fixture_display_base() if module == 'AnnoDisplay.dll' else
-                    self.lib.fixture_frame_base() if module == 'AnnoFrame.dll' else self.lib.fixture_base())
+                    self.lib.fixture_frame_base() if module == 'AnnoFrame.dll' else
+                    self.lib.fixture_view_base() if module == 'View.dll' else self.lib.fixture_base())
+            original_base = self.lib.fixture_scene_base() if module == 'View.dll' else base
             self.assertEqual(self.lib.fixture_address(index), base + slot)
             self.assertEqual(self.lib.fixture_length(index), 8)
             self.assertEqual(C.string_at(self.lib.fixture_before(index), 8),
-                             struct.pack('<Q', base + target))
+                             struct.pack('<Q', original_base + target))
             self.assertNotEqual(C.string_at(self.lib.fixture_before(index), 8),
                                 C.string_at(self.lib.fixture_after(index), 8))
         self.assertEqual(self.image_hash(), before)
