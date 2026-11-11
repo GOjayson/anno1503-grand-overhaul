@@ -62,10 +62,10 @@ class OptionsPackageTests(unittest.TestCase):
         self.assertFalse(value['food_enabled'])
         self.assertEqual(value['kind'], options.KIND)
         spec = json.loads((path / 'world/world_patch.json').read_bytes())
-        self.assertEqual(spec['world_options']['settings_size'], 132)
-        self.assertEqual(spec['world_options']['preview_size'], 5268)
+        self.assertEqual(spec['world_options']['settings_size'], 176)
+        self.assertEqual(spec['world_options']['preview_size'], 5824)
         self.assertEqual(len(spec['introduced_files']), 19)
-        self.assertIn(b'SETTINGS_SIZE = 132', (path / 'world/activation/preview_snapshot.py').read_bytes())
+        self.assertIn(b'SETTINGS_SIZE = 176', (path / 'world/activation/preview_snapshot.py').read_bytes())
         for name in ('CompLogic.dll', 'CompLogicClassic.dll'):
             payload = spec['introduced_files']['WorldSettingsAI/' + name]
             value = self.activity_inputs['world-only'][name] + b'activity-policy-v1'

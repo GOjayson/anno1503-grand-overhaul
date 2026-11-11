@@ -20,13 +20,14 @@ from .filesystem import checked_path
 from .world_options import apply_options, generator_id, PRIVATE, SETTINGS_SIZE, PREVIEW_SIZE, VERSION
 from .world_options_visibility_calls import CALLS, DISPLAY_SHA256, verify_visibility_call_preimages
 from .world_options_visibility_hooks import IMPORT_HOOKS, verify_import_visibility_preimages
+from .world_options_disasters import DISASTER_CALLS, verify_disaster_preimages
 
 
 PINNED_RUNTIMES = {
-    'world-only': '027e6d0dcb4134fa591c0a36f1bcaea76d976bc3191b5fae1cdf6942c8becd16',
-    'food-world': 'b07e7a97335885bcb444be1dd043835b10280bef1dfb31d41c9bc880e8a73f6a',
+    'world-only': '5fa1a3f72ca8432a4052bdd80789a6e1f60957daca0efd2633d1cec839b3673a',
+    'food-world': 'e197c8bffcad870df3491c7065858914d8ffafa1b20d130a51c402219216e2b3',
 }
-PINNED_GENERATOR = 'ws6-6113d0190fad378ad46a5a36c921b7d70b437f31359c6836ba3dd74c585f3327'
+PINNED_GENERATOR = 'ws6-86ef692d92f3b8bcf7d1262a6a05a0c1f148e0fabf206733c3a37baf16957eac'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
     'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',
@@ -45,7 +46,7 @@ REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSe
     'WorldSettingsVisibilityBuildingCommand', 'WorldSettingsVisibilityShipQueue',
     'WorldSettingsCopyMemoryError',
     'WorldSettingsCopyVisibilityChartDiagnostics',
-    'WorldSettingsCopyVisibilityPerformance'} | {row[4] for row in CALLS} | {row[5] for row in IMPORT_HOOKS}
+    'WorldSettingsCopyVisibilityPerformance'} | {row[4] for row in CALLS} | {row[5] for row in IMPORT_HOOKS} | {row[4] for row in DISASTER_CALLS}
 UNITS = [PRIVATE + name for name in ('WorldSettings.c', 'world_backend.c', 'world_ai.c')]
 UNITS += ['developer/source/world_factory.c', old.AI_LOADER,
           'developer/source/engine_resume/route_coverage/selection.c',
@@ -110,6 +111,30 @@ def derive_sources(profile: str, files: dict[str, bytes], game: Path):
         {name: (game / name).read_bytes() for row in IMPORT_HOOKS for name in (row[0], row[2])}, expected)
     proof['strict_visibility_calls'] = verify_visibility_call_preimages(
         {name: (game / name).read_bytes() for name in {row[0] for row in CALLS}}, expected)
+    proof['disasters'] = verify_disaster_preimages(
+        {name: (game / name).read_bytes() for name in {row[0] for row in DISASTER_CALLS}}, expected)
+    from .world_options_rotation import verify_rotation_native_image
+    proof['island_rotation_native'] = verify_rotation_native_image(
+        (game / 'AnnoWelt.dll').read_bytes(), expected['AnnoWelt.dll'])
+    from .world_island_catalogue import IslandCatalogueError, validate_island_shapes, template_resolver
+    try:
+        proof['island_shapes'] = validate_island_shapes(
+            files[PRIVATE + 'world_catalogue.h'],
+            (old.ROOT / 'src/anno1503_overhaul/native/world_options/island_shapes.h').read_bytes(),
+            template_resolver(game, old.ROOT / '.local/baselines/world_settings/assets'))
+    except IslandCatalogueError as exc:
+        raise old.RuntimeBuildError('Exact island shape metadata or source inputs differ.') from exc
+    from .world_island_rotation import definition_dimensions, validate_rotation_metadata
+    try:
+        native_options = old.ROOT / 'src/anno1503_overhaul/native/world_options'
+        proof['island_rotation'] = validate_rotation_metadata(
+            files[PRIVATE + 'world_catalogue.h'],
+            (native_options / 'island_rotation_plan.h').read_bytes(),
+            (native_options / 'island_rotation_definitions.h').read_bytes(),
+            template_resolver(game, old.ROOT / '.local/baselines/world_settings/assets'),
+            [definition_dimensions(game / name) for name in ('Anlagen.dat', 'Anlagen.addon')])
+    except IslandCatalogueError as exc:
+        raise old.RuntimeBuildError('Exact island rotation metadata or landscape dimensions differ.') from exc
     result = apply_options(files)
     activity_ai, activity_proof = derive_activity_ai_inputs(profile, game)
     from .world_options_factions import PROFILE_INPUT_SHA256
@@ -176,6 +201,7 @@ def build_options_runtime(profile, game, tools=None, *, output=None, publish=Fal
                or name.startswith(PRIVATE) and name.endswith(('.h', '.inc'))
                or name in (old.BLOBS, old.AI_LOADER, old.ENGINE_HEADER,
                            'developer/source/engine_resume/ai_loader/visibility_hooks.inc',
+                           'developer/source/engine_resume/ai_loader/disaster_hooks.inc',
                            'developer/source/engine_resume/ai_loader/visibility_native_pins.h')
                or name.startswith('developer/source/') and name.endswith(('.c', '.h', '.inc'))
                and name in {n.removeprefix(old.SOURCE_PREFIX) for n in compiled}}

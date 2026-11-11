@@ -13,7 +13,7 @@ static int wsStartingIslandOrdinary(uint32_t index){
 }
 static int wsPreferredWaterFits(int x,int y){
  if(x<24||y<24||x+25>(int)wsWorld||y+25>(int)wsWorld)return 0;
- WSPlanIsland reserve={0,(uint32_t)x-24u,(uint32_t)y-24u,49u,49u,0,0,0,0,0};
+ WSPlanIsland reserve={0,(uint32_t)x-24u,(uint32_t)y-24u,49u,49u,0,0,0,0,0,0};
  for(uint32_t i=0;i<planCount;i++)if(!wsSeparated(&reserve,&planned[i],planSpacing))return 0;
  for(uint32_t i=0;i<wsBaseShipReserveCount;i++)if(!wsSeparated(&reserve,&wsActiveShipReserves[i],0))return 0;
  return 1;
@@ -71,7 +71,7 @@ static int wsApplyLegacyPreferredStart(const WSWorldSettings*s,char*error,uint32
  for(uint32_t i=0;i<wsExpectedSceneShipCount;i++)if(!wsExpectedSceneShips[i].owner){wsExpectedSceneShips[i].x+=dx;wsExpectedSceneShips[i].y+=dy;}
  wsPreferredStartX=x;wsPreferredStartY=y;wsPreferredStartActive=1;wsPreferredIsland=chosen;
  wsActiveShipReserveCount=wsBaseShipReserveCount;
- wsActiveShipReserves[wsActiveShipReserveCount++]=(WSPlanIsland){0,(uint32_t)x-24u,(uint32_t)y-24u,49u,49u,0,0,0,0,0};
+ wsActiveShipReserves[wsActiveShipReserveCount++]=(WSPlanIsland){0,(uint32_t)x-24u,(uint32_t)y-24u,49u,49u,0,0,0,0,0,0};
  return 1;
 }
 static int wsApplyPreferredStart(const WSWorldSettings*s,char*error,uint32_t cap){

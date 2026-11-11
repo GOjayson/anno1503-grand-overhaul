@@ -23,7 +23,9 @@ FIELDS = ('difficulty', 'islandSize', 'islandCount', 'spacing', 'aiCount',
           'startClimate', 'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
           'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
           'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics',
-          'mapVisibility', 'enemyVisibility', 'pirateFrequency', 'pirateStrength', 'merchantFrequency')
+          'mapVisibility', 'enemyVisibility', 'pirateFrequency', 'pirateStrength', 'merchantFrequency',
+          'islandVariety', 'minPolar', 'maxPolar', 'minTemperate', 'maxTemperate', 'minTropical', 'maxTropical',
+          'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation')
 
 DRIVER = r'''
 #include <stdint.h>
@@ -42,8 +44,11 @@ typedef struct WSWorldSettings {
  int32_t startClimate,startIsland,cargoMode,cargoTools,cargoWood,cargoFood,climateBalance,layoutStyle,disasters;
  int32_t fairStarts,startSeparation,resourceDistribution,guaranteeBasics,mapVisibility,enemyVisibility;
  int32_t pirateFrequency,pirateStrength,merchantFrequency;
+ int32_t islandVariety,minPolar,maxPolar,minTemperate,maxTemperate,minTropical,maxTropical;
+ uint32_t disasterMask,disasterFrequency,disasterSeverity;
+ int32_t islandRotation;
 } WSWorldSettings;
-typedef struct WSPlanIsland {uint32_t id,x,y,width,height,templateIndex,cropMask,mineralMask,cultures,climate;} WSPlanIsland;
+typedef struct WSPlanIsland {uint32_t id,x,y,width,height,templateIndex,cropMask,mineralMask,cultures,climate,rotation;} WSPlanIsland;
 typedef struct WSIslandDetails {uint32_t size,index,fertileLand,oreSlots,whales,faction,startEligible;int32_t startOwner;uint32_t nearbyCrops,nearbyMinerals,resourceRadius;} WSIslandDetails;
 #define WS_WORLD_OPTIONS_GENERATOR "menu-codec-native-fixture-v1"
 #include "menu_presets_codec.inc"
@@ -71,7 +76,9 @@ int main(int argc,char**argv){
   .cultures=255,.factions=3,.startingMoney=100000,.startingFleet=1,.aiDifficulty=3,.plantFertility=3,.mineralFertility=2,
   .worldSize=2048,.mapSeed=UINT32_MAX,.startClimate=-1,.startIsland=127,.cargoMode=1,.cargoTools=400,.cargoWood=0,.cargoFood=0,
   .climateBalance=3,.layoutStyle=2,.disasters=1,.fairStarts=1,.startSeparation=2,.resourceDistribution=2,.guaranteeBasics=1,.mapVisibility=2,.enemyVisibility=1,
-  .pirateFrequency=0,.pirateStrength=2,.merchantFrequency=1};
+  .pirateFrequency=0,.pirateStrength=2,.merchantFrequency=1,
+  .islandVariety=2,.minPolar=2,.maxPolar=8,.minTemperate=4,.maxTemperate=12,.minTropical=4,.maxTropical=14,
+  .disasterMask=21,.disasterFrequency=548,.disasterSeverity=389,.islandRotation=1};
  char data[WS_PRESET_MAX_BYTES+1];uint32_t length=0;
  if(!strcmp(argv[1],"encode")){if(!wsPresetEncode(&value,data,WS_PRESET_MAX_BYTES,&length))return 8;fwrite(data,1,length,stdout);return 0;}
  if(strcmp(argv[1],"decode"))return 9;
@@ -122,7 +129,7 @@ typedef intptr_t LRESULT,LPARAM;
 typedef uint32_t COLORREF;
 typedef struct RECT {int left,top,right,bottom;} RECT;
 typedef struct SIZE {int cx,cy;} SIZE;
-typedef struct WSPlanIsland {uint32_t id,x,y,width,height,templateIndex,cropMask,mineralMask,cultures,climate;} WSPlanIsland;
+typedef struct WSPlanIsland {uint32_t id,x,y,width,height,templateIndex,cropMask,mineralMask,cultures,climate,rotation;} WSPlanIsland;
 typedef struct WSIslandDetails {uint32_t size,index,fertileLand,oreSlots,whales,faction,startEligible;int32_t startOwner;uint32_t nearbyCrops,nearbyMinerals,resourceRadius;} WSIslandDetails;
 typedef struct WSSettings {int32_t worldSize,mapVisibility;} WSSettings;
 typedef struct DialogState {
@@ -132,7 +139,8 @@ typedef struct DialogState {
 enum {ID_MAP_VISIBILITY=1,ID_ISLAND_DETAILS,ID_FAIR_SUMMARY,ID_USE_ISLAND,ID_START_HINT,ID_START_CLIMATE,
  ID_MONEY,ID_AI_DIFFICULTY,ID_CARGO_MODE,ID_CARGO_TOOLS,ID_CARGO_WOOD,ID_CARGO_FOOD,ID_DISASTERS,
  ID_FAIR_STARTS,ID_START_SEPARATION,ID_GUARANTEE_BASICS,ID_ENEMY_VISIBILITY,
- ID_PIRATE_FREQUENCY,ID_PIRATE_STRENGTH,ID_MERCHANT_FREQUENCY,ID_FACTION};
+ ID_PIRATE_FREQUENCY,ID_PIRATE_STRENGTH,ID_MERCHANT_FREQUENCY,ID_FACTION,
+ ID_CLIMATE_SUMMARY=260,ID_DISASTER_ENABLE=270,ID_DISASTER_FREQUENCY=280,ID_DISASTER_SEVERITY=290};
 enum {CB_GETCURSEL=1,TRANSPARENT=2,PS_SOLID=3,BLACK_BRUSH=4,WHITE_BRUSH=5,DT_CENTER=8,DT_WORDBREAK=16,DT_VCENTER=32,DT_SINGLELINE=64,FALSE=0};
 #define RGB(r,g,b) ((COLORREF)((r)|((g)<<8)|((b)<<16)))
 #define LOWORD(x) ((uint32_t)(x)&0xffffu)
@@ -180,6 +188,7 @@ static void wsMenuPage(DialogState*d,int page){(void)d;(void)page;}
 static void wsMenuCargoControls(DialogState*d){(void)d;}
 static void wsMenuFairControls(DialogState*d){(void)d;}
 static void wsMenuActivityControls(DialogState*d){(void)d;}
+static void wsMenuDisasterControls(DialogState*d){(void)d;}
 static void InvalidateRect(HWND w,void*r,int erase){(void)w;(void)r;(void)erase;}
 static void status(DialogState*d,const char*t){(void)d;snprintf(statusText,sizeof statusText,"%s",t);}
 /* Actual authored functions are inserted here by the fixture, without a
@@ -198,6 +207,9 @@ int main(int argc,char**argv){
  if(!strcmp(argv[3],"pirate_frequency"))changed=ID_PIRATE_FREQUENCY;
  if(!strcmp(argv[3],"pirate_strength"))changed=ID_PIRATE_STRENGTH;
  if(!strcmp(argv[3],"merchant_frequency"))changed=ID_MERCHANT_FREQUENCY;
+ if(!strcmp(argv[3],"disaster_enable"))changed=ID_DISASTER_ENABLE+2;
+ if(!strcmp(argv[3],"disaster_frequency"))changed=ID_DISASTER_FREQUENCY+2;
+ if(!strcmp(argv[3],"disaster_severity"))changed=ID_DISASTER_SEVERITY+2;
  wsMenuOptionChanged(&d,changed);
  printf("{\"native_queries\":%d,\"grid_lines\":%d,\"cover_text\":%d,\"brushes\":%d,\"secret_info\":%d,\"preferred_index_leaked\":%d,\"preferred_after_change\":%d}\n",
   nativeQueries,gridLines,concealedText,brushes,
@@ -270,7 +282,7 @@ class NativePresetCodecTests(unittest.TestCase):
     def test_round_trip_keeps_every_setting_and_unsigned_seed(self):
         value = self.decoded()
         self.assertEqual(set(value), {'size', *FIELDS})
-        self.assertEqual(value['size'], 132)
+        self.assertEqual(value['size'], 176)
         self.assertEqual(value['mapSeed'], 4294967295)
         self.assertEqual(value['startClimate'], -1)
         self.assertEqual(value['startIsland'], 127)
@@ -287,6 +299,13 @@ class NativePresetCodecTests(unittest.TestCase):
         self.assertEqual(value['pirateFrequency'], 0)
         self.assertEqual(value['pirateStrength'], 2)
         self.assertEqual(value['merchantFrequency'], 1)
+        self.assertEqual(value['islandVariety'], 2)
+        self.assertEqual([value[key] for key in ('minPolar', 'maxPolar', 'minTemperate', 'maxTemperate', 'minTropical', 'maxTropical')],
+                         [2, 8, 4, 12, 4, 14])
+        self.assertEqual(value['disasterMask'], 21)
+        self.assertEqual(value['disasterFrequency'], 548)
+        self.assertEqual(value['disasterSeverity'], 389)
+        self.assertEqual(value['islandRotation'], 1)
         self.assertEqual(value, self.decoded(self.encoded.replace(b'\n', b'\r\n')))
 
     def test_seed_zero_and_high_bit_values_are_not_signed_or_replaced(self):
@@ -297,7 +316,7 @@ class NativePresetCodecTests(unittest.TestCase):
 
     def test_rejects_invalid_numbers_and_incomplete_or_extra_schema(self):
         cases = [self.encoded[:-1], self.encoded + b'extra\n', b'\0' + self.encoded,
-                 self.encoded.replace(b'PRESET 4\n', b'PRESET 2\n'),
+                 self.encoded.replace(b'PRESET 5\n', b'PRESET 2\n'),
                  self.encoded.replace(b'menu-codec-native-fixture-v1', b'another-generator'),
                  self.encoded.replace(b'mapSeed=4294967295', b'mapSeed=4294967296'),
                  self.encoded.replace(b'mapSeed=4294967295', b'mapSeed=-1'),
@@ -312,6 +331,10 @@ class NativePresetCodecTests(unittest.TestCase):
                  self.encoded.replace(b'pirateFrequency=0\n', b''),
                  self.encoded.replace(b'pirateStrength=2\n', b'pirateStrength=2\npirateStrength=0\n'),
                  self.encoded.replace(b'merchantFrequency=1\n', b'merchantFrequency=1\nunknown=0\n'),
+                 self.encoded.replace(b'maxPolar=8\n', b''),
+                 self.encoded.replace(b'disasterMask=21\n', b'disasterMask=21\ndisasterMask=0\n'),
+                 self.encoded.replace(b'disasterFrequency=548\n', b'disasterFrequency=-1\n'),
+                 self.encoded.replace(b'disasterSeverity=389\n', b'disasterSeverity=4294967296\n'),
                  self.encoded.replace(b'resourceDistribution=2\n', b'resourceDistribution=2\nresourceDistribution=0\n'),
                  self.encoded.replace(b'startIsland=127', b'startIsland=2147483648'),
                  b'x' * 4097]
@@ -320,14 +343,19 @@ class NativePresetCodecTests(unittest.TestCase):
                 self.assert_rejected(data)
 
     def test_exact_predecessor_migrates_activity_defaults_without_changing_old_options(self):
-        header = b'ANNO1503_WORLD_PRESET 4\nGENERATOR=menu-codec-native-fixture-v1\n'
+        header = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=menu-codec-native-fixture-v1\n'
         predecessor = b'ANNO1503_WORLD_PRESET 3\nGENERATOR=ws6-e980d1f2563739790004625336b4a6f243c94fb0e00bc59bb80662f4546693ae\n'
         legacy = self.encoded.replace(header, predecessor)
-        for line in (b'pirateFrequency=0\n', b'pirateStrength=2\n', b'merchantFrequency=1\n'):
+        for line in (b'pirateFrequency=0\n', b'pirateStrength=2\n', b'merchantFrequency=1\n',
+                     b'islandVariety=2\n', b'minPolar=2\n', b'maxPolar=8\n',
+                     b'minTemperate=4\n', b'maxTemperate=12\n', b'minTropical=4\n', b'maxTropical=14\n',
+                     b'disasterMask=21\n', b'disasterFrequency=548\n', b'disasterSeverity=389\n', b'islandRotation=1\n'):
             legacy = legacy.replace(line, b'')
         before = bytes(legacy)
         expected = self.decoded()
         expected.update(pirateFrequency=1, pirateStrength=1, merchantFrequency=1)
+        expected.update(islandVariety=0, minPolar=0, maxPolar=128, minTemperate=0, maxTemperate=128,
+                        minTropical=0, maxTropical=128, disasterMask=31, disasterFrequency=341, disasterSeverity=341, islandRotation=0)
         self.assertEqual(self.decoded(legacy), expected)
         self.assertEqual(self.decoded(legacy.replace(b'\n', b'\r\n')), expected)
         self.assertEqual(legacy, before)
@@ -336,6 +364,35 @@ class NativePresetCodecTests(unittest.TestCase):
                         legacy.replace(predecessor, b'ANNO1503_WORLD_PRESET 3\nGENERATOR=menu-codec-native-fixture-v1\n'),
                         legacy.replace(b'END\n', b'pirateFrequency=1\nEND\n'),
                         legacy.replace(b'enemyVisibility=1\n', b'')):
+            with self.subTest(data=invalid[:100]):
+                self.assert_rejected(invalid)
+
+    def test_exact_dev3_v5_keeps_all_environment_choices_without_rewriting(self):
+        header = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=menu-codec-native-fixture-v1\n'
+        prior = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=ws6-601be2d158e48f8b09bea0b310e4e9ecd2cab3c5ece5647d035af668e7c67f02\n'
+        legacy = self.encoded.replace(header, prior)
+        before = bytes(legacy)
+        self.assertEqual(self.decoded(legacy), self.decoded(self.encoded))
+        self.assertEqual(self.decoded(legacy.replace(b'\n', b'\r\n')), self.decoded(self.encoded))
+        self.assertEqual(legacy, before)
+        self.assert_rejected(legacy.replace(b'ws6-601b', b'ws6-701b'))
+
+    def test_exact_v4_predecessor_keeps_activity_and_defaults_new_policies(self):
+        header = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=menu-codec-native-fixture-v1\n'
+        predecessor = b'ANNO1503_WORLD_PRESET 4\nGENERATOR=ws6-6113d0190fad378ad46a5a36c921b7d70b437f31359c6836ba3dd74c585f3327\n'
+        legacy = self.encoded.replace(header, predecessor)
+        for key in FIELDS[32:]:
+            legacy = b''.join(line for line in legacy.splitlines(keepends=True) if not line.startswith(key.encode()+b'='))
+        before = bytes(legacy)
+        expected = self.decoded()
+        expected.update(islandVariety=0, minPolar=0, maxPolar=128, minTemperate=0, maxTemperate=128,
+                        minTropical=0, maxTropical=128, disasterMask=31, disasterFrequency=341, disasterSeverity=341, islandRotation=0)
+        self.assertEqual(self.decoded(legacy), expected)
+        self.assertEqual(self.decoded(legacy.replace(b'\n', b'\r\n')), expected)
+        self.assertEqual(legacy, before)
+        for invalid in (legacy.replace(b'ws6-6113', b'ws6-7113'),
+                        legacy.replace(b'PRESET 4\n', b'PRESET 5\n'),
+                        legacy.replace(b'END\n', b'islandVariety=0\nEND\n')):
             with self.subTest(data=invalid[:100]):
                 self.assert_rejected(invalid)
 
@@ -396,13 +453,14 @@ class NativeConcealedPreviewTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        files = MenuStagingTests().inputs()
-        apply_menu(files)
+        from test_world_options_factions import staged_sources
+        unused, files = staged_sources()
         values = files[PRIVATE + 'menu_values.inc'].decode()
         preview = files[PRIVATE + 'world_menu_preview.inc'].decode()
         click = files[PRIVATE + 'menu_preview.inc'].decode()
         functions = [c_function(values, name) for name in (
             'wsMenuMapConcealed', 'wsMenuPaintConcealed', 'wsMenuIslandInfo', 'wsMenuStartHint')]
+        functions += [c_function((NATIVE / 'island_rotation_preview.h').read_text(), 'wsRotationPreviewSolid')]
         functions += [c_function(click, 'wsMenuPreviewClick'), c_function(preview, 'paintPreview')]
         functions += [c_function(values, 'wsMenuOptionChanged')]
         cls.temporary = tempfile.TemporaryDirectory()
@@ -454,7 +512,8 @@ class NativeConcealedPreviewTests(unittest.TestCase):
         self.assertEqual(self.observed(1, changed='enemy')['preferred_after_change'], 27)
 
     def test_activity_options_do_not_discard_a_valid_preferred_island(self):
-        for changed in ('pirate_frequency', 'pirate_strength', 'merchant_frequency'):
+        for changed in ('pirate_frequency', 'pirate_strength', 'merchant_frequency',
+                        'disaster_enable', 'disaster_frequency', 'disaster_severity'):
             with self.subTest(changed=changed):
                 self.assertEqual(self.observed(1, changed=changed)['preferred_after_change'], 27)
 
@@ -468,16 +527,21 @@ typedef struct DialogState {HWND window;int32_t preferredIsland;} DialogState;
 enum {ID_START_CLIMATE=1,ID_CARGO_MODE,ID_CARGO_TOOLS,ID_CARGO_WOOD,ID_CARGO_FOOD,
  ID_CLIMATE_BALANCE,ID_LAYOUT_STYLE,ID_DISASTERS,ID_FAIR_STARTS,ID_START_SEPARATION,
  ID_RESOURCE_DISTRIBUTION,ID_GUARANTEE_BASICS,ID_MAP_VISIBILITY,ID_ENEMY_VISIBILITY,
- ID_FACTION=100,ID_PIRATE_FREQUENCY=102,ID_PIRATE_STRENGTH,ID_MERCHANT_FREQUENCY};
+ ID_FACTION=100,ID_PIRATE_FREQUENCY=102,ID_PIRATE_STRENGTH,ID_MERCHANT_FREQUENCY,
+ ID_ISLAND_VARIETY=250,ID_MIN_POLAR,ID_MAX_POLAR,ID_MIN_TEMPERATE,ID_MAX_TEMPERATE,ID_MIN_TROPICAL,ID_MAX_TROPICAL,ID_ISLAND_ROTATION,
+ ID_DISASTER_ENABLE=270,ID_DISASTER_FREQUENCY=280,ID_DISASTER_SEVERITY=290};
 enum {BM_GETCHECK=1,CB_GETCURSEL=2,CB_SETCURSEL=3,BST_CHECKED=1};
-static int choices[128],factions,enabled,selectionWrites;
+static int choices[512],numbers[512],factions,enabled,selectionWrites,master=1,rotation;
+static uint32_t disasterMask=31,disasterChecks,disasterFrequencies,disasterSeverities;
 static LRESULT SendDlgItemMessageA(HWND window,int id,int message,intptr_t a,intptr_t b){
  (void)window;(void)a;(void)b;
  if(message==CB_SETCURSEL){selectionWrites++;return 0;}
  if(message==BM_GETCHECK){
   if(id==ID_FACTION)return (factions&1)!=0;
   if(id==ID_FACTION+1)return (factions&2)!=0;
-  return id==ID_DISASTERS;
+  if(id>=ID_DISASTER_ENABLE&&id<ID_DISASTER_ENABLE+5)return (disasterMask>>(id-ID_DISASTER_ENABLE))&1u;
+  if(id==ID_ISLAND_ROTATION)return rotation;
+  return id==ID_DISASTERS&&master;
  }
  return choices[id];
 }
@@ -485,18 +549,38 @@ static HWND GetDlgItem(HWND window,int id){(void)window;return (HWND)id;}
 static void EnableWindow(HWND window,int active){
  if(active&&window>=ID_PIRATE_FREQUENCY&&window<=ID_MERCHANT_FREQUENCY)
   enabled|=1<<((int)window-ID_PIRATE_FREQUENCY);
+ if(active&&window>=ID_DISASTER_ENABLE&&window<ID_DISASTER_ENABLE+5)disasterChecks|=1u<<((int)window-ID_DISASTER_ENABLE);
+ if(active&&window>=ID_DISASTER_FREQUENCY&&window<ID_DISASTER_FREQUENCY+5)disasterFrequencies|=1u<<((int)window-ID_DISASTER_FREQUENCY);
+ if(active&&window>=ID_DISASTER_SEVERITY&&window<ID_DISASTER_SEVERITY+5)disasterSeverities|=1u<<((int)window-ID_DISASTER_SEVERITY);
 }
 static int wsMenuReadSeed(DialogState*d,uint32_t*seed){(void)d;*seed=123456789u;return 1;}
-static int integer(HWND window,int id,int32_t*out){(void)window;(void)id;*out=40;return 1;}
+static int integer(HWND window,int id,int32_t*out){(void)window;*out=numbers[id];return 1;}
 static void status(DialogState*d,const char*text){(void)d;(void)text;}
 @FUNCTIONS@
 int main(int argc,char**argv){
- if(argc!=5)return 9;
+ if(argc!=5&&argc!=17)return 9;
  for(int i=0;i<3;i++)choices[ID_PIRATE_FREQUENCY+i]=atoi(argv[1+i]);
+ for(int i=0;i<3;i++)numbers[ID_CARGO_TOOLS+i]=40;
+ for(int i=0;i<3;i++)numbers[ID_MAX_POLAR+i*2]=128;
+ for(int i=0;i<5;i++)choices[ID_DISASTER_FREQUENCY+i]=choices[ID_DISASTER_SEVERITY+i]=1;
+ if(argc==17){
+  choices[ID_ISLAND_VARIETY]=atoi(argv[5]);
+  for(int i=0;i<6;i++)numbers[ID_MIN_POLAR+i]=atoi(argv[6+i]);
+  disasterMask=(uint32_t)strtoul(argv[12],NULL,10);
+  uint32_t frequency=(uint32_t)strtoul(argv[13],NULL,10),severity=(uint32_t)strtoul(argv[14],NULL,10);
+  for(int i=0;i<5;i++){choices[ID_DISASTER_FREQUENCY+i]=(frequency>>(i*2))&3u;choices[ID_DISASTER_SEVERITY+i]=(severity>>(i*2))&3u;}
+  master=atoi(argv[15]);
+  rotation=atoi(argv[16]);
+ }
  choices[ID_MAP_VISIBILITY]=1;factions=atoi(argv[4]);
- DialogState d={.window=1,.preferredIsland=-1};WSSettings s={.size=sizeof s};
- wsMenuActivityControls(&d);int collected=wsMenuCollectAdvanced(&d,&s);char error[512];
+ DialogState d={.window=1,.preferredIsland=-1};WSSettings s={.size=sizeof s,.islandCount=24};
+ wsMenuActivityControls(&d);wsMenuDisasterControls(&d);int collected=wsMenuCollectAdvanced(&d,&s);char error[512];
  int valid=collected&&wsAdvancedValidateSettings(&s,error,sizeof error);
+ if(argc==17){
+  printf("{\"valid\":%d,\"islandVariety\":%d,\"islandRotation\":%d,\"minPolar\":%d,\"maxPolar\":%d,\"minTemperate\":%d,\"maxTemperate\":%d,\"minTropical\":%d,\"maxTropical\":%d,\"disasters\":%d,\"disasterMask\":%u,\"disasterFrequency\":%u,\"disasterSeverity\":%u,\"checks_enabled\":%u,\"frequencies_enabled\":%u,\"severities_enabled\":%u,\"selection_writes\":%d}\n",
+   valid,s.islandVariety,s.islandRotation,s.minPolar,s.maxPolar,s.minTemperate,s.maxTemperate,s.minTropical,s.maxTropical,s.disasters,s.disasterMask,s.disasterFrequency,s.disasterSeverity,disasterChecks,disasterFrequencies,disasterSeverities,selectionWrites);
+  return 0;
+ }
  printf("{\"valid\":%d,\"pirateFrequency\":%d,\"pirateStrength\":%d,\"merchantFrequency\":%d,\"enabled\":%d,\"selection_writes\":%d}\n",
   valid,s.pirateFrequency,s.pirateStrength,s.merchantFrequency,enabled,selectionWrites);
  return 0;
@@ -511,7 +595,7 @@ class NativeActivityMenuTests(unittest.TestCase):
     def setUpClass(cls):
         values = (NATIVE / 'menu_values.inc').read_text()
         functions = '\n'.join(c_function(values, name) for name in
-                              ('wsMenuActivityControls', 'wsMenuCollectAdvanced'))
+                              ('wsMenuActivityControls', 'wsMenuDisasterControls', 'wsMenuCollectAdvanced'))
         # Share only the existing fixture's type declarations. The tested
         # functions and range validator come directly from production source.
         prefix = DRIVER.split('#define WS_WORLD_OPTIONS_GENERATOR', 1)[0]
@@ -553,6 +637,73 @@ class NativeActivityMenuTests(unittest.TestCase):
                     result = self.observed(*choices, factions=0)
                     self.assertEqual(result['valid'], 0)
                     self.assertEqual(result['selection_writes'], 0)
+
+    def advanced(self, *, variety=0, quotas=(0,128,0,128,0,128), mask=31,
+                 frequency=341, severity=341, master=1, rotation=0):
+        args = [1,1,1,3,variety,*quotas,mask,frequency,severity,master,rotation]
+        result = subprocess.run([str(self.exe), *map(str, args)], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_rotation_checkbox_is_collected_with_other_generation_choices(self):
+        for rotation in (0,1):
+            value = self.advanced(variety=2, rotation=rotation)
+            self.assertEqual((value['valid'], value['islandVariety'], value['islandRotation']), (1,2,rotation))
+
+    def test_variety_and_all_six_climate_limits_are_collected_and_validated(self):
+        for variety in range(3):
+            value = self.advanced(variety=variety, quotas=(2,8,4,12,4,14))
+            self.assertEqual(value['valid'], 1)
+            self.assertEqual(value['islandVariety'], variety)
+            self.assertEqual([value[key] for key in ('minPolar','maxPolar','minTemperate','maxTemperate','minTropical','maxTropical')],
+                             [2,8,4,12,4,14])
+        for variety in (-1,3,2147483647):
+            self.assertEqual(self.advanced(variety=variety)['valid'], 0)
+        for quotas in ((-1,128,0,128,0,128), (0,129,0,128,0,128), (9,8,0,128,0,128),
+                       (0,1,0,128,0,128), (0,128,0,1,0,128), (0,128,0,128,0,1),
+                       (10,128,10,128,10,128), (0,6,0,6,0,6),
+                       (2147483647,2147483647,0,128,0,128)):
+            with self.subTest(quotas=quotas):
+                self.assertEqual(self.advanced(quotas=quotas)['valid'], 0)
+
+    def test_every_disaster_checkbox_preserves_its_choices_when_disabled(self):
+        for mask in range(32):
+            for master in (0,1):
+                with self.subTest(mask=mask, master=master):
+                    value = self.advanced(mask=mask, frequency=548, severity=389, master=master)
+                    self.assertEqual(value['valid'], 1)
+                    self.assertEqual((value['disasters'], value['disasterMask'], value['disasterFrequency'], value['disasterSeverity']),
+                                     (master,mask,548,389))
+                    self.assertEqual(value['checks_enabled'], 31 if master else 0)
+                    self.assertEqual(value['frequencies_enabled'], mask if master else 0)
+                    self.assertEqual(value['severities_enabled'], mask & 28 if master else 0)
+                    self.assertEqual(value['selection_writes'], 0)
+
+    def test_all_five_frequency_selectors_pack_independently(self):
+        for word in range(1024):
+            if any((word >> (i*2) & 3) == 3 for i in range(5)):
+                continue
+            with self.subTest(frequency=word):
+                value = self.advanced(frequency=word)
+                self.assertEqual((value['valid'], value['disasterFrequency']), (1,word))
+        for i in range(5):
+            with self.subTest(invalid_frequency_type=i):
+                word = (341 & ~(3 << (i*2))) | (3 << (i*2))
+                self.assertEqual(self.advanced(frequency=word, master=0)['valid'], 0)
+
+    def test_supported_severity_selectors_pack_and_unsupported_modes_refuse(self):
+        for third in range(3):
+            for fourth in range(3):
+                for fifth in range(3):
+                    word = 5 | third << 4 | fourth << 6 | fifth << 8
+                    value = self.advanced(severity=word)
+                    self.assertEqual((value['valid'], value['disasterSeverity']), (1,word))
+        for i in range(5):
+            choices = (0,2,3) if i < 2 else (3,)
+            for mode in choices:
+                word = (341 & ~(3 << (i*2))) | mode << (i*2)
+                with self.subTest(invalid_severity_type=i, mode=mode):
+                    self.assertEqual(self.advanced(severity=word, mask=0, master=0)['valid'], 0)
 
 
 if __name__ == '__main__':

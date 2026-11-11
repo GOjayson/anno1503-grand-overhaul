@@ -25,9 +25,9 @@ static void wsMenuPaintConcealed(DialogState*d,HDC dc,const RECT*client){
 }
 
 static void wsMenuPage(DialogState*d,int page){
- if(page<0||page>5)return;d->page=page;
+ if(page<0||page>7)return;d->page=page;
  for(uint32_t i=0;i<d->pageControlCount;i++)ShowWindow(d->pageControls[i],d->controlPages[i]==page?SW_SHOW:SW_HIDE);
- for(int i=0;i<6;i++)SendDlgItemMessageA(d->window,ID_TAB_WORLD+i,BM_SETSTATE,i==page,0);
+ for(int i=0;i<8;i++)SendDlgItemMessageA(d->window,ID_TAB_WORLD+i,BM_SETSTATE,i==page,0);
 }
 static void wsMenuPutNumber(DialogState*d,int id,int32_t value){char text[32];snprintf(text,sizeof text,"%d",value);SetDlgItemTextA(d->window,id,text);}
 static void wsMenuPutSeed(DialogState*d,uint32_t value){char text[16];snprintf(text,sizeof text,"%u",value);SetDlgItemTextA(d->window,ID_SEED,text);}
@@ -52,13 +52,29 @@ static void wsMenuActivityControls(DialogState*d){
  EnableWindow(GetDlgItem(d->window,ID_PIRATE_STRENGTH),pirates);
  EnableWindow(GetDlgItem(d->window,ID_MERCHANT_FREQUENCY),merchants);
 }
+static void wsMenuDisasterControls(DialogState*d){
+ int active=SendDlgItemMessageA(d->window,ID_DISASTERS,BM_GETCHECK,0,0)==BST_CHECKED;
+ for(int i=0;i<5;i++){
+  int enabled=SendDlgItemMessageA(d->window,ID_DISASTER_ENABLE+i,BM_GETCHECK,0,0)==BST_CHECKED;
+  EnableWindow(GetDlgItem(d->window,ID_DISASTER_ENABLE+i),active);
+  EnableWindow(GetDlgItem(d->window,ID_DISASTER_FREQUENCY+i),active&&enabled);
+  EnableWindow(GetDlgItem(d->window,ID_DISASTER_SEVERITY+i),active&&enabled&&i>=2);
+ }
+}
 static void wsMenuIslandInfo(DialogState*d){
  char text[4096],summary[768];WSIslandDetails details={0};details.size=sizeof details;
  if(wsMenuMapConcealed(d)){
+  SetDlgItemTextA(d->window,ID_CLIMATE_SUMMARY,"Terra incognita keeps the generated climate counts hidden.");
   SetDlgItemTextA(d->window,ID_ISLAND_DETAILS,"Terra incognita keeps land, sea, resources and occupants hidden. Chart the world with your ships and settlements after starting.\r\n\r\nA preferred climate and balanced starts remain available; selecting a particular island is disabled.");
   SetDlgItemTextA(d->window,ID_FAIR_SUMMARY,"Starting-position and resource validation still apply. Their map details stay hidden until you explore.");
   EnableWindow(GetDlgItem(d->window,ID_USE_ISLAND),FALSE);return;
  }
+ if(d->previewValid&&d->previewCount<=128u){
+  uint32_t counts[3]={0};char climateSummary[128];
+  for(uint32_t i=0;i<d->previewCount;i++)if(d->previewIslands[i].climate<6u)counts[d->previewIslands[i].climate/2u]++;
+  snprintf(climateSummary,sizeof climateSummary,"Preview: %u polar, %u temperate, %u tropical islands.",counts[0],counts[1],counts[2]);
+  SetDlgItemTextA(d->window,ID_CLIMATE_SUMMARY,climateSummary);
+ }else SetDlgItemTextA(d->window,ID_CLIMATE_SUMMARY,"Climate counts appear when the preview is ready.");
  int selected=d->previewValid&&d->inspectedIsland>=0&&(uint32_t)d->inspectedIsland<d->previewCount;
  int known=selected&&WorldSettingsIslandDetails((uint32_t)d->inspectedIsland,&details);
  if(known){
@@ -90,6 +106,21 @@ static int wsMenuCollectAdvanced(DialogState*d,WSSettings*s){
  s->pirateFrequency=(int)SendDlgItemMessageA(d->window,ID_PIRATE_FREQUENCY,CB_GETCURSEL,0,0);
  s->pirateStrength=(int)SendDlgItemMessageA(d->window,ID_PIRATE_STRENGTH,CB_GETCURSEL,0,0);
  s->merchantFrequency=(int)SendDlgItemMessageA(d->window,ID_MERCHANT_FREQUENCY,CB_GETCURSEL,0,0);
+ s->islandVariety=(int)SendDlgItemMessageA(d->window,ID_ISLAND_VARIETY,CB_GETCURSEL,0,0);
+ s->islandRotation=SendDlgItemMessageA(d->window,ID_ISLAND_ROTATION,BM_GETCHECK,0,0)==BST_CHECKED;
+ if(!integer(d->window,ID_MIN_POLAR,&s->minPolar)||!integer(d->window,ID_MAX_POLAR,&s->maxPolar)||
+    !integer(d->window,ID_MIN_TEMPERATE,&s->minTemperate)||!integer(d->window,ID_MAX_TEMPERATE,&s->maxTemperate)||
+    !integer(d->window,ID_MIN_TROPICAL,&s->minTropical)||!integer(d->window,ID_MAX_TROPICAL,&s->maxTropical)){
+  status(d,"Enter a whole number from 0 to 128 for every climate minimum and maximum.");return 0;
+ }
+ s->disasterMask=s->disasterFrequency=s->disasterSeverity=0;
+ for(uint32_t i=0;i<5u;i++){
+  if(SendDlgItemMessageA(d->window,ID_DISASTER_ENABLE+(int)i,BM_GETCHECK,0,0)==BST_CHECKED)s->disasterMask|=1u<<i;
+  LRESULT frequency=SendDlgItemMessageA(d->window,ID_DISASTER_FREQUENCY+(int)i,CB_GETCURSEL,0,0);
+  LRESULT severity=SendDlgItemMessageA(d->window,ID_DISASTER_SEVERITY+(int)i,CB_GETCURSEL,0,0);
+  if(frequency<0||frequency>2||severity<0||severity>2){status(d,"Choose a frequency and severity for each disaster type.");return 0;}
+  s->disasterFrequency|=(uint32_t)frequency<<(i*2u);s->disasterSeverity|=(uint32_t)severity<<(i*2u);
+ }
  return 1;
 }
 static void wsMenuStartHint(DialogState*d){
@@ -125,6 +156,13 @@ static void wsMenuApplySettings(DialogState*d,const WSSettings*s){
  SendDlgItemMessageA(d->window,ID_PIRATE_FREQUENCY,CB_SETCURSEL,s->pirateFrequency,0);
  SendDlgItemMessageA(d->window,ID_PIRATE_STRENGTH,CB_SETCURSEL,s->pirateStrength,0);
  SendDlgItemMessageA(d->window,ID_MERCHANT_FREQUENCY,CB_SETCURSEL,s->merchantFrequency,0);
+ SendDlgItemMessageA(d->window,ID_ISLAND_VARIETY,CB_SETCURSEL,s->islandVariety,0);
+ SendDlgItemMessageA(d->window,ID_ISLAND_ROTATION,BM_SETCHECK,s->islandRotation?BST_CHECKED:BST_UNCHECKED,0);
+ for(uint32_t i=0;i<5u;i++){
+  SendDlgItemMessageA(d->window,ID_DISASTER_ENABLE+(int)i,BM_SETCHECK,s->disasterMask&(1u<<i)?BST_CHECKED:BST_UNCHECKED,0);
+  SendDlgItemMessageA(d->window,ID_DISASTER_FREQUENCY+(int)i,CB_SETCURSEL,(s->disasterFrequency>>(i*2u))&3u,0);
+  SendDlgItemMessageA(d->window,ID_DISASTER_SEVERITY+(int)i,CB_SETCURSEL,(s->disasterSeverity>>(i*2u))&3u,0);
+ }
  for(int i=0;i<8;i++)SendDlgItemMessageA(d->window,ID_CULTURE+i,BM_SETCHECK,s->cultures&(1u<<i)?BST_CHECKED:BST_UNCHECKED,0);
  for(int i=0;i<2;i++)SendDlgItemMessageA(d->window,ID_FACTION+i,BM_SETCHECK,s->factions&(1u<<i)?BST_CHECKED:BST_UNCHECKED,0);
  SendDlgItemMessageA(d->window,ID_CARGO_MODE,BM_SETCHECK,s->cargoMode?BST_CHECKED:BST_UNCHECKED,0);
@@ -133,8 +171,11 @@ static void wsMenuApplySettings(DialogState*d,const WSSettings*s){
  SendDlgItemMessageA(d->window,ID_GUARANTEE_BASICS,BM_SETCHECK,s->guaranteeBasics?BST_CHECKED:BST_UNCHECKED,0);
  wsMenuPutNumber(d,ID_COUNT,s->islandCount);wsMenuPutNumber(d,ID_SPACING,s->spacing);
  wsMenuPutNumber(d,ID_CARGO_TOOLS,s->cargoTools);wsMenuPutNumber(d,ID_CARGO_WOOD,s->cargoWood);wsMenuPutNumber(d,ID_CARGO_FOOD,s->cargoFood);
+ wsMenuPutNumber(d,ID_MIN_POLAR,s->minPolar);wsMenuPutNumber(d,ID_MAX_POLAR,s->maxPolar);
+ wsMenuPutNumber(d,ID_MIN_TEMPERATE,s->minTemperate);wsMenuPutNumber(d,ID_MAX_TEMPERATE,s->maxTemperate);
+ wsMenuPutNumber(d,ID_MIN_TROPICAL,s->minTropical);wsMenuPutNumber(d,ID_MAX_TROPICAL,s->maxTropical);
  wsMenuPutSeed(d,s->mapSeed);d->previewSeed=s->mapSeed;d->preferredIsland=s->startIsland;d->settings=*s;
- d->inspectedIsland=-1;wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuStartHint(d);d->creating=0;
+ d->inspectedIsland=-1;wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuDisasterControls(d);wsMenuStartHint(d);d->creating=0;
 }
 static void wsMenuCopySeed(DialogState*d){
  uint32_t seed;if(!wsMenuReadSeed(d,&seed))return;wchar_t text[16];swprintf(text,16,L"%u",seed);
@@ -217,7 +258,7 @@ static void wsMenuSavePreset(DialogState*d){
  wsPresetRefresh(d,name);status(d,"Preset saved, including the seed and every world setting.");
 }
 static int wsMenuCommand(DialogState*d,int id,int notice){
- if(id>=ID_TAB_WORLD&&id<ID_TAB_WORLD+6&&notice==BN_CLICKED){wsMenuPage(d,id-ID_TAB_WORLD);return 1;}
+ if(id>=ID_TAB_WORLD&&id<ID_TAB_WORLD+8&&notice==BN_CLICKED){wsMenuPage(d,id-ID_TAB_WORLD);return 1;}
  if(id==ID_USE_ISLAND&&notice==BN_CLICKED){
   if(wsMenuMapConcealed(d)){status(d,"Terra incognita keeps island selection hidden. Choose a preferred climate instead.");return 1;}
   if(!d->previewValid||d->inspectedIsland<0||!WorldSettingsStartingIslandEligible((uint32_t)d->inspectedIsland)){status(d,"Inspect an ordinary island with safe nearby water first.");return 1;}
@@ -234,9 +275,11 @@ static int wsMenuCommand(DialogState*d,int id,int notice){
  return 0;
 }
 static void wsMenuOptionChanged(DialogState*d,int id){
- if(id!=ID_MONEY&&id!=ID_AI_DIFFICULTY&&id!=ID_CARGO_MODE&&id!=ID_CARGO_TOOLS&&id!=ID_CARGO_WOOD&&id!=ID_CARGO_FOOD&&id!=ID_DISASTERS&&id!=ID_FAIR_STARTS&&id!=ID_START_SEPARATION&&id!=ID_GUARANTEE_BASICS&&id!=ID_MAP_VISIBILITY&&id!=ID_ENEMY_VISIBILITY&&id!=ID_PIRATE_FREQUENCY&&id!=ID_PIRATE_STRENGTH&&id!=ID_MERCHANT_FREQUENCY){d->preferredIsland=-1;d->inspectedIsland=-1;}
+ int disasterOption=id==ID_DISASTERS||(id>=ID_DISASTER_ENABLE&&id<ID_DISASTER_ENABLE+5)||(id>=ID_DISASTER_FREQUENCY&&id<ID_DISASTER_FREQUENCY+5)||(id>=ID_DISASTER_SEVERITY&&id<ID_DISASTER_SEVERITY+5);
+ if(id!=ID_MONEY&&id!=ID_AI_DIFFICULTY&&id!=ID_CARGO_MODE&&id!=ID_CARGO_TOOLS&&id!=ID_CARGO_WOOD&&id!=ID_CARGO_FOOD&&!disasterOption&&id!=ID_FAIR_STARTS&&id!=ID_START_SEPARATION&&id!=ID_GUARANTEE_BASICS&&id!=ID_MAP_VISIBILITY&&id!=ID_ENEMY_VISIBILITY&&id!=ID_PIRATE_FREQUENCY&&id!=ID_PIRATE_STRENGTH&&id!=ID_MERCHANT_FREQUENCY){d->preferredIsland=-1;d->inspectedIsland=-1;}
  if(id==ID_MAP_VISIBILITY&&wsMenuMapConcealed(d))d->preferredIsland=d->inspectedIsland=-1;
  if(id==ID_CARGO_MODE)wsMenuCargoControls(d);if(id==ID_FAIR_STARTS)wsMenuFairControls(d);wsMenuStartHint(d);wsMenuIslandInfo(d);
  if(id==ID_FACTION||id==ID_FACTION+1)wsMenuActivityControls(d);
+ if(disasterOption)wsMenuDisasterControls(d);
  if(id==ID_MAP_VISIBILITY&&d->preview)InvalidateRect(d->preview,NULL,FALSE);
 }

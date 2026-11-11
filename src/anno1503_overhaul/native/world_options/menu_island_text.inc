@@ -13,7 +13,7 @@ static int wsMenuDescribeIsland(const WSPlanIsland*p,const WSIslandDetails*d,cha
  static const char*const crops[]={"Grain","Tobacco","Spices","Flax","Sugar cane","Cotton","Grapes","Cocoa","Hops","Silk","Indigo","Herbs","Potatoes"};
  static const char*const minerals[]={"Iron","Gold","Salt","Gems",NULL,"Marble"};
  static const char*const cultures[]={"Moors","Mongols","Bedouins","Aztecs","Africans","Native Americans","Inuit","Polynesians"};
- if(!p||!d||!out||!cap||d->size!=sizeof(*d)||d->index!=p->id||p->climate>=6)return 0;
+ if(!p||!d||!out||!cap||d->size!=sizeof(*d)||d->index!=p->id||p->climate>=6||p->rotation>3u)return 0;
  char plantText[256],oreText[128],cultureText[192],nearPlants[256],nearOres[128],owner[64];
  wsMenuResourceNames(p->cropMask&0x1fffu,crops,13,plantText,sizeof plantText);
  wsMenuResourceNames(p->mineralMask|((p->mineralMask&64u)?1u:0u),minerals,6,oreText,sizeof oreText);
@@ -25,7 +25,7 @@ static int wsMenuDescribeIsland(const WSPlanIsland*p,const WSIslandDetails*d,cha
  else snprintf(owner,sizeof owner,"Not assigned");
  const char*faction=d->faction==1?"Pirates":(d->faction==2?"Venetians":(p->cultures?cultureText:"Uninhabited"));
  int n=snprintf(out,cap,
-  "Island %u - %s\r\nDimensions: %u x %u tiles; position: %u, %u\r\n"
+  "Island %u - %s\r\nDimensions: %u x %u tiles; position: %u, %u\r\nOrientation: %u degrees\r\n"
   "Fertile land tiles (catalogue estimate): %u\r\n"
   "Terrain, coast and buildings can further restrict usable space.\r\n\r\n"
   "Occupants: %s\r\nPlanned crops: %s\r\nPlanned minerals: %s\r\n"
@@ -33,7 +33,7 @@ static int wsMenuDescribeIsland(const WSPlanIsland*p,const WSIslandDetails*d,cha
   "Nearby ordinary-island resources (within %u tiles of the island edge):\r\n"
   "Crops: %s\r\nMinerals: %s\r\n\r\n"
   "Starting assignment: %s\r\nPreferred start: %s",
-  p->id+1u,climates[p->climate],p->width,p->height,p->x,p->y,d->fertileLand,
+  p->id+1u,climates[p->climate],p->width,p->height,p->x,p->y,p->rotation*90u,d->fertileLand,
   faction,plantText,oreText,d->oreSlots,d->whales?"Yes":"No",d->resourceRadius,
   nearPlants,nearOres,owner,d->startEligible?"Eligible; use the button above to start nearby.":"Unavailable (inhabited island or no safe coastal position).");
  return n>=0&&(uint32_t)n<cap;

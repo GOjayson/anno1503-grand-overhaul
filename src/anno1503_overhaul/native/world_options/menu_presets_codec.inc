@@ -6,10 +6,13 @@
 #endif
 #define WS_PRESET_MAX_BYTES 4096u
 #define WS_PRESET_NAME_MAX 32u
-static const char wsPresetHeader[]="ANNO1503_WORLD_PRESET 4\nGENERATOR=" WS_WORLD_OPTIONS_GENERATOR "\n";
-/* This exact predecessor used the same map planner. Migrate its choices in
- * memory only; the three new activity options retain native Normal defaults. */
-static const char wsPresetLegacyHeader[]="ANNO1503_WORLD_PRESET 3\nGENERATOR=ws6-e980d1f2563739790004625336b4a6f243c94fb0e00bc59bb80662f4546693ae\n";
+static const char wsPresetHeader[]="ANNO1503_WORLD_PRESET 5\nGENERATOR=" WS_WORLD_OPTIONS_GENERATOR "\n";
+/* Exact predecessors migrate in memory only. New generation options retain
+ * the preceding selection path; added disaster choices use native Normal. */
+static const char wsPresetLegacyHeader4[]="ANNO1503_WORLD_PRESET 4\nGENERATOR=ws6-6113d0190fad378ad46a5a36c921b7d70b437f31359c6836ba3dd74c585f3327\n";
+static const char wsPresetLegacyHeader3[]="ANNO1503_WORLD_PRESET 3\nGENERATOR=ws6-e980d1f2563739790004625336b4a6f243c94fb0e00bc59bb80662f4546693ae\n";
+/* Exact dev.3 choices retain the identical layout and full 43-field ABI. */
+static const char wsPresetLegacyHeader5[]="ANNO1503_WORLD_PRESET 5\nGENERATOR=ws6-601be2d158e48f8b09bea0b310e4e9ecd2cab3c5ece5647d035af668e7c67f02\n";
 typedef struct WSMenuPresetField {const char *name;size_t offset;int unsignedValue;} WSMenuPresetField;
 #define WS_PRESET_FIELD(name,isUnsigned) {#name,offsetof(WSWorldSettings,name),isUnsigned}
 static const WSMenuPresetField wsPresetFields[]={
@@ -28,7 +31,12 @@ static const WSMenuPresetField wsPresetFields[]={
  WS_PRESET_FIELD(resourceDistribution,0),WS_PRESET_FIELD(guaranteeBasics,0),
  WS_PRESET_FIELD(mapVisibility,0),WS_PRESET_FIELD(enemyVisibility,0),
  WS_PRESET_FIELD(pirateFrequency,0),WS_PRESET_FIELD(pirateStrength,0),
- WS_PRESET_FIELD(merchantFrequency,0)
+ WS_PRESET_FIELD(merchantFrequency,0),WS_PRESET_FIELD(islandVariety,0),
+ WS_PRESET_FIELD(minPolar,0),WS_PRESET_FIELD(maxPolar,0),
+ WS_PRESET_FIELD(minTemperate,0),WS_PRESET_FIELD(maxTemperate,0),
+ WS_PRESET_FIELD(minTropical,0),WS_PRESET_FIELD(maxTropical,0),
+ WS_PRESET_FIELD(disasterMask,1),WS_PRESET_FIELD(disasterFrequency,1),
+ WS_PRESET_FIELD(disasterSeverity,1),WS_PRESET_FIELD(islandRotation,0)
 };
 #undef WS_PRESET_FIELD
 
@@ -87,12 +95,19 @@ static int wsPresetDecode(const char *data,uint32_t length,WSWorldSettings *out)
  canonical[n]=0;size_t at=sizeof(wsPresetHeader)-1;
  size_t fields=sizeof(wsPresetFields)/sizeof(wsPresetFields[0]);
  if(at>n||memcmp(canonical,wsPresetHeader,at)){
-  at=sizeof(wsPresetLegacyHeader)-1;
-  if(at>n||memcmp(canonical,wsPresetLegacyHeader,at))return 0;
-  fields=29u;
+  at=sizeof(wsPresetLegacyHeader5)-1;
+  if(at>n||memcmp(canonical,wsPresetLegacyHeader5,at)){
+  at=sizeof(wsPresetLegacyHeader4)-1;fields=32u;
+  if(at>n||memcmp(canonical,wsPresetLegacyHeader4,at)){
+   at=sizeof(wsPresetLegacyHeader3)-1;fields=29u;
+   if(at>n||memcmp(canonical,wsPresetLegacyHeader3,at))return 0;
+  }
+  }
  }
  WSWorldSettings result={0};result.size=sizeof result;
  result.pirateFrequency=result.pirateStrength=result.merchantFrequency=1;
+ result.maxPolar=result.maxTemperate=result.maxTropical=128;
+ result.disasterMask=31;result.disasterFrequency=result.disasterSeverity=341;
  for(size_t i=0;i<fields;i++){
   const WSMenuPresetField *field=&wsPresetFields[i];size_t key=strlen(field->name);
   if(at+key+2u>n||memcmp(canonical+at,field->name,key)||canonical[at+key]!='=')return 0;

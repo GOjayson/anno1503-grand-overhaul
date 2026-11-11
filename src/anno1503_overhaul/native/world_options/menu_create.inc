@@ -1,4 +1,4 @@
-/* Six pages keep the existing and advanced choices readable while the map
+/* Eight pages keep the existing and advanced choices readable while the map
  * preview, seed, status and Start controls remain visible. */
 static int wsCreateMenu(DialogState*d,HWND w){
  const char*diff[]={"Easy","Medium","Hard"};
@@ -18,10 +18,12 @@ static int wsCreateMenu(DialogState*d,HWND w){
  const char*enemies[]={"Strict line of sight","Reveal all activity"};
  const char*activity[]={"Rare","Normal","Frequent"};
  const char*strength[]={"Weak","Normal","Strong"};
- const char*tabs[]={"World","Players","Starting","Presets","Islands","Visibility"};
+ const char*variety[]={"Allow repeated templates","Prefer unique templates","Prefer varied island shapes"};
+ const char*severity[]={"Mild","Normal","Severe"};
+ const char*tabs[]={"World","Players","Starting","Presets","Details","Visibility","Islands","Disasters"};
  d->creatingPage=-1;d->preferredIsland=d->inspectedIsland=-1;d->pageControlCount=0;
  label(d,"World Settings",24,18,632,28);
- for(int i=0;i<6;i++)control(d,"BUTTON",tabs[i],BS_PUSHBUTTON|WS_TABSTOP,24+i*106,58,102,32,ID_TAB_WORLD+i);
+ for(int i=0;i<8;i++)control(d,"BUTTON",tabs[i],BS_PUSHBUTTON|WS_TABSTOP,24+i*79,58,75,32,ID_TAB_WORLD+i);
 
  d->creatingPage=0;
  label(d,"World generation",24,108,632,24);
@@ -60,13 +62,12 @@ static int wsCreateMenu(DialogState*d,HWND w){
  control(d,"BUTTON","Use automatic starting position",BS_PUSHBUTTON|WS_TABSTOP,348,224,296,30,ID_CLEAR_START);
  control(d,"BUTTON","Balance starting islands for human and AI players",BS_AUTOCHECKBOX|WS_TABSTOP,24,272,620,28,ID_FAIR_STARTS);
  label(d,"Player separation",24,312,296,20);fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,334,296,180,ID_START_SEPARATION),separation,3,1);
- label(d,"Uses comparable fertile land and resource access. Inspect islands and the start summary on the Islands page.",348,310,296,62);
+ label(d,"Uses comparable fertile land and resource access. Inspect islands and the start summary on the Details page.",348,310,296,62);
  control(d,"BUTTON","Custom cargo on every trade ship",BS_AUTOCHECKBOX|WS_TABSTOP,24,388,620,28,ID_CARGO_MODE);
  label(d,"Tools (tons)",24,430,188,20);control(d,"EDIT","40",WS_BORDER|ES_NUMBER|WS_TABSTOP,24,452,188,27,ID_CARGO_TOOLS);
  label(d,"Wood (tons)",240,430,188,20);control(d,"EDIT","40",WS_BORDER|ES_NUMBER|WS_TABSTOP,240,452,188,27,ID_CARGO_WOOD);
  label(d,"Food (tons)",456,430,188,20);control(d,"EDIT","10",WS_BORDER|ES_NUMBER|WS_TABSTOP,456,452,188,27,ID_CARGO_FOOD);
  label(d,"Each good uses separate 50-ton holds. Small trade ships have 4 holds; big trade ships have 8. Cargo must fit every trade ship. Leave unchecked for standard supplies. Warship cannons are retained.",24,502,620,74);
- HWND disasters=control(d,"BUTTON","Enable disasters",BS_AUTOCHECKBOX|WS_TABSTOP,24,592,620,28,ID_DISASTERS);SendMessageA(disasters,BM_SETCHECK,BST_CHECKED,0);
 
  d->creatingPage=3;
  label(d,"Saved world presets",24,108,632,24);
@@ -92,6 +93,36 @@ static int wsCreateMenu(DialogState*d,HWND w){
  fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,262,620,150,ID_ENEMY_VISIBILITY),enemies,2,0);
  label(d,"Unexplored covers this preview and uncharted land and sea. Ships, settlements and deployed military units chart nearby areas, which stay remembered. Geography revealed shows island locations; Fully explored charts the whole map.\r\n\r\nStrict line of sight hides moving units beyond 48 tiles of your ships, settlements or deployed military units. Buildings stay as last seen until revisited. Reveal all activity shows live activity in charted areas. Both keep unexplored areas covered.\r\n\r\nOlder saves without exploration history start around your current units; buildings are remembered as you see them. Preferred climates and balanced starts still work; Unexplored disables preview island selection.",24,332,620,280);
 
+ d->creatingPage=6;
+ label(d,"Island variety and climate limits",24,108,632,24);
+ label(d,"Island variety",24,146,620,22);
+ fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,172,620,150,ID_ISLAND_VARIETY),variety,3,0);
+ control(d,"BUTTON","Randomly rotate uninhabited islands",BS_AUTOCHECKBOX|WS_TABSTOP,24,208,620,28,ID_ISLAND_ROTATION);
+ label(d,"Unique templates prefers different islands; Varied shapes reduces repeated coastlines. Rotation uses quarter turns. Native towns, Pirates and Venetians keep their original orientation.",24,248,620,58);
+ label(d,"Climate group",24,314,296,22);label(d,"Minimum",348,314,136,22);label(d,"Maximum",508,314,136,22);
+ const char*groups[]={"Polar (Polar + Tundra)","Temperate (North + Prairie)","Tropical (Jungle + Steppe)"};
+ for(int i=0;i<3;i++){
+  int y=350+i*60;label(d,groups[i],24,y+2,296,26);
+  control(d,"EDIT","0",WS_BORDER|ES_NUMBER|WS_TABSTOP,348,y,136,28,ID_MIN_POLAR+i*2);
+  control(d,"EDIT","128",WS_BORDER|ES_NUMBER|WS_TABSTOP,508,y,136,28,ID_MAX_POLAR+i*2);
+ }
+ control(d,"STATIC","",SS_LEFT,24,518,620,24,ID_CLIMATE_SUMMARY);
+ label(d,"Counts include cultures, Pirates and Venetians. Minimum 0 uses automatic allocation; maximum 128 is unrestricted.\r\nEach group must allow at least two islands for all climates and essential resources. Cultures may require more.",24,556,620,108);
+
+ d->creatingPage=7;
+ label(d,"Disasters",24,108,632,24);
+ HWND disasters=control(d,"BUTTON","Enable disasters",BS_AUTOCHECKBOX|WS_TABSTOP,24,146,620,28,ID_DISASTERS);SendMessageA(disasters,BM_SETCHECK,BST_CHECKED,0);
+ label(d,"Disaster",24,194,230,22);label(d,"Frequency",274,194,170,22);label(d,"Severity",464,194,180,22);
+ const char*disasterNames[]={"Fire","Plague","Volcanic eruptions","Earthquakes","Drought"};
+ for(int i=0;i<5;i++){
+  int y=230+i*64;
+  HWND enabled=control(d,"BUTTON",disasterNames[i],BS_AUTOCHECKBOX|WS_TABSTOP,24,y,230,28,ID_DISASTER_ENABLE+i);
+  SendMessageA(enabled,BM_SETCHECK,BST_CHECKED,0);
+  fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,274,y,170,140,ID_DISASTER_FREQUENCY+i),activity,3,1);
+  fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,464,y,180,140,ID_DISASTER_SEVERITY+i),severity,3,1);
+ }
+ label(d,"Each type has its own frequency. Fire and plague keep Normal severity. Disabled types retain your choices.\r\nEvents still depend on native conditions; frequency does not guarantee a fixed interval. Eruptions need a volcano.",24,546,620,118);
+
  d->creatingPage=-1;
  label(d,"Map seed",688,58,408,20);control(d,"EDIT","",WS_BORDER|ES_NUMBER|WS_TABSTOP,688,82,280,28,ID_SEED);SendDlgItemMessageA(w,ID_SEED,EM_SETLIMITTEXT,10,0);
  control(d,"BUTTON","Copy seed",BS_PUSHBUTTON|WS_TABSTOP,980,82,116,28,ID_COPY_SEED);
@@ -104,7 +135,7 @@ static int wsCreateMenu(DialogState*d,HWND w){
  label(d,"Same seed + same world options reproduce the preview.",896,726,200,38);
  label(d,"Status",24,670,632,20);control(d,"STATIC",developmentConfigured&&prepareBackend?configuredStatus:noBackend,SS_LEFT,24,696,632,64,ID_STATUS);
  control(d,"BUTTON","Back",BS_PUSHBUTTON|WS_TABSTOP,388,768,120,32,ID_BACK);control(d,"BUTTON","Start",BS_DEFPUSHBUTTON|WS_TABSTOP,528,768,120,32,ID_START);
- wsMenuPutSeed(d,freshPreviewSeed(0));wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuStartHint(d);wsMenuIslandInfo(d);wsPresetRefresh(d,NULL);wsMenuPage(d,0);
+ wsMenuPutSeed(d,freshPreviewSeed(0));wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuDisasterControls(d);wsMenuStartHint(d);wsMenuIslandInfo(d);wsPresetRefresh(d,NULL);wsMenuPage(d,0);
  EnableWindow(GetDlgItem(w,ID_START),FALSE);d->creating=0;PostMessageA(w,WS_PREVIEW_MESSAGE,0,0);
  SetFocus(GetDlgItem(w,ID_WORLD_SIZE));return 1;
 }

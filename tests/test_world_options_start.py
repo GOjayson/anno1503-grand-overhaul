@@ -83,13 +83,15 @@ class Settings(C.Structure):
         'startClimate', 'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
         'cargoFood', 'climateBalance', 'layoutStyle', 'disasters', 'fairStarts',
         'startSeparation', 'resourceDistribution', 'guaranteeBasics', 'mapVisibility', 'enemyVisibility',
-        'pirateFrequency', 'pirateStrength', 'merchantFrequency')]
+        'pirateFrequency', 'pirateStrength', 'merchantFrequency', 'islandVariety',
+        'minPolar', 'maxPolar', 'minTemperate', 'maxTemperate', 'minTropical', 'maxTropical',
+        'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation')]
 
 
 class Island(C.Structure):
     _fields_ = [(name, C.c_uint32) for name in (
         'id', 'x', 'y', 'width', 'height', 'templateIndex', 'cropMask',
-        'mineralMask', 'cultures', 'climate')]
+        'mineralMask', 'cultures', 'climate', 'rotation')]
 
 
 class SceneShip(C.Structure):
@@ -105,6 +107,9 @@ def settings(**changes):
     value.disasters = 1
     value.mapVisibility = 1
     value.pirateFrequency = value.pirateStrength = value.merchantFrequency = 1
+    value.maxPolar = value.maxTemperate = value.maxTropical = 128
+    value.disasterMask = 31
+    value.disasterFrequency = value.disasterSeverity = 341
     for key, item in changes.items():
         setattr(value, key, item)
     return value

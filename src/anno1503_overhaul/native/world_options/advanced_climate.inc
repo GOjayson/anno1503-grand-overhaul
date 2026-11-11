@@ -18,7 +18,7 @@ static int wsChooseBalancedFill(const WSWorldSettings*s,uint32_t count){
   climates[planned[i].climate]++;
  }
  for(uint32_t i=0;i<WS_COUNT;i++)
-  if(wsSelectionMatch(i,s,0,-1,0,0,1,0))available[wsTemplates[i].climate]=1;
+  if(wsSelectionMatch(i,s,0,-1,0,0,1,0)&&wsClimateQuotaFiller(s,wsTemplates[i].climate))available[wsTemplates[i].climate]=1;
  for(uint32_t c=0;c<6;c++)if(available[c]){
   uint32_t weight=wsClimateWeight(s,c);
   if(!weight)return -1;

@@ -13,19 +13,21 @@ def apply_menu(files: dict[str, bytes]) -> None:
     menu = replace(menu, anchor, anchor + b'\n'
         b'enum {ID_SEED=201,ID_COPY_SEED,ID_START_CLIMATE,ID_CARGO_MODE,ID_CARGO_TOOLS,ID_CARGO_WOOD,ID_CARGO_FOOD,\n'
         b' ID_CLIMATE_BALANCE,ID_LAYOUT_STYLE,ID_DISASTERS,ID_PRESET_PICK,ID_PRESET_NAME,ID_PRESET_SAVE,ID_PRESET_LOAD,ID_CLEAR_START,ID_START_HINT,\n'
-        b' ID_TAB_WORLD=220,ID_TAB_PLAYERS,ID_TAB_START,ID_TAB_PRESETS,ID_TAB_ISLANDS,ID_TAB_VISIBILITY,\n'
+        b' ID_TAB_WORLD=220,ID_TAB_PLAYERS,ID_TAB_START,ID_TAB_PRESETS,ID_TAB_ISLANDS,ID_TAB_VISIBILITY,ID_TAB_CLIMATE,ID_TAB_DISASTERS,\n'
         b' ID_FAIR_STARTS=230,ID_START_SEPARATION,ID_RESOURCE_DISTRIBUTION,ID_GUARANTEE_BASICS,\n'
         b' ID_ISLAND_DETAILS,ID_USE_ISLAND,ID_FAIR_SUMMARY,ID_MAP_VISIBILITY,ID_ENEMY_VISIBILITY,\n'
-        b' ID_PIRATE_FREQUENCY,ID_PIRATE_STRENGTH,ID_MERCHANT_FREQUENCY};', 'advanced menu control IDs')
+        b' ID_PIRATE_FREQUENCY,ID_PIRATE_STRENGTH,ID_MERCHANT_FREQUENCY,\n'
+        b' ID_ISLAND_VARIETY=250,ID_MIN_POLAR,ID_MAX_POLAR,ID_MIN_TEMPERATE,ID_MAX_TEMPERATE,ID_MIN_TROPICAL,ID_MAX_TROPICAL,ID_ISLAND_ROTATION,\n'
+        b' ID_CLIMATE_SUMMARY=260,ID_DISASTER_ENABLE=270,ID_DISASTER_FREQUENCY=280,ID_DISASTER_SEVERITY=290};', 'advanced menu control IDs')
     menu = replace(menu,
         b' uint32_t previewSeed,previewCount;WSPlanIsland previewIslands[128];',
         b' uint32_t previewSeed,previewCount;WSPlanIsland previewIslands[128];\n'
         b' int page,creatingPage;int32_t preferredIsland,inspectedIsland;uint32_t pageControlCount;\n'
-        b' HWND pageControls[128];int controlPages[128];', 'paged menu state')
+        b' HWND pageControls[256];int controlPages[256];', 'paged menu state')
     menu = replace(menu,
         b' if(c)SendMessageA(c,WM_SETFONT,(WPARAM)d->font,TRUE);return c;',
         b' if(c)SendMessageA(c,WM_SETFONT,(WPARAM)d->font,TRUE);\n'
-        b' if(c&&d->creatingPage>=0){if(d->pageControlCount>=128u){DestroyWindow(c);return NULL;}uint32_t at=d->pageControlCount++;d->pageControls[at]=c;d->controlPages[at]=d->creatingPage;}return c;',
+        b' if(c&&d->creatingPage>=0){if(d->pageControlCount>=256u){DestroyWindow(c);return NULL;}uint32_t at=d->pageControlCount++;d->pageControls[at]=c;d->controlPages[at]=d->creatingPage;}return c;',
         'track page visibility')
     menu = replace(menu, b'static int collect(DialogState*d){',
         b'#include "menu_values.inc"\nstatic int collect(DialogState*d){', 'menu values and presets include')
@@ -98,9 +100,10 @@ def apply_menu(files: dict[str, bytes]) -> None:
         'preview starting-island click')
     preview = replace(preview, b'static int settingsNotification(int id,int notification){',
         b'static int settingsNotification(int id,int notification){\n'
-        b' if(id==ID_SEED||(id>=ID_CARGO_TOOLS&&id<=ID_CARGO_FOOD))return notification==EN_CHANGE;\n'
-        b' if(id==ID_CARGO_MODE||id==ID_DISASTERS||id==ID_FAIR_STARTS||id==ID_GUARANTEE_BASICS)return notification==BN_CLICKED;\n'
-        b' if(id==ID_START_CLIMATE||id==ID_CLIMATE_BALANCE||id==ID_LAYOUT_STYLE||id==ID_START_SEPARATION||id==ID_RESOURCE_DISTRIBUTION||id==ID_MAP_VISIBILITY||id==ID_ENEMY_VISIBILITY||id==ID_PIRATE_FREQUENCY||id==ID_PIRATE_STRENGTH||id==ID_MERCHANT_FREQUENCY)return notification==CBN_SELCHANGE;',
+        b' if(id==ID_SEED||(id>=ID_CARGO_TOOLS&&id<=ID_CARGO_FOOD)||(id>=ID_MIN_POLAR&&id<=ID_MAX_TROPICAL))return notification==EN_CHANGE;\n'
+        b' if(id==ID_CARGO_MODE||id==ID_DISASTERS||id==ID_FAIR_STARTS||id==ID_GUARANTEE_BASICS||id==ID_ISLAND_ROTATION||(id>=ID_DISASTER_ENABLE&&id<ID_DISASTER_ENABLE+5))return notification==BN_CLICKED;\n'
+        b' if((id>=ID_DISASTER_FREQUENCY&&id<ID_DISASTER_FREQUENCY+5)||(id>=ID_DISASTER_SEVERITY&&id<ID_DISASTER_SEVERITY+5))return notification==CBN_SELCHANGE;\n'
+        b' if(id==ID_START_CLIMATE||id==ID_CLIMATE_BALANCE||id==ID_LAYOUT_STYLE||id==ID_START_SEPARATION||id==ID_RESOURCE_DISTRIBUTION||id==ID_MAP_VISIBILITY||id==ID_ENEMY_VISIBILITY||id==ID_PIRATE_FREQUENCY||id==ID_PIRATE_STRENGTH||id==ID_MERCHANT_FREQUENCY||id==ID_ISLAND_VARIETY)return notification==CBN_SELCHANGE;',
         'advanced control notifications')
     preview = replace(preview,
         b' d->previewValid=0;d->previewCount=0;EnableWindow(GetDlgItem(d->window,ID_START),FALSE);',

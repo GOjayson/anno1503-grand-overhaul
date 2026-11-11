@@ -73,8 +73,8 @@ static int wsFairPairFits(const WSWorldSettings*s,uint32_t a,float ax,float ay,u
  uint64_t distance=wsFairPointDistance(ax,ay,bx,by);
  uint32_t minimum=wsFairMinimumDistance(s),maximum=wsFairMaximumDistance(s);
  if(distance<(uint64_t)minimum*minimum||distance>(uint64_t)maximum*maximum)return 0;
- WSPlanIsland reserveA={0,(uint32_t)ax-24u,(uint32_t)ay-24u,49u,49u,0,0,0,0,0};
- WSPlanIsland reserveB={0,(uint32_t)bx-24u,(uint32_t)by-24u,49u,49u,0,0,0,0,0};
+ WSPlanIsland reserveA={0,(uint32_t)ax-24u,(uint32_t)ay-24u,49u,49u,0,0,0,0,0,0};
+ WSPlanIsland reserveB={0,(uint32_t)bx-24u,(uint32_t)by-24u,49u,49u,0,0,0,0,0,0};
  return wsSeparated(&reserveA,&reserveB,0);
 }
 typedef struct WSFairCandidate{uint32_t island,land,quality;float x,y;} WSFairCandidate;
@@ -148,7 +148,7 @@ static int wsFairCommit(const WSWorldSettings*s,char*error,uint32_t cap){
   for(uint32_t i=0;i<wsExpectedSceneShipCount;i++)if(wsExpectedSceneShips[i].owner==owner){wsExpectedSceneShips[i].x+=x-oldX;wsExpectedSceneShips[i].y+=y-oldY;}
   wsStartOverrideXY[owner][0]=x;wsStartOverrideXY[owner][1]=y;wsStartOverrideMask|=1u<<owner;
   wsAssignedStartIsland[owner]=(int32_t)wsFairCachedIslands[owner];
-  wsActiveShipReserves[wsActiveShipReserveCount++]=(WSPlanIsland){0,(uint32_t)x-24u,(uint32_t)y-24u,49u,49u,0,0,0,0,0};
+  wsActiveShipReserves[wsActiveShipReserveCount++]=(WSPlanIsland){0,(uint32_t)x-24u,(uint32_t)y-24u,49u,49u,0,0,0,0,0,0};
  }
  for(uint32_t owner=count;owner<4u;owner++)wsAssignedStartIsland[owner]=-1;
  wsFairOwnerMask=((1u<<count)-1u)&~1u;

@@ -10,7 +10,7 @@ It does not support arbitrary combinations of future native modifications.
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Experimental 0.7.0-dev.1 installed on the managed World-only copy; in-game/restart policy retention passed; four merchants observed; pirate gameplay unverified and native six-cannon load cap retained | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
+| World Settings | Priority | Experimental 0.8.0-dev.4 installed; new island/disaster controls passed automated checks, world creation, in-game reload and fresh-process reload | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
 | Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
 | Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
@@ -27,7 +27,28 @@ The UI should explain their status and the validator must enforce it too.
 
 ## Expanded in-game World Settings
 
-Development **0.7.0-dev.1** adds independent pirate reinforcement frequency,
+Development **0.8.0-dev.4** adds template/shape variety, optional quarter-turn
+rotation of verified ordinary islands, minimum/maximum climate-group counts,
+and individual native disaster switches and frequencies. The new Islands and
+Disasters pages keep configuration inside Anno. Three reproducible builds per
+Food selection passed. The full dev.2 suite passed 423 methods; all 145 targeted
+dev.4 methods passed after the save-safe rotation and disaster-handoff repairs. Another 77
+portable installer methods passed. Four symbolic-link methods were skipped
+for Windows privileges. Six
+isolated compiled-runtime scene stages also passed. Those stages do not run
+Anno. World-only installation/restoration preserved every save, preset and all 61
+preceding backup generations, retaining two further restored generations
+for a total of 63. The
+shortcut points to the updated build. Environment1 loaded in Anno with 24
+islands, ten rotations and climate totals 6/8/10. Its three checkpoints retain
+exact height vertices, texture cells, resources and disaster policy through
+in-game loading and a full restart. The user reported correct terrain, rivers
+and mineral symbols in each check. Long-session event rates and persistence of
+already active disaster durations remain unverified. No Food gameplay run was
+performed. See
+[environment options](WORLD_ENVIRONMENT_OPTIONS.md) for behavior and limitations.
+
+The preceding **0.7.0-dev.1** adds independent pirate reinforcement frequency,
 new-ship strength and neutral merchant traffic controls to the Players page.
 All default to Normal, and the Pirates/Venetians on/off choices remain
 authoritative. The World-only build and updated automatic shortcut are installed.
@@ -101,16 +122,17 @@ deployed scouts/military observers and ownership checks separate from drawing;
 the user confirmed own/foreign controls and scout exploration in a bounded
 sample, but lag remained. Island inspection, balanced starts and resource
 distribution remain available. The installer selects the feature
-combination; it does not configure individual worlds. Six pages keep the
+combination; it does not configure individual worlds. Eight pages keep the
 choices beside the persistent preview area: World, Players, Starting,
-Presets, Islands and Visibility. Terra incognita covers that preview.
+Presets, Details, Visibility, Islands and Disasters. Terra incognita covers
+that preview.
 
 | Setting | Behavior and constraints |
 | --- | --- |
 | Map seed | Enter or copy an unsigned 32-bit seed, including zero. The same seed, generator fingerprint and settings reproduce the validated map preview. Regenerate chooses another displayed seed. |
-| Saved presets | Save/load all 32 world choices, including seed, preferred island, visibility and faction activity, using bounded version-4 named files inside the managed copy. Version-3 presets from the exact preceding 0.6.0-dev.9 generator migrate in memory with all three activity choices Normal; their files are preserved. Other identities/formats are refused. |
+| Saved presets | Save/load all 43 world choices, including seed and the new environment controls, using bounded version-5 named files. Exact preceding version-4 (0.7) and version-3 (0.6.0-dev.9) identities migrate in memory with new choices defaulted; their files are preserved. Other identities/formats are refused. |
 | Pirate reinforcement frequency | Rare doubles the native waiting threshold; Normal retains it; Frequent halves it. Native fleet caps, targets and routes still limit raids. Disabling Pirates disables this control. |
-| Pirate strength | Weak reduces newly created pirates' cannon count, Normal retains the native count, and Strong increases it within the native pirate 4–18 range. **The unchanged native loader caps existing pirate armament at six cannons on reload.** The policy persists for future creations. Existing ships are not refilled or re-equipped; disabling Pirates disables this control. |
+| Pirate strength | Weak reduces newly created pirates' cannon count, Normal retains the native count, and Strong increases it within the native pirate 4Ã¢â‚¬â€œ18 range. **The unchanged native loader caps existing pirate armament at six cannons on reload.** The policy persists for future creations. Existing ships are not refilled or re-equipped; disabling Pirates disables this control. |
 | Neutral merchant trade frequency | Rare halves the native trading-fleet target with rounding up, Normal retains it, and Frequent doubles it up to 10. Routes, travel, ports and demand still determine visits; Rare can equal Normal for a one-ship target. Disabling Venetians disables this control. |
 | Island inspection | With a revealed preview, click any island, including native and special-faction islands, to inspect dimensions, climate, fertile-land estimate, planned crop/mineral masks, occupants, template ore/whale occurrences, nearby resources and starting eligibility. The estimate does not establish building or mine accessibility. |
 | Starting position | Choose a climate or, with a revealed preview, inspect an ordinary uninhabited island and explicitly prefer it. Terra incognita disables manual island selection, clears a preceding preferred island and retains climate preferences. Starting ships move to checked nearby water; native/special islands and unsafe coastal starts are refused. Inspection alone does not move the starting fleet; no settlement is built automatically. |
@@ -119,8 +141,11 @@ Presets, Islands and Visibility. Terra incognita covers that preview.
 | Nearby basic resources | Optionally guarantee grain, flax, potatoes, iron and salt on ordinary islands within `max(128, worldSize / 4)` tiles of each actual participant's starting island. This can increase world abundance above fertility settings and is not a complete Food-overhaul diet guarantee. |
 | Starting cargo | Custom tools, wood and food apply to each trade ship. Each distinct stack uses a 50-ton hold; small trade ships have four holds and big trade ships have eight. The choice must fit every trade ship in the fleet. Warship cannon equipment is retained. |
 | Climate balance | Balanced, favour temperate (north/prairie), tropical (jungle/steppe) or polar (polar/tundra). Enabled cultures, all six climates and essential resources remain required. |
+| Climate limits | Minimum/maximum numbers for Polar, Temperate and Tropical groups, including culture and special-faction islands. Each group must permit two islands; impossible ranges are refused. |
+| Island variety | Allow repeats, prefer unique templates or prefer varied coastal shapes, within existing constraints. Soft preferences can fall back; hard quotas and resources remain required. |
+| Island rotation | Optional seeded quarter turns for 256 save-safe ordinary templates. Native towns, Pirates and Venetians keep their orientation. Original island files are preserved. |
 | Layout style | Evenly spread, grouped archipelagos or a central ocean. Geometry, native placement grid, ship reserves, border bounds and minimum spacing remain validated. An impossible choice fails rather than changing layout style silently. |
-| Disasters | Enable/disable the inspected native endless-game disaster option while retaining the separately selected faction options. |
+| Disasters | Master enable plus individual Fire, Plague, Eruption, Earthquake and Drought checkboxes and Rare/Normal/Frequent choices. Fire/Plague keep Normal severity; the other three offer Mild/Normal/Severe for newly created events. Native prerequisites remain authoritative. |
 | Map visibility | Unexplored (terra incognita) covers uncharted land and sea with an opaque layer in the main view. Ships and settlements chart nearby eight-tile cells permanently; dev.3 also includes deployed scouts and military units. Scout exploration passed a bounded game check; other classes need wider coverage. Unknown minimap areas are uniform and show no island outlines. Geography revealed is the default and shows the terrain layout. Fully explored also unlocks island fertility information. Native island contact remains separate fertility/gameplay knowledge and does not reveal a whole island's terrain. Terra incognita covers setup geometry, details, start badges and resource summaries. |
 | Enemy activity | Strict line of sight (default) or Reveal all activity. Strict uses a fixed 48-tile radius around controllable human ships, owned settlement building-anchor rectangles and, in the dev.3 repair, eligible deployed scouts/military units. Enemy ships and units hide outside current sight. Buildings keep their last-seen appearance until revisited. Reveal all activity shows live activity within charted areas; Unexplored keeps unknown areas covered in both activity modes. |
 | Exploration history | Save and Save As include charted areas and remembered buildings in an automatic WSCHART extension inside the native checkpoint. History is checked against that exact checkpoint before loading. Older saves without the extension begin around current observers, with no invented historical buildings. Configuration stays in-game and requires no user-edited sidecar. |

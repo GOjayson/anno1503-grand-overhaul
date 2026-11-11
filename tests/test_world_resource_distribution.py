@@ -14,8 +14,8 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
-from anno1503_overhaul.world_options import PRIVATE, apply_common
-from anno1503_overhaul.world_options_planner import apply_planner
+from anno1503_overhaul.world_options import PRIVATE, apply_common, authored
+from anno1503_overhaul.world_options_planner import apply_planner, stage_selection_fixture
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / 'legacy/world_settings'
@@ -28,16 +28,18 @@ FIELDS = ('size', 'difficulty', 'islandSize', 'islandCount', 'spacing', 'aiCount
           'startIsland', 'cargoMode', 'cargoTools', 'cargoWood', 'cargoFood',
           'climateBalance', 'layoutStyle', 'disasters', 'fairStarts',
           'startSeparation', 'resourceDistribution', 'guaranteeBasics', 'mapVisibility', 'enemyVisibility',
-          'pirateFrequency', 'pirateStrength', 'merchantFrequency')
+          'pirateFrequency', 'pirateStrength', 'merchantFrequency', 'islandVariety',
+          'minPolar', 'maxPolar', 'minTemperate', 'maxTemperate', 'minTropical', 'maxTropical',
+          'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation')
 
 
 class Settings(C.Structure):
-    _fields_ = [(n, C.c_uint32 if n in {'size', 'cultures', 'factions', 'mapSeed'} else C.c_int32) for n in FIELDS]
+    _fields_ = [(n, C.c_uint32 if n in {'size', 'cultures', 'factions', 'mapSeed', 'disasterMask', 'disasterFrequency', 'disasterSeverity'} else C.c_int32) for n in FIELDS]
 
 
 class Island(C.Structure):
     _fields_ = [(n, C.c_uint32) for n in ('id', 'x', 'y', 'width', 'height', 'templateIndex',
-                                        'cropMask', 'mineralMask', 'cultures', 'climate')]
+                                        'cropMask', 'mineralMask', 'cultures', 'climate', 'rotation')]
 
 
 def options(**values):
@@ -46,7 +48,9 @@ def options(**values):
                       startingMoney=30000, aiDifficulty=1, plantFertility=1,
                       mineralFertility=1, worldSize=1024, mapSeed=3719,
                       startClimate=-1, startIsland=-1, disasters=1, startSeparation=1, mapVisibility=1,
-                      pirateFrequency=1, pirateStrength=1, merchantFrequency=1)
+                      pirateFrequency=1, pirateStrength=1, merchantFrequency=1,
+                      maxPolar=128, maxTemperate=128, maxTropical=128,
+                      disasterMask=31, disasterFrequency=341, disasterSeverity=341)
     for key, value in values.items():
         setattr(result, key, value)
     return result
@@ -92,6 +96,7 @@ class NativeResourceTests(unittest.TestCase):
         before = {n: hashlib.sha256(v).hexdigest() for n, v in files.items()}
         apply_common(files)
         apply_planner(files)
+        files[PRIVATE + 'island_rotation_plan.h'] = authored('island_rotation_plan.h')
         for name, digest in before.items():
             if hashlib.sha256((SOURCE / name).read_bytes()).hexdigest() != digest:
                 raise AssertionError('A frozen native input changed.')
@@ -101,6 +106,14 @@ class NativeResourceTests(unittest.TestCase):
         fixture = (SOURCE / 'developer/world_sizes/layout/layout_fixture.c').read_text()
         fixture = fixture.replace('#include "../../source/engine_resume/ai_food/experiment_runtime/', '#include "')
         fixture = fixture.replace('wsPack(count,', 'wsPack(s,count,').replace('wsPack(n,', 'wsPack(s,n,')
+        fixture = stage_selection_fixture(fixture.encode()).decode()
+        fixture = fixture.replace('#include "island_selection.inc"',
+            '#include "island_selection.inc"\n#include "island_rotation_plan.h"')
+        rotation_output = '  memcpy(out,planned,n*sizeof(*out));*usedAttempt=(uint32_t)attempt;return (int)n;'
+        if fixture.count(rotation_output) != 1:
+            raise AssertionError('The resource fixture rotation assignment boundary changed.')
+        fixture = fixture.replace(rotation_output,
+            '  if(!wsAssignIslandRotations(s,seed,planned,n,selectionError,sizeof selectionError)||!wsIslandRotationsValid(s,planned,n))continue;\n' + rotation_output)
         fixture = '#ifndef _WIN32\n#define __declspec(x)\n#define __stdcall\n#endif\n' + fixture
         fixture += '''
 static uint32_t planCount,resourceFixtureAnchors[4];
@@ -131,7 +144,7 @@ __declspec(dllexport) int ResourceTemplate(uint32_t climate,uint32_t slots,uint3
 }
 __declspec(dllexport) int ResourceIsland(uint32_t index,uint32_t id,uint32_t x,uint32_t y,uint32_t crops,uint32_t minerals,WSPlanIsland*out){
  if(index>=WS_COUNT||!out)return 0;const WSTemplate*t=&wsTemplates[index];
- *out=(WSPlanIsland){id,x,y,t->width,t->height,index,crops,minerals,t->cultures,t->climate};return 1;
+ *out=(WSPlanIsland){id,x,y,t->width,t->height,index,crops,minerals,t->cultures,t->climate,0};return 1;
 }
 __declspec(dllexport) int ResourceOrdinary(uint32_t index){return wsResourceOrdinary(index);}
 __declspec(dllexport) int ResourceValid(const WSWorldSettings*s,char*error){return wsValidateStartResources(s,error,512);}
@@ -192,7 +205,7 @@ __declspec(dllexport) void ResourceNearby(uint32_t index,uint32_t*crops,uint32_t
         return result, list(out), error.value.decode()
 
     def test_real_catalogue_modes_preserve_census_geometry_and_special_islands(self):
-        self.assertEqual(C.sizeof(Settings),132)
+        self.assertEqual(C.sizeof(Settings),176)
         improved = 0
         for seed in (0,3719,123456789,0xffffffff):
             for fertility in range(4):
@@ -214,6 +227,22 @@ __declspec(dllexport) void ResourceNearby(uint32_t index,uint32_t*crops,uint32_t
                             self.assertGreaterEqual(after,initial)
                             improved+=after>initial
         self.assertGreater(improved,0)
+
+    def test_resource_modes_preserve_exact_climate_quotas_with_each_variety_mode(self):
+        for variety in range(3):
+            for distribution in range(3):
+                with self.subTest(variety=variety, distribution=distribution):
+                    value = options(worldSize=2048, mapSeed=123456789, islandVariety=variety, islandRotation=1,
+                        resourceDistribution=distribution, minPolar=6, maxPolar=6,
+                        minTemperate=8, maxTemperate=8, minTropical=10, maxTropical=10)
+                    rows, ordinary = self.build(value)
+                    self.assertEqual([sum(p.climate // 2 == g for p in rows) for g in range(3)], [6,8,10])
+                    crops = minerals = cultures = 0
+                    for row in rows:
+                        crops |= row.cropMask; minerals |= row.mineralMask; cultures |= row.cultures
+                    self.assertEqual((crops, minerals & 0x2f, cultures), (0x1ffff,0x2f,255))
+                    self.assertTrue(any(ordinary))
+                    self.assertTrue(any(row.rotation for row in rows))
 
     def test_modes_repeat_exactly_and_do_not_depend_on_money_food_or_fleet(self):
         for mode in range(3):

@@ -5,7 +5,7 @@
  * middle-third square, independently checked before staging the scene. */
 static void wsCentralOcean(WSPlanIsland*out){
  uint32_t edge=(wsWorld/3u+7u)&~7u;
- *out=(WSPlanIsland){0,edge,edge,wsWorld-edge*2u,wsWorld-edge*2u,0,0,0,0,0};
+ *out=(WSPlanIsland){0,edge,edge,wsWorld-edge*2u,wsWorld-edge*2u,0,0,0,0,0,0};
 }
 static int wsAdvancedLayoutMatches(const WSWorldSettings*s,uint32_t count){
  if(!s||s->layoutStyle<0||s->layoutStyle>2||count>WS_LIMIT)return 0;

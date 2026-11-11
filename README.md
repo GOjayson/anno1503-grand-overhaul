@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.7.0-dev.1 installed on the managed World-only copy; in-game/restart policy retention passed; four merchant ships observed; pirate gameplay remains unverified |
+| World Settings | Priority | Experimental 0.8.0-dev.4 installed on the managed World-only copy; new island and disaster controls passed automated checks, world creation, in-game reload and fresh-process reload |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -68,7 +68,16 @@ The seven earlier menu additions are recorded in
 starting-position and resource controls have a separate
 [fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
 0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
-Development **0.7.0-dev.1** adds independent pirate reinforcement frequency,
+Development **0.8.0-dev.4** adds island variety, optional save-safe island
+rotation, minimum/maximum climate counts and individual disaster settings.
+The corrected World-only build and automatic shortcut are installed. Restoration,
+new-world creation, in-game loading and loading after a full restart passed.
+The three saved checkpoints retain exact island terrain and disaster choices;
+long-session disaster rates remain unverified. See
+[environment options](docs/WORLD_ENVIRONMENT_OPTIONS.md) for the controls,
+catalogue audit, automated checks and limitations.
+
+The preceding **0.7.0-dev.1** adds independent pirate reinforcement frequency,
 new-ship strength and neutral merchant traffic choices on the **Players** page.
 The updated installer and desktop shortcut are installed on the managed
 World-only copy, with Food disabled. Automatic startup, loading the older `wr2`
@@ -219,8 +228,8 @@ fleet and other world options remain in the game's World Settings screen.
 
 ## In-game world options
 
-The menu has **World**, **Players**, **Starting**, **Presets**, **Islands** and
-**Visibility** pages. The Starting page heading remains **Starting options**.
+The menu has **World**, **Players**, **Starting**, **Presets**, **Details**,
+**Visibility**, **Islands** and **Disasters** pages. The Starting page heading remains **Starting options**.
 The preview area and seed stay visible; terra incognita covers the preview.
 In addition to the existing world, island, fertility, fleet and opponent
 choices, it provides:

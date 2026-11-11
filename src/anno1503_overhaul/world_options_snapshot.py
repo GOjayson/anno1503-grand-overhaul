@@ -7,11 +7,14 @@ SETTINGS_FIELDS = ['size', 'difficulty', 'islandSize', 'islandCount', 'spacing',
     'plantFertility', 'mineralFertility', 'worldSize', 'mapSeed', 'startClimate', 'startIsland',
     'cargoMode', 'cargoTools', 'cargoWood', 'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
     'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics',
-    'mapVisibility', 'enemyVisibility', 'pirateFrequency', 'pirateStrength', 'merchantFrequency']
-ISLAND_FIELDS = ['id', 'x', 'y', 'width', 'height', 'templateIndex', 'cropMask', 'mineralMask', 'cultures', 'climate']
-SETTINGS_SIZE = 132
+    'mapVisibility', 'enemyVisibility', 'pirateFrequency', 'pirateStrength', 'merchantFrequency',
+    'islandVariety', 'minPolar', 'maxPolar', 'minTemperate', 'maxTemperate', 'minTropical', 'maxTropical',
+    'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation']
+ISLAND_FIELDS = ['id', 'x', 'y', 'width', 'height', 'templateIndex', 'cropMask', 'mineralMask', 'cultures', 'climate', 'rotation']
+SETTINGS_SIZE = 176
 ROWS_OFFSET = 16 + SETTINGS_SIZE
-SNAPSHOT_SIZE = ROWS_OFFSET + 128 * 40
+ISLAND_SIZE = 44
+SNAPSHOT_SIZE = ROWS_OFFSET + 128 * ISLAND_SIZE
 CATALOGUE_COUNT = 444
 STATES = ['absent', 'ready', 'staged', 'committed', 'cancelled-or-failed']
 
@@ -22,7 +25,7 @@ def decode(data):
     size, state, seed, count = struct.unpack_from('<4I', data)
     if size != SNAPSHOT_SIZE or state >= len(STATES) or count > 128:
         raise ValueError('Invalid World options snapshot envelope.')
-    settings = dict(zip(SETTINGS_FIELDS, struct.unpack_from('<I5i2I6iI18i', data, 16)))
+    settings = dict(zip(SETTINGS_FIELDS, struct.unpack_from('<I5i2I6iI25i3Ii', data, 16)))
     if state == 0:
         if count or seed or any(settings.values()) or any(data[ROWS_OFFSET:]):
             raise ValueError('An absent preview contains data.')
@@ -42,6 +45,15 @@ def decode(data):
           or not 0 <= settings['startSeparation'] <= 2 or not 0 <= settings['resourceDistribution'] <= 2
           or not 0 <= settings['mapVisibility'] <= 2 or settings['enemyVisibility'] not in (0, 1)
           or any(not 0 <= settings[key] <= 2 for key in ('pirateFrequency', 'pirateStrength', 'merchantFrequency'))
+          or not 0 <= settings['islandVariety'] <= 2
+          or any(not 0 <= settings['min'+group] <= settings['max'+group] <= 128 or settings['max'+group] < 2
+                 for group in ('Polar', 'Temperate', 'Tropical'))
+          or sum(settings['min'+group] for group in ('Polar', 'Temperate', 'Tropical')) > count
+          or sum(settings['max'+group] for group in ('Polar', 'Temperate', 'Tropical')) < count
+          or settings['disasterMask'] & ~31 or settings['disasterFrequency'] & ~1023 or settings['disasterSeverity'] & ~1023
+          or any((settings[key] >> (i*2) & 3) > 2 for key in ('disasterFrequency', 'disasterSeverity') for i in range(5))
+          or settings['disasterSeverity'] & 15 != 5
+          or settings['islandRotation'] not in (0, 1)
           or settings['mapVisibility'] == 0 and settings['startIsland'] >= 0
           or any(not 0 <= settings[key] <= 400 for key in ('cargoTools', 'cargoWood', 'cargoFood'))):
         raise ValueError('World options settings and preview disagree.')
@@ -51,9 +63,10 @@ def decode(data):
             raise ValueError('Preview cargo exceeds trade-ship holds.')
     islands = []
     for index in range(count):
-        row = dict(zip(ISLAND_FIELDS, struct.unpack_from('<10I', data, ROWS_OFFSET + index * 40)))
+        row = dict(zip(ISLAND_FIELDS, struct.unpack_from('<11I', data, ROWS_OFFSET + index * ISLAND_SIZE)))
         gap, world = settings['spacing'], settings['worldSize']
         if (row['id'] != index or row['templateIndex'] >= CATALOGUE_COUNT or row['climate'] >= 6
+                or row['rotation'] > 3 or not settings['islandRotation'] and row['rotation']
                 or not 0 < row['width'] <= 256 or not 0 < row['height'] <= 256
                 or row['x'] % 8 or row['y'] % 8 or row['x'] < gap or row['y'] < gap
                 or row['x'] + row['width'] + gap > world or row['y'] + row['height'] + gap > world):
@@ -63,9 +76,14 @@ def decode(data):
                     or row['y'] + row['height'] + gap <= other['y'] or other['y'] + other['height'] + gap <= row['y']):
                 raise ValueError('Preview islands overlap or violate spacing.')
         islands.append(row)
-    if any(data[ROWS_OFFSET + count * 40:]):
+    if any(data[ROWS_OFFSET + count * ISLAND_SIZE:]):
         raise ValueError('Unexpected data beyond the preview island count.')
+    if state:
+        climate_counts = [sum(row['climate'] // 2 == group for row in islands) for group in range(3)]
+        if any(not settings['min'+group] <= climate_counts[i] <= settings['max'+group]
+               for i, group in enumerate(('Polar', 'Temperate', 'Tropical'))):
+            raise ValueError('Preview island climates violate the selected limits.')
     return dict(state=state, state_name=STATES[state], seed=seed, count=count, settings=settings,
-                islands=islands, plan_sha256=hashlib.sha256(data[ROWS_OFFSET:ROWS_OFFSET + count * 40]).hexdigest(),
+                islands=islands, plan_sha256=hashlib.sha256(data[ROWS_OFFSET:ROWS_OFFSET + count * ISLAND_SIZE]).hexdigest(),
                 snapshot_sha256=hashlib.sha256(data).hexdigest(),
                 scope='Exact cached preview; loaded-world and save evidence remain separate.')

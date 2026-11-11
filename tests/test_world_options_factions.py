@@ -391,6 +391,8 @@ static int WorldSettingsCheckAIControllers(void*w,int n,void*a,char*e,uint32_t c
 static int WorldSettingsCheckSpecialControllers(void*w,uint32_t n,void*a,char*e,uint32_t c){(void)w;(void)n;(void)a;(void)e;(void)c;return 1;}
 static int WorldSettingsBindAIDiplomacy(void*w,int n,int m,void*a,char*e,uint32_t c){(void)w;(void)n;(void)m;(void)a;(void)e;(void)c;return 1;}
 static int WorldSettingsValidateChosenDisasters(void*w,char*e,uint32_t c){(void)w;(void)e;(void)c;return 1;}
+/* This fixture isolates faction lifecycle; disaster binding has its own native fixtures. */
+static int WorldSettingsBindDisasterOptions(void*w,char*e,uint32_t c){(void)w;(void)e;(void)c;return 1;}
 #undef MessageBoxA
 #define MessageBoxA(a,b,c,d) ((void)0)
 '''
