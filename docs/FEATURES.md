@@ -10,7 +10,7 @@ It does not support arbitrary combinations of future native modifications.
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.7 performance candidate; prior build improved camera movement but lag remained; new live acceptance pending | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
+| World Settings | Priority | Experimental 0.6.0-dev.7; user confirmed smooth camera movement and correct remembered towns/fog in the 1024-world test | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
 | Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
 | Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
@@ -30,8 +30,11 @@ The UI should explain their status and the validator must enforce it too.
 The 0.6.0-dev.7 candidate reduces more duplicate graphics and island memory
 checks inside individual calls, retaining fresh fields and original fallbacks.
 All 169 visibility tests, six matching builds and World-only installation/
-restoration passed. The automatic shortcut is updated; actual game acceptance
-is pending. Ownership, scouts, observation times and the save ABI are unchanged.
+restoration passed. Automatic startup and `wc6` loading passed, with smooth
+camera movement and correct remembered towns/fog confirmed by the user. The new
+`wc7` save retained exploration and world data and passed a fresh-process reload
+with read-only native checks. This is bounded 1024-world evidence. Ownership, scouts,
+observation times and the save ABI are unchanged.
 
 The preceding 0.6.0-dev.6 candidate removes repeated protection queries within immediately
 verified spans, preserving fresh asset/ownership checks and every observation.

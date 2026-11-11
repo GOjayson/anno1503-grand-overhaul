@@ -16,7 +16,8 @@ fresh field order and original individually guarded fallback. Fast preparation
 reuses its existing Display constant-span proof for two fully contained ranges;
 each original narrow proof remains when the wider proof fails. Observation
 frequency, timestamps, ownership/scout rules, save format and all hook/ABI
-counts are unchanged. **Live performance acceptance is pending.**
+counts are unchanged. The user accepted smooth camera movement and correct
+remembered towns/fog in the live 1024-world test below.
 
 | Identity | Reviewed dev.7 candidate |
 | --- | --- |
@@ -55,8 +56,44 @@ bytes. Per-mutation package/helper/journal guards and scope limits remain the
 same as V7; the old private-fixture tree was not redundantly rescanned.
 
 The desktop shortcut preserves its V7 version exclusively and now targets the
-new self-contained World-only package. A fresh automatic startup and actual
-camera checks are being completed. Food gameplay is not being repeated.
+new self-contained World-only package. Fresh automatic startup and actual
+`wc6` loading passed, with all 26 visibility components and 173 engine edits
+verified. Factory, hook, AI-loader and memory error fields are empty; the loaded
+diagnostic reports error zero. The independent read-only observer matched the
+certified checkpoint, all 24 islands and the eligible human scout. The user
+confirmed **smooth camera movement** over the large AI/Pirate town, with
+remembered buildings and unexplored fog still correct.
+
+A 20-second passive interval recorded 2,458 native draw calls, with no recording
+failures. Per-call elapsed means were 0.286 ms for context, 0.540 ms for fast
+preparation, 4.421 ms for chart observation, 0.368 ms for copy preparation and
+6.621 ms for total draw. Only two 360-byte snapshots were collected; no chart
+hashing ran during the camera check. This used the newer `wc6` checkpoint and
+uncontrolled camera/zoom/scene activity. It is not an FPS measurement or a
+controlled performance comparison with V7, and nested stage means must not be
+summed.
+
+The new `wc7` checkpoint was saved in Anno and independently archived/certified.
+It retains all 2,473 preceding chart bits, 9,155 known minimap pixels and 6,425
+observed cells; the new counts are 2,528, 9,380 and 6,562. Island 0's 178 and
+island 7's 113 preceding anchors remain exact 20-byte records, including times.
+Island-8 changes can include visible re-observation and development; no unseen
+path or universal frozen-state claim is made. All 24 island geometries,
+climates, crop and mineral masks match. `wc5`, `wc6`, earlier archives and
+certificates remain unchanged. Final fresh automatic startup and `wc7` loading
+passed in a different process, with exact runtime, 26 visibility components,
+173 engine edits and no reported errors. The read-only observer matched all
+24 islands and the checkpoint's 2,528 chart bits, 3,829 anchors, 6,213 building
+cells, 9,380 known minimap pixels and generation 1,826. Anno remains open.
+
+One intervening startup stayed in the native intro frame and timed out before
+the copied menu could be verified. Its log contains no activation attempt;
+neither startup process was force-closed or patched. Both were then closed
+normally, and the next fresh launch completed the normal handoff and one
+automatic activation. No guard was relaxed or uncertain transaction retried.
+Food gameplay is not being repeated. These checks establish bounded
+1024-world behavior; long sessions, all asset classes and new Huge-world
+performance are not covered by this acceptance run.
 
 ## 0.6.0-dev.6 observation-span candidate
 

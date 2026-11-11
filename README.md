@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.7 performance candidate; prior build improved camera movement but lag remained; new live acceptance pending |
+| World Settings | Priority | Experimental 0.6.0-dev.7; user confirmed smooth camera movement and correct remembered towns/fog in the 1024-world test |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -72,7 +72,11 @@ Development **0.6.0-dev.7** reduces further duplicate graphics and island memory
 checks within individual calls, retaining fresh fields and original fallbacks.
 All 169 visibility tests, six matching builds and World-only installation/
 restoration passed. Saves, presets and all preceding backups were retained.
-The updated automatic shortcut is installed; fresh game acceptance is pending.
+The updated automatic shortcut is installed. Fresh startup and `wc6` loading
+passed, and the user confirmed smooth camera movement with correct remembered
+towns/fog. The new `wc7` save retained exploration and world data and passed a
+fresh-process reload with read-only native checks. This is bounded 1024-world
+evidence.
 
 The preceding **0.6.0-dev.6** reduces repeated memory-protection queries while
 keeping fresh object, ownership and asset checks. All 160 visibility tests,
