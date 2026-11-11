@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.6; ownership/scout checks passed in-game; camera movement improved but remains laggy |
+| World Settings | Priority | Experimental 0.6.0-dev.7 performance candidate; prior build improved camera movement but lag remained; new live acceptance pending |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -68,7 +68,13 @@ The seven earlier menu additions are recorded in
 starting-position and resource controls have a separate
 [fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
 0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
-Development **0.6.0-dev.6** reduces repeated memory-protection queries while
+Development **0.6.0-dev.7** reduces further duplicate graphics and island memory
+checks within individual calls, retaining fresh fields and original fallbacks.
+All 169 visibility tests, six matching builds and World-only installation/
+restoration passed. Saves, presets and all preceding backups were retained.
+The updated automatic shortcut is installed; fresh game acceptance is pending.
+
+The preceding **0.6.0-dev.6** reduces repeated memory-protection queries while
 keeping fresh object, ownership and asset checks. All 160 visibility tests,
 six matching builds, and World-only installation/restoration passed. The updated
 shortcut's automatic startup, `wc5` loading and read-only world checks passed.

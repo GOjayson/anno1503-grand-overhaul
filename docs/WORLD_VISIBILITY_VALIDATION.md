@@ -1,5 +1,63 @@
 # Map visibility and terra incognita validation
 
+## 0.6.0-dev.7 invocation-span candidate
+
+V7 improved camera movement in the actual game, but lag remains. V8 reduces
+more repeated memory-protection queries. Three typed span slots live only
+inside one full asset-validation invocation and its four frame/color-chain
+checks. Pointer changes and extent upgrades require a new proof. Fields,
+vtables, getters and formats are still read freshly, and the final late-binding
+check is unchanged. No native game call runs while those local slots are reused;
+they do not survive the invocation or draw. Accepted object-family minimum
+extents remain exact; unsupported classes and truncated objects are refused.
+
+Island reads use one optional current-call `0x130` span proof, preserving the
+fresh field order and original individually guarded fallback. Fast preparation
+reuses its existing Display constant-span proof for two fully contained ranges;
+each original narrow proof remains when the wider proof fails. Observation
+frequency, timestamps, ownership/scout rules, save format and all hook/ABI
+counts are unchanged. **Live performance acceptance is pending.**
+
+| Identity | Reviewed dev.7 candidate |
+| --- | --- |
+| Generator | `ws6-f5426c155ceb938b0136d41a60a328d537f132cc5d5d55d0eaa2cfad62facae5` |
+| World-only runtime SHA-256 | `85bfdca8a28507e8db9f20591dab5f3ee395c407bf15e458876d1a88b9ff6988` |
+| Food + World runtime SHA-256 | `a0911d39c8efd4100b1bca5ce4dc566b09674cf13eac7c2fb2aab4410fb8bac2` |
+
+All **169 visibility tests passed in 73.512 seconds**, with no skips or failures.
+Nine new methods cover 123 invocation-span cases, 17 paired island outcomes and
+five fast-preparation branches, including actual protected boundaries and a
+readable narrow range separated from the wider range by an inaccessible page.
+Independent field-mutation review covered 384 executions. Separate paired
+observation fixtures retained exact records, timestamps, chart bits,
+generations and native producer-call counts. Twelve critical chart functions,
+both original slow asset paths and every other runtime function remain exact
+against V7, outside the two reviewed island/preparation functions.
+
+The shared-four-frame fixture reduces protection queries from 11,431 to 6,231;
+the 24-island context fixture reduces them from 142 to 70. These are bounded
+CPU fixtures, not game FPS or accepted camera smoothness. Both profiles have
+three matching builds. Independent pre/post-pin audits passed the exact
+**35 raw LF/index inputs, 66 staged sources, 488/43 immutable inputs, 86 exports,
+nine profile module pins, 26 visibility components, 173 engine edits and 208
+transaction components**, including callback bounds, unwind and TLS. The final
+combined source review found exactly four existing functions changed, one helper
+added, and **111 other functions byte-identical** against V7.
+World-only installation, exact preparation no-op, restoration to all 23 stock
+inputs, and final reinstallation passed. Both prepared packages were validated;
+Food was never installed in this cycle. The two full protected-state passes
+retained **45 named / 46 native saves, all 84 save-directory files, five presets,
+23 original source inputs, 297 original backup files, 488 imported files and
+43 compiled inputs**. All 49 earlier managed backup generations remain exact;
+two newly restored generations give **51**. `wc5` and the certified `wc6` remain
+exact. The current autosave was archived exclusively and not restored to older
+bytes. Per-mutation package/helper/journal guards and scope limits remain the
+same as V7; the old private-fixture tree was not redundantly rescanned.
+
+The desktop shortcut preserves its V7 version exclusively and now targets the
+new self-contained World-only package. A fresh automatic startup and actual
+camera checks are being completed. Food gameplay is not being repeated.
+
 ## 0.6.0-dev.6 observation-span candidate
 
 V7 targets the repeated memory queries identified in V6's live investigation.

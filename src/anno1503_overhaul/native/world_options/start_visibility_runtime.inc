@@ -119,10 +119,21 @@ static int wsVisibilityIslandRead(const WSVisibilityWorld*v,uint32_t id,WSVisibi
  WSVisibilityIsland n={0};void*vt;uint16_t box[4];
  if(!v||!out||id>=WS_VISIBILITY_ISLAND_LIMIT)return 0;
  n.object=(unsigned char*)wsCertPointer(v->world,0x6640u+(size_t)id*8u);
- if(!n.object)return 0;vt=wsCertPointer(n.object,0);
- if((vt!=v->module+0xf2da8&&vt!=v->module+0xf33e8&&vt!=v->module+0xf37a0)||
-    wsCertPointer(n.object,0x38)!=v->world||!wsCertRead(n.object+8,box,sizeof box)||
-    !wsCertRead(n.object+0x12e,&n.discovered,2))return 0;
+ if(!n.object)return 0;
+ if(wsCertMemory(n.object,0x130u,0)){
+  /* Only this call's span is reused. Each field is loaded freshly in the
+   * original order; this is not an object snapshot or a cached pointer. */
+  memcpy(&vt,n.object,8);
+  if(vt!=v->module+0xf2da8&&vt!=v->module+0xf33e8&&vt!=v->module+0xf37a0)return 0;
+  void*world=0;memcpy(&world,n.object+0x38,8);if(world!=v->world)return 0;
+  memcpy(box,n.object+8,sizeof box);memcpy(&n.discovered,n.object+0x12e,2);
+ }else{
+  /* Preserve individually guarded handling on a failed whole-span probe. */
+  vt=wsCertPointer(n.object,0);
+  if((vt!=v->module+0xf2da8&&vt!=v->module+0xf33e8&&vt!=v->module+0xf37a0)||
+     wsCertPointer(n.object,0x38)!=v->world||!wsCertRead(n.object+8,box,sizeof box)||
+     !wsCertRead(n.object+0x12e,&n.discovered,2))return 0;
+ }
  n.id=id;n.x=box[0];n.y=box[1];n.width=box[2];n.height=box[3];
  if(!n.width||!n.height||(n.x&7u)||(n.y&7u)||n.x+n.width>v->width||n.y+n.height>v->height)return 0;
  *out=n;return 1;
@@ -562,8 +573,9 @@ static int wsVisibilityFastPrepare(WSVisibilityDrawContext*c,void*renderer){
  if(!c||c->fast)return 0;
  WSVisibilityFastDraw*f=(WSVisibilityFastDraw*)calloc(1,sizeof(*f));if(!f){InterlockedExchange(&wsVisibilityLastError,8);return 0;}
  f->game=(unsigned char*)WS_CERT_MODULE("AnnoGame.dll");f->display=(unsigned char*)WS_CERT_MODULE("AnnoDisplay.dll");f->renderer=renderer;
+ f->chartDisplayVTSpanReady=f->display&&wsVisibilityWithinModule(f->display,f->display+0xf5f648u,0x6bf0u);
  if(!f->game||!f->display||wsCertPointer(renderer,0)!=f->display+0xf63740||
-    !wsCertMemory(renderer,8,0)||!wsVisibilityWithinModule(f->display,f->display+0xf63740,0x190)||
+    !wsCertMemory(renderer,8,0)||(!f->chartDisplayVTSpanReady&&!wsVisibilityWithinModule(f->display,f->display+0xf63740,0x190))||
     !WS_VISIBILITY_STATIC_TARGET_OK(f->display+0x49410)||!WS_VISIBILITY_STATIC_TARGET_OK(f->display+0x49bd0))goto invalid;
  f->original180=f->display+0x49410;f->original188=f->display+0x49bd0;f->targetsReady=1;
  /* Only this current thread's one committed readable stack region is reused.
@@ -590,7 +602,7 @@ static int wsVisibilityFastPrepare(WSVisibilityDrawContext*c,void*renderer){
     wsCertPointer(f->catalogueVT,0xe8)==f->game+0xb4d0&&
     wsCertMemory(f->catalogue,0x218u+sizeof f->definitions,0)&&
     (f->chartGameVTSpanReady=wsVisibilityWithinModule(f->game,f->game+0x1f888,0x7e0))&&
-    wsVisibilityWithinModule(f->display,f->display+0xf609d0,0xba0)){
+    (f->chartDisplayVTSpanReady||wsVisibilityWithinModule(f->display,f->display+0xf609d0,0xba0))){
   memcpy(f->definitions,(unsigned char*)f->catalogue+0x218,sizeof f->definitions);f->catalogueReady=1;
   for(uint32_t id=0;id<WS_VISIBILITY_ISLAND_LIMIT;id++)if(c->present[id]){
    const WSVisibilityIsland*p=&c->islands[id];WSVisibilityFastIsland*s=&f->islands[id];
@@ -610,7 +622,6 @@ static int wsVisibilityFastPrepare(WSVisibilityDrawContext*c,void*renderer){
   }
  }
  wsVisibilityIslandIndexPrepare(c,f);
- f->chartDisplayVTSpanReady=wsVisibilityWithinModule(f->display,f->display+0xf5f648u,0x6bf0u);
  c->fast=f;return 1;
  invalid:free(f);InterlockedExchange(&wsVisibilityLastError,8);return 0;
 }
