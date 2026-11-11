@@ -6,6 +6,8 @@ permissions:
   contents: read
 jobs:
   portable:
+    env:
+      CC: clang
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]

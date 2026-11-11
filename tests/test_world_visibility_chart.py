@@ -97,7 +97,7 @@ class ChartCodecTests(unittest.TestCase):
                 raise unittest.SkipTest('Reviewed local native compiler is unavailable.')
             command = [str(compiler), 'cc', '-target', 'x86_64-windows-gnu']
         else:
-            compiler = shutil.which('cc')
+            compiler = shutil.which(os.environ.get('CC', 'cc'))
             if not compiler:
                 raise unittest.SkipTest('Native compiler is unavailable.')
             command = [compiler, '-fPIC']

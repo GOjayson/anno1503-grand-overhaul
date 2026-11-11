@@ -45,8 +45,8 @@ class FactionDerivativeTests(unittest.TestCase):
             self.assertRegex(value, r'^[0-9a-f]{64}$')
 
     def test_exact_derivatives_deterministic_four_counted_edits_no_new_exports(self):
-        import pefile
         for profile, name, raw, digest in inputs():
+            import pefile
             with self.subTest(profile=profile, name=name):
                 output, proof = f.derive_faction_ai(name, raw, digest)
                 self.assertEqual((output, proof), f.derive_faction_ai(name, raw, digest))
