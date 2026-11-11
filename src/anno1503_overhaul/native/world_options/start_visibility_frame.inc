@@ -14,12 +14,12 @@ __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityFinishFrame(void*
     !wsVisibilityWithinModule(display,target,1)||!wsCertMemory(target,1,1)){
   InterlockedExchange(&wsVisibilityLastError,16);return 0;
  }
- int prepared=wsVisibilityExplorationPreflight(renderer,liveFrameContext);
- uintptr_t result=WS_VISIBILITY_NATIVE_FLUSH(target)(renderer);
- wsVisibilityChartRetire(renderer);
+ uint64_t perf=wsVisibilityPerformanceBegin();int prepared=wsVisibilityExplorationPreflight(renderer,liveFrameContext);wsVisibilityPerformanceEnd(WS_PERF_OVERLAY_PREFLIGHT,perf);
+ perf=wsVisibilityPerformanceBegin();uintptr_t result=WS_VISIBILITY_NATIVE_FLUSH(target)(renderer);wsVisibilityPerformanceEnd(WS_PERF_NATIVE_FLUSH,perf);
+ perf=wsVisibilityPerformanceBegin();wsVisibilityChartRetire(renderer);wsVisibilityPerformanceEnd(WS_PERF_CLEANUP,perf);
  /* A surface may be initialized by the native flush. The fresh postflush
   * checks, rather than a retained pixel pointer, decide whether it is safe. */
- int applied=wsVisibilityApplyExploredSea(renderer,liveFrameContext);
+ perf=wsVisibilityPerformanceBegin();int applied=wsVisibilityApplyExploredSea(renderer,liveFrameContext);wsVisibilityPerformanceEnd(WS_PERF_OVERLAY_APPLY,perf);
  if(!applied){InterlockedExchange(&wsVisibilityLastError,16);}
  (void)prepared;
  return result;

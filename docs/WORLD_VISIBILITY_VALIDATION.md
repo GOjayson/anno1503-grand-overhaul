@@ -1,5 +1,69 @@
 # Map visibility and terra incognita validation
 
+## 0.6.0-dev.5 camera-performance candidate
+
+V5 retained correct remembered towns and save history, but the user still
+reported lag while moving the camera. V6 reduces two independently measured
+CPU costs and adds passive coarse-stage timings so that the actual game can
+identify any remaining bottleneck. **Live performance acceptance is pending.**
+
+| Identity | Reviewed dev.5 candidate |
+| --- | --- |
+| Generator | `ws6-c5e7c30ace24a8b41442ebb7ec8c1271e6638574bad3f5035feb659080b3e538` |
+| World-only runtime SHA-256 | `b0a23db82e4175228fd23ba4e60566b0c3157ae48babf31205032e5aa353ca14` |
+| Food + World runtime SHA-256 | `4dde63b428fdd622b31c107508e5b61ba724ad0526e02df88df8808fd7e43d10` |
+
+The island index contains only scalar IDs, is built from the current validated
+draw context and is freed when that draw ends. Exact rectangle bounds and the
+original native-ID order remain authoritative, including partial/overlapping
+quads. Allocation failure retains the original scan. Ownership, asset bindings,
+heap sprite-position reads and the command restrictions are unchanged.
+
+The fog pass constructs a bounded scalar hierarchy from the chart protected by
+the current read guard. It combines spans only within completely known or
+unknown aligned blocks; mixed leaves use the original constant-eight arithmetic.
+Direct inverse projection, endpoint checks and bounded binary correction remain.
+No projection steps accumulate, no chart bits are changed, and no native pointer
+or surface survives the pass.
+
+The new inert `WorldSettingsCopyVisibilityPerformance` getter copies **360 bytes**
+for **13 coarse stages**. Timers surround existing calls; there are no per-sprite
+timers, settings, resets or chart locks. Atomic counters and bounded snapshot
+retries refuse overlapping incomplete updates. A deterministic regression test
+detects the originally proposed incorrect snapshot-check ordering. The actual
+timers measure elapsed call durations, including worker waits and scheduling
+delays; they do not measure processor utilization, GPU time or FPS. The actual
+export membership grows **85 to 86**, authored generator inputs **34 to 35** and
+compiled staging closure **65 to 66**. Settings **120**, preview **5,256**, chart
+save format, **26 visibility components / 173 engine edits / 208 transaction
+components**, and all exact host pins remain unchanged.
+
+Independent source review passed **22 targeted methods**, covering the index,
+timings, uniform overlay and final-flush order. It also confirmed 35 critical
+function bodies and ten control/ABI/hook files unchanged. Uniform drawing has
+**6,240 small independent pixel-oracle cases and 40 full-size surfaces**, with
+real Windows memory/ownership guards. The construction-inclusive 24-island
+fixture and full-screen overlay benchmark improve the measured CPU paths;
+these are **not game FPS or live camera acceptance**.
+
+Both profiles have two independently reviewed identical candidates and a third
+matching publication build. The pre-pin audit passed raw LF/index equality,
+all **488 imported / 43 original compiled inputs**, the new **66-source closure**,
+exact **86-export membership**, native preimages, function bounds and TLS. The
+six-build post-pin audit passed the same guards. The full suite completed
+**376 tests in 170.554 seconds: 371 passed and five Windows link-privilege
+checks were skipped**, with no failures or errors. In separate isolated helper
+processes, both actual published DLLs passed fixed-size empty timing snapshots,
+null refusals and destination-canary checks. Those empty getter checks do not
+prove populated game timings. Installation/restoration checks are being completed.
+
+Anno closed normally before preservation. The closed checkpoint retains **44
+named saves / 45 native saves, all 76 protected save-directory files, five
+presets, 44 preceding backup generations, 23 original source inputs and 297
+historical backup files**. Both `wc4` and the independently archived/certified
+`wc5` remain exact. The current autosave was archived exclusively; no older
+autosave was restored. Food gameplay is not being repeated.
+
 ## 0.6.0-dev.4 performance candidate
 
 This candidate addresses V4's remaining lag by batching remembered-sprite

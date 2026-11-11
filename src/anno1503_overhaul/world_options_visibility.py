@@ -87,7 +87,7 @@ def apply_visibility(files: dict[str, bytes]) -> None:
     apply_memory_factory(files)
     for name in ('start_visibility_policy.h', 'start_visibility_scene.inc', 'start_visibility_runtime.inc',
                  'start_visibility_vision.inc', 'start_visibility_actor_layouts.h',
-                 'start_visibility_control.inc',
+                 'start_visibility_control.inc', 'start_visibility_performance.inc',
                  'start_visibility_map_refresh.inc', 'start_visibility_memory_io.inc',
                  'start_visibility_chart.h', 'start_visibility_chart.inc',
                  'start_visibility_exploration.inc', 'start_visibility_frame.inc'):

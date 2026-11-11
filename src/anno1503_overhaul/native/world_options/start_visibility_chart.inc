@@ -480,14 +480,17 @@ static int wsChartPrepareCopies(WSVisibilityDrawContext*c,WSChartDraw*d){
  invalid:free(visited);return 0;
 }
 static int wsVisibilityChartBeginDraw(WSVisibilityDrawContext*c,void*list,uint32_t time,void*renderer,int picking){
- if(!wsVisibilityChartReadBegin(&c->view,&c->chart))return 0;
+ uint64_t perf=wsVisibilityPerformanceBegin();int readable=wsVisibilityChartReadBegin(&c->view,&c->chart);wsVisibilityPerformanceEnd(WS_PERF_CHART_READ,perf);
+ if(!readable)return 0;
  uint32_t mode=0;if(!wsCertRead((unsigned char*)renderer+0x498,&mode,4)||mode>5u){wsVisibilityChartReadEnd(&c->chart);return 0;}
  if(picking||mode==4u||mode==5u)return 1;
- if(!wsChartObserve(c,time)){wsVisibilityChartReadEnd(&c->chart);return 0;}
+ perf=wsVisibilityPerformanceBegin();int observed=wsChartObserve(c,time);wsVisibilityPerformanceEnd(WS_PERF_CHART_OBSERVE,perf);
+ if(!observed){wsVisibilityChartReadEnd(&c->chart);return 0;}
  c->chart.generation=wsChartActive.generation;
  WSChartDraw*d=(WSChartDraw*)calloc(1,sizeof(*d));if(!d){wsVisibilityChartReadEnd(&c->chart);return 0;}
  d->list=list;d->renderer=renderer;d->renderMode=mode;d->captureVtable[0x180/8]=(void*)wsChartCaptureSprite;d->captureVtable[0x188/8]=(void*)wsChartCaptureSprite;d->captureObject[0]=d->captureVtable;d->captureObject[1]=d;c->chartDraw=d;
- if(!wsChartPrepareCopies(c,d)){wsVisibilityChartEndDraw(c);return 0;}return 1;
+ perf=wsVisibilityPerformanceBegin();int prepared=wsChartPrepareCopies(c,d);wsVisibilityPerformanceEnd(WS_PERF_PREPARE_COPIES,perf);
+ if(!prepared){wsVisibilityChartEndDraw(c);return 0;}return 1;
 }
 static void wsVisibilityChartDrawStarted(WSVisibilityDrawContext*c){if(c&&c->chartDraw)((WSChartDraw*)c->chartDraw)->started=1;}
 static int wsVisibilityChartEndDraw(WSVisibilityDrawContext*c){

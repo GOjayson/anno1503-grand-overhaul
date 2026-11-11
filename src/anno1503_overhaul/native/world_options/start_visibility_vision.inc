@@ -123,6 +123,17 @@ static int wsVisibilityInSight(const WSVisibilityDrawContext*c,float x,float z){
  return 0;
 }
 static const WSVisibilityIsland*wsVisibilityIslandAt(const WSVisibilityDrawContext*c,float x,float z){
+ /* This table belongs only to FastPrepare's current copied context. The
+  * first native ID touching a quad is a candidate, not a replacement for the
+  * exact rectangle predicate. A partial quad can require a later native ID. */
+ if(c->fast&&c->fast->islandIndex&&c->fast->islandIndexWidth==c->view.width&&c->fast->islandIndexHeight==c->view.height&&
+    x>=0&&z>=0&&x<(float)c->view.width&&z<(float)c->view.height){
+  uint32_t side=c->view.width>>3,index=((uint32_t)z>>3)*side+((uint32_t)x>>3);
+  unsigned char id=c->fast->islandIndex[index];if(id==255u)return 0;
+  const WSVisibilityIsland*s=&c->islands[id];
+  if(c->present[id]&&x>=(float)s->x&&z>=(float)s->y&&x<(float)(s->x+s->width)&&z<(float)(s->y+s->height))return s;
+ }
+
  for(uint32_t i=0;i<WS_VISIBILITY_ISLAND_LIMIT;i++)if(c->present[i]){
   const WSVisibilityIsland*s=&c->islands[i];
   if(x>=(float)s->x&&z>=(float)s->y&&x<(float)(s->x+s->width)&&z<(float)(s->y+s->height))return s;

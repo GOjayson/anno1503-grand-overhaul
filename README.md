@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.4 performance candidate; preceding ownership/scout checks passed in-game, but remaining lag needs new game acceptance |
+| World Settings | Priority | Experimental 0.6.0-dev.5 performance candidate; ownership/scout checks passed in-game, but camera lag needs new game acceptance |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -68,7 +68,14 @@ The seven earlier menu additions are recorded in
 starting-position and resource controls have a separate
 [fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
 0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
-Development **0.6.0-dev.4 targets the remaining lag** by grouping remembered
+Development **0.6.0-dev.5** adds an island lookup index for each draw and exact
+uniform fog spans, plus passive coarse-stage timings for the actual game.
+Independent source/fixture checks, all six matching profile builds and the full
+suite passed: 371 tests passed and five Windows link-privilege tests were skipped.
+Installation checks and live camera acceptance remain pending. Food gameplay is not
+being repeated. See the development validation record for the bounded evidence.
+
+The preceding **0.6.0-dev.4** grouped remembered
 sprites within each draw, preserving exact recorded appearance and animation
 time. All six builds passed independent review, with three identical runtimes per
 Food selection. Targeted tests, native instruction checks and 72 isolated

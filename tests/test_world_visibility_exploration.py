@@ -75,7 +75,9 @@ __declspec(dllexport) int sea_oracle_case(uint32_t which){
    if(!bitAt((int32_t)floor(wx/8.0),(int32_t)floor(wz/8.0)))wanted=0xff000000u;}
   if(wsU32(pixels+((size_t)y*rowPixels+x)*4u)!=wanted){dispose();return 2;}
  }
- if(!canaries()||pointCalls>=viewWidth*viewHeight){dispose();return 3;}dispose();return 0;
+ /* The per-pass summary samples every chart cell exactly once. Pixel runs
+  * then read only scalar summary bytes under the existing chart guard. */
+ if(!canaries()||pointCalls!=cells*cells){dispose();return 3;}dispose();return 0;
 }
 __declspec(dllexport) int sea_guard_case(uint32_t which){
  prepare(64,48,80,29,25,256,0,1,64,64);int result=0;

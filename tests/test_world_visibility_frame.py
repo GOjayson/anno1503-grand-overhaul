@@ -37,6 +37,10 @@ typedef int32_t LONG;
 static unsigned char display[0xf64000],renderer[8],context[32];
 static LONG wsVisibilityLastError;
 static int fault,events[8],count,prepared,applied;
+enum {WS_PERF_OVERLAY_PREFLIGHT=7,WS_PERF_NATIVE_FLUSH=8,WS_PERF_OVERLAY_APPLY=9,WS_PERF_CLEANUP=10};
+static int timingStages[4],timingCount;
+static uint64_t wsVisibilityPerformanceBegin(void){return 1u;}
+static void wsVisibilityPerformanceEnd(uint32_t stage,uint64_t begin){if(begin==1u&&timingCount<4)timingStages[timingCount++]=(int)stage;}
 static int InterlockedExchange(LONG*p,int value){int old=*p;*p=value;return old;}
 static void*module(const char*name){(void)name;return fault==1?NULL:display;}
 #define WS_CERT_MODULE(name) module(name)
@@ -65,12 +69,14 @@ static int wsVisibilityApplyExploredSea(void*r,void*c){
 '''
         source += header.read_text() + r'''
 __declspec(dllexport) uintptr_t fixture_run(int bad,int before,int after){
- fault=bad;prepared=before;applied=after;count=0;wsVisibilityLastError=0;
+ fault=bad;prepared=before;applied=after;count=0;timingCount=0;wsVisibilityLastError=0;
  return WorldSettingsVisibilityFinishFrame(renderer,context);
 }
 __declspec(dllexport) int fixture_event(int index){return index<count?events[index]:-1;}
 __declspec(dllexport) int fixture_count(void){return count;}
 __declspec(dllexport) int fixture_error(void){return wsVisibilityLastError;}
+__declspec(dllexport) int fixture_timing_count(void){return timingCount;}
+__declspec(dllexport) int fixture_timing_stage(int index){return index<timingCount?timingStages[index]:-1;}
 '''
         path = folder / 'fixture.c'
         path.write_text(source, encoding='utf-8')
@@ -97,6 +103,8 @@ __declspec(dllexport) int fixture_error(void){return wsVisibilityLastError;}
         self.assertEqual(self.lib.fixture_count(), 4)
         self.assertEqual([self.lib.fixture_event(i) for i in range(4)], [1, 2, 3, 4])
         self.assertEqual(self.lib.fixture_error(), 0)
+        self.assertEqual(self.lib.fixture_timing_count(), 4)
+        self.assertEqual([self.lib.fixture_timing_stage(i) for i in range(4)], [7, 8, 10, 9])
 
     def test_preflight_failure_does_not_skip_native_drain_or_use_a_stale_surface(self):
         for applied in (0, 1):
@@ -116,6 +124,7 @@ __declspec(dllexport) int fixture_error(void){return wsVisibilityLastError;}
                 self.assertEqual(self.lib.fixture_run(fault, 1, 1), 0)
                 self.assertEqual(self.lib.fixture_count(), 0)
                 self.assertEqual(self.lib.fixture_error(), 16)
+                self.assertEqual(self.lib.fixture_timing_count(), 0)
 
 
 if __name__ == '__main__':

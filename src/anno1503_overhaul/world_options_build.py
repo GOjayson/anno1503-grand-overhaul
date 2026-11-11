@@ -22,10 +22,10 @@ from .world_options_visibility_calls import CALLS, DISPLAY_SHA256, verify_visibi
 
 
 PINNED_RUNTIMES = {
-    'world-only': '95ee49834a60393f95043e3c52323f5b846bf03ecce5fbdc660971dfb1f2ab4f',
-    'food-world': '9afe681786d84267c48d13f029194d975b8a1fef6b843b7a1c59e5e804717c5b',
+    'world-only': 'b0a23db82e4175228fd23ba4e60566b0c3157ae48babf31205032e5aa353ca14',
+    'food-world': '4dde63b428fdd622b31c107508e5b61ba724ad0526e02df88df8808fd7e43d10',
 }
-PINNED_GENERATOR = 'ws6-bb6c7cd8c16e0aaa71a5693f960770dd2f85af479830ad17ca2c3527867dedfb'
+PINNED_GENERATOR = 'ws6-c5e7c30ace24a8b41442ebb7ec8c1271e6638574bad3f5035feb659080b3e538'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
     'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',
@@ -43,7 +43,8 @@ REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSe
     'WorldSettingsVisibilityCommitFresh', 'WorldSettingsVisibilityCancelFresh',
     'WorldSettingsVisibilityBuildingCommand', 'WorldSettingsVisibilityShipQueue',
     'WorldSettingsCopyMemoryError',
-    'WorldSettingsCopyVisibilityChartDiagnostics'} | {row[4] for row in CALLS}
+    'WorldSettingsCopyVisibilityChartDiagnostics',
+    'WorldSettingsCopyVisibilityPerformance'} | {row[4] for row in CALLS}
 UNITS = [PRIVATE + name for name in ('WorldSettings.c', 'world_backend.c', 'world_ai.c')]
 UNITS += ['developer/source/world_factory.c', old.AI_LOADER,
           'developer/source/engine_resume/route_coverage/selection.c',

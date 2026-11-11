@@ -126,6 +126,54 @@ static int wsVisibilityExplorationSameCell(const WSVisibilityExplorationSurface*
  return (int32_t)floor(wx/8.0)==cx&&(int32_t)floor(wz/8.0)==cz;
 }
 
+/* One bounded scalar hierarchy for this pass only. A parent is uniform only
+ * when all four children agree. Leaves retain the exact chart bit; mixed
+ * parents are never treated as known or unknown. The largest supported World
+ * has 256x256 leaves and nine levels, totalling87381bytes. The existing chart
+ * read guard pins the bits throughout construction and pixel submission. */
+typedef struct WSVisibilityExplorationSummary {
+ unsigned char cells[87381];uint32_t offset[9],side[9],levels;
+} WSVisibilityExplorationSummary;
+static void wsVisibilityExplorationSummarize(const WSVisibilityWorld*v,WSVisibilityExplorationSummary*out){
+ uint32_t side=v->width>>3,used=0;out->levels=0;
+ while(side){out->offset[out->levels]=used;out->side[out->levels]=side;used+=side*side;out->levels++;side>>=1;}
+ side=out->side[0];
+ for(uint32_t z=0;z<side;z++)for(uint32_t x=0;x<side;x++)
+  out->cells[z*side+x]=(unsigned char)!!wsVisibilityChartPoint(v,(float)(x*8u+4u),(float)(z*8u+4u));
+ for(uint32_t level=1;level<out->levels;level++){
+  uint32_t current=out->side[level],previous=out->side[level-1];
+  for(uint32_t z=0;z<current;z++)for(uint32_t x=0;x<current;x++){
+   uint32_t base=out->offset[level-1]+(z*2u)*previous+x*2u;
+   unsigned char a=out->cells[base],b=out->cells[base+1u],c=out->cells[base+previous],d=out->cells[base+previous+1u];
+   out->cells[out->offset[level]+z*current+x]=(a==b&&a==c&&a==d)?a:2u;
+  }
+ }
+}
+static uint32_t wsVisibilityExplorationUniformLevel(const WSVisibilityExplorationSummary*s,uint32_t x,uint32_t z){
+ uint32_t result=0;
+ for(uint32_t level=1;level<s->levels;level++){
+  if(s->cells[s->offset[level]+(z>>level)*s->side[level]+(x>>level)]==2u)break;
+  result=level;
+ }
+ return result;
+}
+
+/* These coarse proposals use the same direct-coordinate endpoint proof as
+ * ground8 runs. Only completely uniform, aligned power-of-two blocks enter
+ * this path. Keep the original constant8 arithmetic for mixed leaf cells. */
+static uint32_t wsVisibilityExplorationBlockRun(double position,double step,uint32_t remaining,double span){
+ if(step==0.0)return remaining;
+ double cell=floor(position/span),edge=(step>0.0?cell+1.0:cell)*span;
+ double distance=(edge-position)/step;
+ double count=step>0.0?ceil(distance):floor(distance)+1.0;
+ if(!isfinite(count)||count<1.0)return 1u;
+ return count>=(double)remaining?remaining:(uint32_t)count;
+}
+static int wsVisibilityExplorationSameBlock(const WSVisibilityExplorationSurface*s,uint32_t x,uint32_t y,int32_t cx,int32_t cz,double span){
+ double wx,wz;wsVisibilityExplorationWorldAt(s,x,y,&wx,&wz);
+ return (int32_t)floor(wx/span)==cx&&(int32_t)floor(wz/span)==cz;
+}
+
 /* Called AFTER exact original Display483E0 drained the normal mode2 workers.
  * Return1 for success/legacy/non-Terra. A validated surface becomes wholly
  * opaque black if chart/projection certification fails. If the destination
@@ -143,26 +191,40 @@ static int wsVisibilityApplyExploredSea(void*renderer,void*liveFrameContext){
  if(!wsVisibilityExplorationSurfaceSame(&surface)){wsVisibilityChartReadEnd(&read);return 0;}
  uint32_t width=(uint32_t)(surface.viewport[2]-surface.viewport[0]),height=(uint32_t)(surface.viewport[3]-surface.viewport[1]);
  const uint32_t black=0xff000000u;int32_t cellsX=(int32_t)(surface.view.width>>3),cellsZ=(int32_t)(surface.view.height>>3);
+ WSVisibilityExplorationSummary summary;wsVisibilityExplorationSummarize(&surface.view,&summary);
  for(uint32_t y=0;y<height;y++){
   unsigned char*row=surface.pixels+(size_t)y*surface.rowPixels*4u;
   for(uint32_t x=0;x<width;){
    double wx,wz;wsVisibilityExplorationWorldAt(&surface,x,y,&wx,&wz);
    int32_t cx=(int32_t)floor(wx/8.0),cz=(int32_t)floor(wz/8.0);
-   uint32_t run=wsVisibilityExplorationRun(wx,projection[2],width-x);
-   uint32_t other=wsVisibilityExplorationRun(wz,projection[3],width-x);if(other<run)run=other;
+   int inside=cx>=0&&cz>=0&&cx<cellsX&&cz<cellsZ;
+   int charted=inside&&summary.cells[(uint32_t)cz*(uint32_t)cellsX+(uint32_t)cx];
+   uint32_t level=inside?wsVisibilityExplorationUniformLevel(&summary,(uint32_t)cx,(uint32_t)cz):summary.levels-1u;
+   uint32_t run;
    /* At fixed y both inverse coordinates are monotone in pixel x. A direct
-    * endpoint check certifies the entire proposed run stays in this cell;
-    * shorten it by bounded binary search when division rounding disagrees. */
-   if(run>1u&&!wsVisibilityExplorationSameCell(&surface,x+run-1u,y,cx,cz)){
-    uint32_t low=1u,high=run;
-    while(low<high){uint32_t middle=low+(high-low+1u)/2u;
-     if(wsVisibilityExplorationSameCell(&surface,x+middle-1u,y,cx,cz))low=middle;else high=middle-1u;
-    }run=low;
+    * endpoint check certifies the entire proposed run stays in this uniform
+    * block; bounded binary search corrects any proposal rounding mismatch.
+    * A World-sized aligned block outside the World is wholly unknown. */
+   if(!level){
+    run=wsVisibilityExplorationRun(wx,projection[2],width-x);
+    uint32_t other=wsVisibilityExplorationRun(wz,projection[3],width-x);if(other<run)run=other;
+    if(run>1u&&!wsVisibilityExplorationSameCell(&surface,x+run-1u,y,cx,cz)){
+     uint32_t low=1u,high=run;
+     while(low<high){uint32_t middle=low+(high-low+1u)/2u;
+      if(wsVisibilityExplorationSameCell(&surface,x+middle-1u,y,cx,cz))low=middle;else high=middle-1u;
+     }run=low;
+    }
+   }else{
+    double span=(double)(8u<<level);int32_t bx=(int32_t)floor(wx/span),bz=(int32_t)floor(wz/span);
+    run=wsVisibilityExplorationBlockRun(wx,projection[2],width-x,span);
+    uint32_t other=wsVisibilityExplorationBlockRun(wz,projection[3],width-x,span);if(other<run)run=other;
+    if(run>1u&&!wsVisibilityExplorationSameBlock(&surface,x+run-1u,y,bx,bz,span)){
+     uint32_t low=1u,high=run;
+     while(low<high){uint32_t middle=low+(high-low+1u)/2u;
+      if(wsVisibilityExplorationSameBlock(&surface,x+middle-1u,y,bx,bz,span))low=middle;else high=middle-1u;
+     }run=low;
+    }
    }
-   /* Cell centers are exactly representable. No per-pixel world/module/page
-    * query occurs: the chart read guard pins immutable bits for this pass. */
-   int charted=cx>=0&&cz>=0&&cx<cellsX&&cz<cellsZ&&
-    wsVisibilityChartPoint(&surface.view,(float)(cx*8+4),(float)(cz*8+4));
    if(!charted)for(uint32_t n=0;n<run;n++)memcpy(row+(size_t)(x+n)*4u,&black,4);
    x+=run;
   }
