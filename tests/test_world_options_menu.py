@@ -23,7 +23,7 @@ FIELDS = ('difficulty', 'islandSize', 'islandCount', 'spacing', 'aiCount',
           'startClimate', 'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
           'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
           'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics',
-          'mapVisibility', 'enemyVisibility')
+          'mapVisibility', 'enemyVisibility', 'pirateFrequency', 'pirateStrength', 'merchantFrequency')
 
 DRIVER = r'''
 #include <stdint.h>
@@ -41,6 +41,7 @@ typedef struct WSWorldSettings {
  uint32_t mapSeed;
  int32_t startClimate,startIsland,cargoMode,cargoTools,cargoWood,cargoFood,climateBalance,layoutStyle,disasters;
  int32_t fairStarts,startSeparation,resourceDistribution,guaranteeBasics,mapVisibility,enemyVisibility;
+ int32_t pirateFrequency,pirateStrength,merchantFrequency;
 } WSWorldSettings;
 typedef struct WSPlanIsland {uint32_t id,x,y,width,height,templateIndex,cropMask,mineralMask,cultures,climate;} WSPlanIsland;
 typedef struct WSIslandDetails {uint32_t size,index,fertileLand,oreSlots,whales,faction,startEligible;int32_t startOwner;uint32_t nearbyCrops,nearbyMinerals,resourceRadius;} WSIslandDetails;
@@ -69,7 +70,8 @@ int main(int argc,char**argv){
  WSWorldSettings value={.size=sizeof value,.difficulty=2,.islandSize=4,.islandCount=24,.spacing=16,.aiCount=3,
   .cultures=255,.factions=3,.startingMoney=100000,.startingFleet=1,.aiDifficulty=3,.plantFertility=3,.mineralFertility=2,
   .worldSize=2048,.mapSeed=UINT32_MAX,.startClimate=-1,.startIsland=127,.cargoMode=1,.cargoTools=400,.cargoWood=0,.cargoFood=0,
-  .climateBalance=3,.layoutStyle=2,.disasters=1,.fairStarts=1,.startSeparation=2,.resourceDistribution=2,.guaranteeBasics=1,.mapVisibility=2,.enemyVisibility=1};
+  .climateBalance=3,.layoutStyle=2,.disasters=1,.fairStarts=1,.startSeparation=2,.resourceDistribution=2,.guaranteeBasics=1,.mapVisibility=2,.enemyVisibility=1,
+  .pirateFrequency=0,.pirateStrength=2,.merchantFrequency=1};
  char data[WS_PRESET_MAX_BYTES+1];uint32_t length=0;
  if(!strcmp(argv[1],"encode")){if(!wsPresetEncode(&value,data,WS_PRESET_MAX_BYTES,&length))return 8;fwrite(data,1,length,stdout);return 0;}
  if(strcmp(argv[1],"decode"))return 9;
@@ -129,7 +131,8 @@ typedef struct DialogState {
 } DialogState;
 enum {ID_MAP_VISIBILITY=1,ID_ISLAND_DETAILS,ID_FAIR_SUMMARY,ID_USE_ISLAND,ID_START_HINT,ID_START_CLIMATE,
  ID_MONEY,ID_AI_DIFFICULTY,ID_CARGO_MODE,ID_CARGO_TOOLS,ID_CARGO_WOOD,ID_CARGO_FOOD,ID_DISASTERS,
- ID_FAIR_STARTS,ID_START_SEPARATION,ID_GUARANTEE_BASICS,ID_ENEMY_VISIBILITY};
+ ID_FAIR_STARTS,ID_START_SEPARATION,ID_GUARANTEE_BASICS,ID_ENEMY_VISIBILITY,
+ ID_PIRATE_FREQUENCY,ID_PIRATE_STRENGTH,ID_MERCHANT_FREQUENCY,ID_FACTION};
 enum {CB_GETCURSEL=1,TRANSPARENT=2,PS_SOLID=3,BLACK_BRUSH=4,WHITE_BRUSH=5,DT_CENTER=8,DT_WORDBREAK=16,DT_VCENTER=32,DT_SINGLELINE=64,FALSE=0};
 #define RGB(r,g,b) ((COLORREF)((r)|((g)<<8)|((b)<<16)))
 #define LOWORD(x) ((uint32_t)(x)&0xffffu)
@@ -176,6 +179,7 @@ static int wsMenuDescribeIsland(const WSPlanIsland*p,const WSIslandDetails*d,cha
 static void wsMenuPage(DialogState*d,int page){(void)d;(void)page;}
 static void wsMenuCargoControls(DialogState*d){(void)d;}
 static void wsMenuFairControls(DialogState*d){(void)d;}
+static void wsMenuActivityControls(DialogState*d){(void)d;}
 static void InvalidateRect(HWND w,void*r,int erase){(void)w;(void)r;(void)erase;}
 static void status(DialogState*d,const char*t){(void)d;snprintf(statusText,sizeof statusText,"%s",t);}
 /* Actual authored functions are inserted here by the fixture, without a
@@ -189,7 +193,12 @@ int main(int argc,char**argv){
  RECT rc={0,0,40,40};paintPreview(&d,1,&rc);wsMenuIslandInfo(&d);wsMenuStartHint(&d);wsMenuPreviewClick(&d,2,0);
  int secretInfo=strstr(detailText,"SECRET")!=NULL||strstr(summaryText,"SECRET")!=NULL;
  int leakedPreferred=strstr(hintText,"28")!=NULL;
- wsMenuOptionChanged(&d,!strcmp(argv[3],"enemy")?ID_ENEMY_VISIBILITY:ID_MAP_VISIBILITY);
+ int changed=ID_MAP_VISIBILITY;
+ if(!strcmp(argv[3],"enemy"))changed=ID_ENEMY_VISIBILITY;
+ if(!strcmp(argv[3],"pirate_frequency"))changed=ID_PIRATE_FREQUENCY;
+ if(!strcmp(argv[3],"pirate_strength"))changed=ID_PIRATE_STRENGTH;
+ if(!strcmp(argv[3],"merchant_frequency"))changed=ID_MERCHANT_FREQUENCY;
+ wsMenuOptionChanged(&d,changed);
  printf("{\"native_queries\":%d,\"grid_lines\":%d,\"cover_text\":%d,\"brushes\":%d,\"secret_info\":%d,\"preferred_index_leaked\":%d,\"preferred_after_change\":%d}\n",
   nativeQueries,gridLines,concealedText,brushes,
   secretInfo,leakedPreferred,d.preferredIsland);
@@ -261,7 +270,7 @@ class NativePresetCodecTests(unittest.TestCase):
     def test_round_trip_keeps_every_setting_and_unsigned_seed(self):
         value = self.decoded()
         self.assertEqual(set(value), {'size', *FIELDS})
-        self.assertEqual(value['size'], 120)
+        self.assertEqual(value['size'], 132)
         self.assertEqual(value['mapSeed'], 4294967295)
         self.assertEqual(value['startClimate'], -1)
         self.assertEqual(value['startIsland'], 127)
@@ -275,6 +284,9 @@ class NativePresetCodecTests(unittest.TestCase):
         self.assertEqual(value['guaranteeBasics'], 1)
         self.assertEqual(value['mapVisibility'], 2)
         self.assertEqual(value['enemyVisibility'], 1)
+        self.assertEqual(value['pirateFrequency'], 0)
+        self.assertEqual(value['pirateStrength'], 2)
+        self.assertEqual(value['merchantFrequency'], 1)
         self.assertEqual(value, self.decoded(self.encoded.replace(b'\n', b'\r\n')))
 
     def test_seed_zero_and_high_bit_values_are_not_signed_or_replaced(self):
@@ -285,7 +297,7 @@ class NativePresetCodecTests(unittest.TestCase):
 
     def test_rejects_invalid_numbers_and_incomplete_or_extra_schema(self):
         cases = [self.encoded[:-1], self.encoded + b'extra\n', b'\0' + self.encoded,
-                 self.encoded.replace(b'PRESET 3\n', b'PRESET 2\n'),
+                 self.encoded.replace(b'PRESET 4\n', b'PRESET 2\n'),
                  self.encoded.replace(b'menu-codec-native-fixture-v1', b'another-generator'),
                  self.encoded.replace(b'mapSeed=4294967295', b'mapSeed=4294967296'),
                  self.encoded.replace(b'mapSeed=4294967295', b'mapSeed=-1'),
@@ -297,12 +309,35 @@ class NativePresetCodecTests(unittest.TestCase):
                  self.encoded.replace(b'fairStarts=1\n', b''),
                  self.encoded.replace(b'mapVisibility=2\n', b''),
                  self.encoded.replace(b'enemyVisibility=1\n', b'enemyVisibility=1\nenemyVisibility=0\n'),
+                 self.encoded.replace(b'pirateFrequency=0\n', b''),
+                 self.encoded.replace(b'pirateStrength=2\n', b'pirateStrength=2\npirateStrength=0\n'),
+                 self.encoded.replace(b'merchantFrequency=1\n', b'merchantFrequency=1\nunknown=0\n'),
                  self.encoded.replace(b'resourceDistribution=2\n', b'resourceDistribution=2\nresourceDistribution=0\n'),
                  self.encoded.replace(b'startIsland=127', b'startIsland=2147483648'),
                  b'x' * 4097]
         for data in cases:
             with self.subTest(data=data[:70]):
                 self.assert_rejected(data)
+
+    def test_exact_predecessor_migrates_activity_defaults_without_changing_old_options(self):
+        header = b'ANNO1503_WORLD_PRESET 4\nGENERATOR=menu-codec-native-fixture-v1\n'
+        predecessor = b'ANNO1503_WORLD_PRESET 3\nGENERATOR=ws6-e980d1f2563739790004625336b4a6f243c94fb0e00bc59bb80662f4546693ae\n'
+        legacy = self.encoded.replace(header, predecessor)
+        for line in (b'pirateFrequency=0\n', b'pirateStrength=2\n', b'merchantFrequency=1\n'):
+            legacy = legacy.replace(line, b'')
+        before = bytes(legacy)
+        expected = self.decoded()
+        expected.update(pirateFrequency=1, pirateStrength=1, merchantFrequency=1)
+        self.assertEqual(self.decoded(legacy), expected)
+        self.assertEqual(self.decoded(legacy.replace(b'\n', b'\r\n')), expected)
+        self.assertEqual(legacy, before)
+        for invalid in (legacy.replace(b'ws6-e980', b'ws6-f980'),
+                        legacy.replace(b'PRESET 3\n', b'PRESET 4\n'),
+                        legacy.replace(predecessor, b'ANNO1503_WORLD_PRESET 3\nGENERATOR=menu-codec-native-fixture-v1\n'),
+                        legacy.replace(b'END\n', b'pirateFrequency=1\nEND\n'),
+                        legacy.replace(b'enemyVisibility=1\n', b'')):
+            with self.subTest(data=invalid[:100]):
+                self.assert_rejected(invalid)
 
     def test_rejects_every_truncated_complete_field_boundary(self):
         for at, character in enumerate(self.encoded):
@@ -417,6 +452,107 @@ class NativeConcealedPreviewTests(unittest.TestCase):
 
     def test_enemy_visibility_does_not_discard_a_valid_preferred_island(self):
         self.assertEqual(self.observed(1, changed='enemy')['preferred_after_change'], 27)
+
+    def test_activity_options_do_not_discard_a_valid_preferred_island(self):
+        for changed in ('pirate_frequency', 'pirate_strength', 'merchant_frequency'):
+            with self.subTest(changed=changed):
+                self.assertEqual(self.observed(1, changed=changed)['preferred_after_change'], 27)
+
+
+ACTIVITY_SPY = r'''
+#include "advanced_settings.h"
+typedef uintptr_t HWND;
+typedef intptr_t LRESULT;
+typedef WSWorldSettings WSSettings;
+typedef struct DialogState {HWND window;int32_t preferredIsland;} DialogState;
+enum {ID_START_CLIMATE=1,ID_CARGO_MODE,ID_CARGO_TOOLS,ID_CARGO_WOOD,ID_CARGO_FOOD,
+ ID_CLIMATE_BALANCE,ID_LAYOUT_STYLE,ID_DISASTERS,ID_FAIR_STARTS,ID_START_SEPARATION,
+ ID_RESOURCE_DISTRIBUTION,ID_GUARANTEE_BASICS,ID_MAP_VISIBILITY,ID_ENEMY_VISIBILITY,
+ ID_FACTION=100,ID_PIRATE_FREQUENCY=102,ID_PIRATE_STRENGTH,ID_MERCHANT_FREQUENCY};
+enum {BM_GETCHECK=1,CB_GETCURSEL=2,CB_SETCURSEL=3,BST_CHECKED=1};
+static int choices[128],factions,enabled,selectionWrites;
+static LRESULT SendDlgItemMessageA(HWND window,int id,int message,intptr_t a,intptr_t b){
+ (void)window;(void)a;(void)b;
+ if(message==CB_SETCURSEL){selectionWrites++;return 0;}
+ if(message==BM_GETCHECK){
+  if(id==ID_FACTION)return (factions&1)!=0;
+  if(id==ID_FACTION+1)return (factions&2)!=0;
+  return id==ID_DISASTERS;
+ }
+ return choices[id];
+}
+static HWND GetDlgItem(HWND window,int id){(void)window;return (HWND)id;}
+static void EnableWindow(HWND window,int active){
+ if(active&&window>=ID_PIRATE_FREQUENCY&&window<=ID_MERCHANT_FREQUENCY)
+  enabled|=1<<((int)window-ID_PIRATE_FREQUENCY);
+}
+static int wsMenuReadSeed(DialogState*d,uint32_t*seed){(void)d;*seed=123456789u;return 1;}
+static int integer(HWND window,int id,int32_t*out){(void)window;(void)id;*out=40;return 1;}
+static void status(DialogState*d,const char*text){(void)d;(void)text;}
+@FUNCTIONS@
+int main(int argc,char**argv){
+ if(argc!=5)return 9;
+ for(int i=0;i<3;i++)choices[ID_PIRATE_FREQUENCY+i]=atoi(argv[1+i]);
+ choices[ID_MAP_VISIBILITY]=1;factions=atoi(argv[4]);
+ DialogState d={.window=1,.preferredIsland=-1};WSSettings s={.size=sizeof s};
+ wsMenuActivityControls(&d);int collected=wsMenuCollectAdvanced(&d,&s);char error[512];
+ int valid=collected&&wsAdvancedValidateSettings(&s,error,sizeof error);
+ printf("{\"valid\":%d,\"pirateFrequency\":%d,\"pirateStrength\":%d,\"merchantFrequency\":%d,\"enabled\":%d,\"selection_writes\":%d}\n",
+  valid,s.pirateFrequency,s.pirateStrength,s.merchantFrequency,enabled,selectionWrites);
+ return 0;
+}
+'''
+
+
+class NativeActivityMenuTests(unittest.TestCase):
+    """Execute authored collection, enablement and validation; never opens Anno."""
+
+    @classmethod
+    def setUpClass(cls):
+        values = (NATIVE / 'menu_values.inc').read_text()
+        functions = '\n'.join(c_function(values, name) for name in
+                              ('wsMenuActivityControls', 'wsMenuCollectAdvanced'))
+        # Share only the existing fixture's type declarations. The tested
+        # functions and range validator come directly from production source.
+        prefix = DRIVER.split('#define WS_WORLD_OPTIONS_GENERATOR', 1)[0]
+        cls.temporary = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.temporary.cleanup)
+        directory = Path(cls.temporary.name)
+        source = directory / 'activity_menu_spy.c'
+        source.write_text(prefix + ACTIVITY_SPY.replace('@FUNCTIONS@', functions), encoding='utf-8')
+        cls.exe = directory / ('activity_menu_spy.exe' if os.name == 'nt' else 'activity_menu_spy')
+        result = subprocess.run([*native_compiler(), '-std=c11', '-O2', '-Wall', '-Wextra',
+                                 '-Werror', '-Wno-misleading-indentation', '-I', str(NATIVE),
+                                 str(source), '-o', str(cls.exe)], capture_output=True, text=True, timeout=90)
+        if result.returncode:
+            raise AssertionError('Native activity-menu fixture compilation failed:\n' + result.stderr)
+
+    def observed(self, frequency=1, strength=1, merchant=1, factions=3):
+        result = subprocess.run([str(self.exe), str(frequency), str(strength), str(merchant), str(factions)],
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_every_choice_is_collected_even_while_its_faction_is_disabled(self):
+        for frequency in range(3):
+            for strength in range(3):
+                for merchant in range(3):
+                    for factions in range(4):
+                        with self.subTest(frequency=frequency, strength=strength, merchant=merchant, factions=factions):
+                            self.assertEqual(self.observed(frequency, strength, merchant, factions),
+                                dict(valid=1, pirateFrequency=frequency, pirateStrength=strength,
+                                     merchantFrequency=merchant, enabled=(3 if factions & 1 else 0) | (4 if factions & 2 else 0),
+                                     selection_writes=0))
+
+    def test_missing_or_out_of_range_selection_is_refused_even_when_disabled(self):
+        for field in range(3):
+            for invalid in (-1, 3, 2147483647):
+                choices = [1, 1, 1]
+                choices[field] = invalid
+                with self.subTest(field=field, invalid=invalid):
+                    result = self.observed(*choices, factions=0)
+                    self.assertEqual(result['valid'], 0)
+                    self.assertEqual(result['selection_writes'], 0)
 
 
 if __name__ == '__main__':

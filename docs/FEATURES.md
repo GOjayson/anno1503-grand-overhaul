@@ -10,7 +10,7 @@ It does not support arbitrary combinations of future native modifications.
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.9; mineral fix retained; in-game/restart reloads passed; brief flash absent during the check without detailed diagnostics | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
+| World Settings | Priority | Experimental 0.7.0-dev.1 installed on the managed World-only copy; in-game/restart policy retention passed; four merchants observed; pirate gameplay unverified and native six-cannon load cap retained | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
 | Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
 | Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
@@ -27,7 +27,33 @@ The UI should explain their status and the validator must enforce it too.
 
 ## Expanded in-game World Settings
 
-The 0.6.0-dev.8 candidate repairs mineral symbols whose native parent is an
+Development **0.7.0-dev.1** adds independent pirate reinforcement frequency,
+new-ship strength and neutral merchant traffic controls to the Players page.
+All default to Normal, and the Pirates/Venetians on/off choices remain
+authoritative. The World-only build and updated automatic shortcut are installed.
+Startup, loading the older `wr2` world, and creating/saving the new `pa1` world
+passed. Its native saved policies match Frequent / Strong / Frequent. In-game
+loading, fresh-process loading and policy retention passed through `pa2r` and
+`pa3`, which contains four merchant ships. The native prerequisite had only one
+of three required qualifying towns, so pirates had not spawned. Pirate
+armament/raids and merchant visit frequency/trade volume remain unverified in
+gameplay. The renderer,
+chart format, mineral visibility, ownership, scout and camera paths retain
+the preceding implementation. Food was not installed or tested in gameplay.
+See [Pirate activity and neutral trade](WORLD_FACTION_ACTIVITY.md) for semantics,
+automated evidence, preservation and the current live-test scope.
+
+**Known limitation:** strength changes newly created pirate ships; the native
+save loader still caps their armament at **six cannons**, including native
+Normal counts above six. The selected policy persists, but this build does not
+preserve above-cap equipment across loading.
+
+The preceding 0.6.0-dev.9 connected the running game's separate View loader to
+checkpoint restoration. Its accepted main-menu, in-game and restart load checks
+remain historical evidence, with the mineral repair retained. The new activity
+policies have separate in-game and restart save checks recorded above.
+
+The earlier 0.6.0-dev.8 candidate repairs mineral symbols whose native parent is an
 island, including icons over remembered mine buildings, and adds checkpoint
 handling for the inspected in-game filename path. Native mineral
 quantity/discovery rules remain authoritative; this does not add remembered
@@ -36,8 +62,8 @@ and independent review of six matching builds passed. World-only installation/
 restoration passed, preserving saves, presets and all 51 preceding backups;
 two restored generations give 53. The updated shortcut preserves its preceding
 version. Fresh automatic startup and main-menu `wr1` loading passed; the user
-accepted mineral symbols. Normal in-game loading still produces a black map,
-so the load repair remains unfinished. The chart format, camera
+accepted mineral symbols. At that stage, normal in-game loading still produced
+a black map and the load repair was unfinished. The chart format, camera
 preparation, ownership and scout rules are unchanged. Food gameplay is not being
 retested.
 The later 2048-world/50-island `wr1` investigation does not extend the preceding
@@ -82,7 +108,10 @@ Presets, Islands and Visibility. Terra incognita covers that preview.
 | Setting | Behavior and constraints |
 | --- | --- |
 | Map seed | Enter or copy an unsigned 32-bit seed, including zero. The same seed, generator fingerprint and settings reproduce the validated map preview. Regenerate chooses another displayed seed. |
-| Saved presets | Save/load all 29 world choices, including seed, preferred island and both visibility choices, using bounded version-3 named files inside the managed copy. A different generator fingerprint or preceding schema is refused; older files are retained. |
+| Saved presets | Save/load all 32 world choices, including seed, preferred island, visibility and faction activity, using bounded version-4 named files inside the managed copy. Version-3 presets from the exact preceding 0.6.0-dev.9 generator migrate in memory with all three activity choices Normal; their files are preserved. Other identities/formats are refused. |
+| Pirate reinforcement frequency | Rare doubles the native waiting threshold; Normal retains it; Frequent halves it. Native fleet caps, targets and routes still limit raids. Disabling Pirates disables this control. |
+| Pirate strength | Weak reduces newly created pirates' cannon count, Normal retains the native count, and Strong increases it within the native pirate 4–18 range. **The unchanged native loader caps existing pirate armament at six cannons on reload.** The policy persists for future creations. Existing ships are not refilled or re-equipped; disabling Pirates disables this control. |
+| Neutral merchant trade frequency | Rare halves the native trading-fleet target with rounding up, Normal retains it, and Frequent doubles it up to 10. Routes, travel, ports and demand still determine visits; Rare can equal Normal for a one-ship target. Disabling Venetians disables this control. |
 | Island inspection | With a revealed preview, click any island, including native and special-faction islands, to inspect dimensions, climate, fertile-land estimate, planned crop/mineral masks, occupants, template ore/whale occurrences, nearby resources and starting eligibility. The estimate does not establish building or mine accessibility. |
 | Starting position | Choose a climate or, with a revealed preview, inspect an ordinary uninhabited island and explicitly prefer it. Terra incognita disables manual island selection, clears a preceding preferred island and retains climate preferences. Starting ships move to checked nearby water; native/special islands and unsafe coastal starts are refused. Inspection alone does not move the starting fleet; no settlement is built automatically. |
 | Balanced starts | Optionally allocate distinct ordinary islands to the human and selected ordinary AI opponents using fertile-land estimates and resource access. Close, balanced and distant separation choices apply to balanced starts. A preferred human island/climate remains a constraint. This does not improve AI strategy or increase the supported AI count. |
@@ -261,6 +290,6 @@ unlocks must remain compatible with the selected Food and economy rules.
 
 ## Further World Settings candidates
 
-Deposit quantities/depletion, trader and Pirate behavior,
+Deposit quantities/depletion, broader trader and Pirate strategy,
 starting diplomacy and victory goals need their own native and save
 investigations. These remain proposals for subsequent settings.

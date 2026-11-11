@@ -66,7 +66,8 @@ class Settings(C.Structure):
                              'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
                              'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
                              'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics',
-                             'mapVisibility', 'enemyVisibility')]
+                             'mapVisibility', 'enemyVisibility', 'pirateFrequency',
+                             'pirateStrength', 'merchantFrequency')]
 
 
 class Island(C.Structure):
@@ -81,7 +82,8 @@ def settings(**overrides):
                       aiDifficulty=1, plantFertility=1, mineralFertility=1,
                       worldSize=1024, mapSeed=3719, startClimate=-1,
                       startIsland=-1, cargoTools=40, cargoWood=40, cargoFood=10,
-                      disasters=1, startSeparation=1, mapVisibility=1)
+                      disasters=1, startSeparation=1, mapVisibility=1,
+                      pirateFrequency=1, pirateStrength=1, merchantFrequency=1)
     for key, value in overrides.items():
         setattr(result, key, value)
     return result
@@ -187,7 +189,10 @@ __declspec(dllexport) int FixtureLayoutMatches(const WSWorldSettings*s,const WSP
         return list(out[:count])
 
     def test_native_abi_and_weighted_climate_targets(self):
-        self.assertEqual(self.lib.FixtureABI(), 120)
+        self.assertEqual(self.lib.FixtureABI(), 132)
+        self.assertEqual(Settings.pirateFrequency.offset, 120)
+        self.assertEqual(Settings.pirateStrength.offset, 124)
+        self.assertEqual(Settings.merchantFrequency.offset, 128)
         self.assertEqual(C.sizeof(Island), 40)
         for balance, favored in ((0, ()), (1, (2, 3)), (2, (4, 5)), (3, (0, 1))):
             options = settings(islandCount=60, climateBalance=balance)
@@ -236,6 +241,19 @@ __declspec(dllexport) int FixtureLayoutMatches(const WSWorldSettings*s,const WSP
             options.enemyVisibility = 1
             changed = self.native_plan(options)
             self.assertEqual([bytes(p) for p in first], [bytes(p) for p in changed])
+
+    def test_activity_choices_preserve_same_seed_islands_for_every_layout_style(self):
+        for style in range(3):
+            options = settings(worldSize=2048, layoutStyle=style, mapSeed=123456789)
+            expected = [bytes(p) for p in self.native_plan(options)]
+            for frequency in range(3):
+                for strength in range(3):
+                    for merchant in range(3):
+                        with self.subTest(style=style, frequency=frequency, strength=strength, merchant=merchant):
+                            options.pirateFrequency = frequency
+                            options.pirateStrength = strength
+                            options.merchantFrequency = merchant
+                            self.assertEqual([bytes(p) for p in self.native_plan(options)], expected)
 
     def test_archipelagos_have_tighter_groups_than_even_layout(self):
         options = settings(islandCount=24)

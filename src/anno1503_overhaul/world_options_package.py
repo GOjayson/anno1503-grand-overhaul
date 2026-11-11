@@ -55,6 +55,20 @@ def _recipe(raw, corpus, native, runtime, source, copy, food, baselines=None):
                               runtime_policy=(runtime_sha, engine_sha, base.STOCK_SHA256))
         spec = common._json(files['world/world_patch.json'], 'World-only specification')
     files['world/native/AnnoWorldSettings.dll'] = runtime
+    # Preserve frozen inputs and historical recipes. Only the two private AI
+    # payloads in this new options generation receive the reviewed activity
+    # derivative; original host modules and Food changes stay byte-exact.
+    from .world_options_factions import PROFILE_INPUT_SHA256, derive_faction_ai
+    for name in ('CompLogic.dll', 'CompLogicClassic.dll'):
+        target = 'WorldSettingsAI/' + name
+        payload = spec['introduced_files'][target]
+        key = 'world/' + payload
+        try:
+            value, unused_proof = derive_faction_ai(name, files[key], PROFILE_INPUT_SHA256[profile][name])
+        except base.RuntimeBuildError as exc:
+            raise common.PackageError('The exact private faction AI input or native policy differs: ' + name) from exc
+        files[key] = value
+        spec['payloads'][payload] = common._sha(value)
     spec['world_options'] = dict(version=VERSION, generator_id=generator_id(), settings_size=SETTINGS_SIZE,
                                  preview_size=PREVIEW_SIZE, food_enabled=food)
     files['world/world_patch.json'] = common._encoded(spec)

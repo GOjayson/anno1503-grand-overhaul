@@ -45,6 +45,13 @@ static void wsMenuFairControls(DialogState*d){
  int balanced=SendDlgItemMessageA(d->window,ID_FAIR_STARTS,BM_GETCHECK,0,0)==BST_CHECKED;
  EnableWindow(GetDlgItem(d->window,ID_START_SEPARATION),balanced);
 }
+static void wsMenuActivityControls(DialogState*d){
+ int pirates=SendDlgItemMessageA(d->window,ID_FACTION,BM_GETCHECK,0,0)==BST_CHECKED;
+ int merchants=SendDlgItemMessageA(d->window,ID_FACTION+1,BM_GETCHECK,0,0)==BST_CHECKED;
+ EnableWindow(GetDlgItem(d->window,ID_PIRATE_FREQUENCY),pirates);
+ EnableWindow(GetDlgItem(d->window,ID_PIRATE_STRENGTH),pirates);
+ EnableWindow(GetDlgItem(d->window,ID_MERCHANT_FREQUENCY),merchants);
+}
 static void wsMenuIslandInfo(DialogState*d){
  char text[4096],summary[768];WSIslandDetails details={0};details.size=sizeof details;
  if(wsMenuMapConcealed(d)){
@@ -80,6 +87,9 @@ static int wsMenuCollectAdvanced(DialogState*d,WSSettings*s){
  s->guaranteeBasics=SendDlgItemMessageA(d->window,ID_GUARANTEE_BASICS,BM_GETCHECK,0,0)==BST_CHECKED;
  s->mapVisibility=(int)SendDlgItemMessageA(d->window,ID_MAP_VISIBILITY,CB_GETCURSEL,0,0);
  s->enemyVisibility=(int)SendDlgItemMessageA(d->window,ID_ENEMY_VISIBILITY,CB_GETCURSEL,0,0);
+ s->pirateFrequency=(int)SendDlgItemMessageA(d->window,ID_PIRATE_FREQUENCY,CB_GETCURSEL,0,0);
+ s->pirateStrength=(int)SendDlgItemMessageA(d->window,ID_PIRATE_STRENGTH,CB_GETCURSEL,0,0);
+ s->merchantFrequency=(int)SendDlgItemMessageA(d->window,ID_MERCHANT_FREQUENCY,CB_GETCURSEL,0,0);
  return 1;
 }
 static void wsMenuStartHint(DialogState*d){
@@ -112,6 +122,9 @@ static void wsMenuApplySettings(DialogState*d,const WSSettings*s){
  SendDlgItemMessageA(d->window,ID_RESOURCE_DISTRIBUTION,CB_SETCURSEL,s->resourceDistribution,0);
  SendDlgItemMessageA(d->window,ID_MAP_VISIBILITY,CB_SETCURSEL,s->mapVisibility,0);
  SendDlgItemMessageA(d->window,ID_ENEMY_VISIBILITY,CB_SETCURSEL,s->enemyVisibility,0);
+ SendDlgItemMessageA(d->window,ID_PIRATE_FREQUENCY,CB_SETCURSEL,s->pirateFrequency,0);
+ SendDlgItemMessageA(d->window,ID_PIRATE_STRENGTH,CB_SETCURSEL,s->pirateStrength,0);
+ SendDlgItemMessageA(d->window,ID_MERCHANT_FREQUENCY,CB_SETCURSEL,s->merchantFrequency,0);
  for(int i=0;i<8;i++)SendDlgItemMessageA(d->window,ID_CULTURE+i,BM_SETCHECK,s->cultures&(1u<<i)?BST_CHECKED:BST_UNCHECKED,0);
  for(int i=0;i<2;i++)SendDlgItemMessageA(d->window,ID_FACTION+i,BM_SETCHECK,s->factions&(1u<<i)?BST_CHECKED:BST_UNCHECKED,0);
  SendDlgItemMessageA(d->window,ID_CARGO_MODE,BM_SETCHECK,s->cargoMode?BST_CHECKED:BST_UNCHECKED,0);
@@ -121,7 +134,7 @@ static void wsMenuApplySettings(DialogState*d,const WSSettings*s){
  wsMenuPutNumber(d,ID_COUNT,s->islandCount);wsMenuPutNumber(d,ID_SPACING,s->spacing);
  wsMenuPutNumber(d,ID_CARGO_TOOLS,s->cargoTools);wsMenuPutNumber(d,ID_CARGO_WOOD,s->cargoWood);wsMenuPutNumber(d,ID_CARGO_FOOD,s->cargoFood);
  wsMenuPutSeed(d,s->mapSeed);d->previewSeed=s->mapSeed;d->preferredIsland=s->startIsland;d->settings=*s;
- d->inspectedIsland=-1;wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuStartHint(d);d->creating=0;
+ d->inspectedIsland=-1;wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuStartHint(d);d->creating=0;
 }
 static void wsMenuCopySeed(DialogState*d){
  uint32_t seed;if(!wsMenuReadSeed(d,&seed))return;wchar_t text[16];swprintf(text,16,L"%u",seed);
@@ -221,8 +234,9 @@ static int wsMenuCommand(DialogState*d,int id,int notice){
  return 0;
 }
 static void wsMenuOptionChanged(DialogState*d,int id){
- if(id!=ID_MONEY&&id!=ID_AI_DIFFICULTY&&id!=ID_CARGO_MODE&&id!=ID_CARGO_TOOLS&&id!=ID_CARGO_WOOD&&id!=ID_CARGO_FOOD&&id!=ID_DISASTERS&&id!=ID_FAIR_STARTS&&id!=ID_START_SEPARATION&&id!=ID_GUARANTEE_BASICS&&id!=ID_MAP_VISIBILITY&&id!=ID_ENEMY_VISIBILITY){d->preferredIsland=-1;d->inspectedIsland=-1;}
+ if(id!=ID_MONEY&&id!=ID_AI_DIFFICULTY&&id!=ID_CARGO_MODE&&id!=ID_CARGO_TOOLS&&id!=ID_CARGO_WOOD&&id!=ID_CARGO_FOOD&&id!=ID_DISASTERS&&id!=ID_FAIR_STARTS&&id!=ID_START_SEPARATION&&id!=ID_GUARANTEE_BASICS&&id!=ID_MAP_VISIBILITY&&id!=ID_ENEMY_VISIBILITY&&id!=ID_PIRATE_FREQUENCY&&id!=ID_PIRATE_STRENGTH&&id!=ID_MERCHANT_FREQUENCY){d->preferredIsland=-1;d->inspectedIsland=-1;}
  if(id==ID_MAP_VISIBILITY&&wsMenuMapConcealed(d))d->preferredIsland=d->inspectedIsland=-1;
  if(id==ID_CARGO_MODE)wsMenuCargoControls(d);if(id==ID_FAIR_STARTS)wsMenuFairControls(d);wsMenuStartHint(d);wsMenuIslandInfo(d);
+ if(id==ID_FACTION||id==ID_FACTION+1)wsMenuActivityControls(d);
  if(id==ID_MAP_VISIBILITY&&d->preview)InvalidateRect(d->preview,NULL,FALSE);
 }

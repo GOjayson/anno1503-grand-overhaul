@@ -6,7 +6,10 @@
 #endif
 #define WS_PRESET_MAX_BYTES 4096u
 #define WS_PRESET_NAME_MAX 32u
-static const char wsPresetHeader[]="ANNO1503_WORLD_PRESET 3\nGENERATOR=" WS_WORLD_OPTIONS_GENERATOR "\n";
+static const char wsPresetHeader[]="ANNO1503_WORLD_PRESET 4\nGENERATOR=" WS_WORLD_OPTIONS_GENERATOR "\n";
+/* This exact predecessor used the same map planner. Migrate its choices in
+ * memory only; the three new activity options retain native Normal defaults. */
+static const char wsPresetLegacyHeader[]="ANNO1503_WORLD_PRESET 3\nGENERATOR=ws6-e980d1f2563739790004625336b4a6f243c94fb0e00bc59bb80662f4546693ae\n";
 typedef struct WSMenuPresetField {const char *name;size_t offset;int unsignedValue;} WSMenuPresetField;
 #define WS_PRESET_FIELD(name,isUnsigned) {#name,offsetof(WSWorldSettings,name),isUnsigned}
 static const WSMenuPresetField wsPresetFields[]={
@@ -23,7 +26,9 @@ static const WSMenuPresetField wsPresetFields[]={
  WS_PRESET_FIELD(layoutStyle,0),WS_PRESET_FIELD(disasters,0),
  WS_PRESET_FIELD(fairStarts,0),WS_PRESET_FIELD(startSeparation,0),
  WS_PRESET_FIELD(resourceDistribution,0),WS_PRESET_FIELD(guaranteeBasics,0),
- WS_PRESET_FIELD(mapVisibility,0),WS_PRESET_FIELD(enemyVisibility,0)
+ WS_PRESET_FIELD(mapVisibility,0),WS_PRESET_FIELD(enemyVisibility,0),
+ WS_PRESET_FIELD(pirateFrequency,0),WS_PRESET_FIELD(pirateStrength,0),
+ WS_PRESET_FIELD(merchantFrequency,0)
 };
 #undef WS_PRESET_FIELD
 
@@ -80,9 +85,15 @@ static int wsPresetDecode(const char *data,uint32_t length,WSWorldSettings *out)
   canonical[n++]=(char)c;
  }
  canonical[n]=0;size_t at=sizeof(wsPresetHeader)-1;
- if(at>n||memcmp(canonical,wsPresetHeader,at))return 0;
+ size_t fields=sizeof(wsPresetFields)/sizeof(wsPresetFields[0]);
+ if(at>n||memcmp(canonical,wsPresetHeader,at)){
+  at=sizeof(wsPresetLegacyHeader)-1;
+  if(at>n||memcmp(canonical,wsPresetLegacyHeader,at))return 0;
+  fields=29u;
+ }
  WSWorldSettings result={0};result.size=sizeof result;
- for(size_t i=0;i<sizeof(wsPresetFields)/sizeof(wsPresetFields[0]);i++){
+ result.pirateFrequency=result.pirateStrength=result.merchantFrequency=1;
+ for(size_t i=0;i<fields;i++){
   const WSMenuPresetField *field=&wsPresetFields[i];size_t key=strlen(field->name);
   if(at+key+2u>n||memcmp(canonical+at,field->name,key)||canonical[at+key]!='=')return 0;
   at+=key+1u;size_t end=at;while(end<n&&canonical[end]!='\n')end++;

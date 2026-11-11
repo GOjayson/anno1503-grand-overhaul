@@ -24,7 +24,17 @@ FIXTURE = r'''
 #define __declspec(x) __attribute__((visibility("default")))
 #endif
 #include "start_visibility_policy.h"
-typedef struct WSWorldSettings {int32_t mapVisibility,enemyVisibility;} WSWorldSettings;
+typedef struct WSWorldSettings {
+ uint32_t size;int32_t difficulty,islandSize,islandCount,spacing,aiCount;
+ uint32_t cultures,factions;
+ int32_t startingMoney,startingFleet,aiDifficulty,plantFertility,mineralFertility,worldSize;
+ uint32_t mapSeed;
+ int32_t startClimate,startIsland,cargoMode,cargoTools,cargoWood,cargoFood,climateBalance,layoutStyle,disasters;
+ int32_t fairStarts,startSeparation,resourceDistribution,guaranteeBasics,mapVisibility,enemyVisibility;
+ int32_t pirateFrequency,pirateStrength,merchantFrequency;
+} WSWorldSettings;
+_Static_assert(sizeof(WSWorldSettings)==132,"The visibility fixture must retain the full current settings ABI");
+_Static_assert(offsetof(WSWorldSettings,pirateFrequency)==120,"Existing settings prefix differs");
 typedef struct WSBuffer {unsigned char*data;uint32_t size,capacity;} WSBuffer;
 static uint16_t wsU16(const void*p){uint16_t n;memcpy(&n,p,2);return n;}
 static uint32_t wsU32(const void*p){uint32_t n;memcpy(&n,p,4);return n;}
@@ -36,7 +46,9 @@ static void wsMessage(char*out,uint32_t cap,const char*msg){if(out&&cap){snprint
 __declspec(dllexport) uint32_t policy(int32_t map,int32_t enemy){return wsVisibilityEncode(map,enemy);}
 __declspec(dllexport) int decode(uint32_t flags,int32_t*out){return wsVisibilityDecode(flags,out,out+1);}
 __declspec(dllexport) int scene(int32_t map,int32_t enemy,uint32_t before,uint32_t malformed,uint32_t*out){
- unsigned char raw[128]={0};WSBuffer b={raw,80,sizeof raw};WSWorldSettings s={map,enemy};char error[128];
+ unsigned char raw[128]={0};WSBuffer b={raw,80,sizeof raw};
+ WSWorldSettings s={.size=sizeof s,.mapVisibility=map,.enemyVisibility=enemy,
+  .pirateFrequency=1,.pirateStrength=1,.merchantFrequency=1};char error[128];
  memcpy(raw+32,"HEAD",4);wsPut32(raw+44,32);wsPut32(raw+64,before);
  if(malformed==1)wsPut32(raw+44,31);
  if(malformed==2)b.size=79;

@@ -82,7 +82,8 @@ class Settings(C.Structure):
         'plantFertility', 'mineralFertility', 'worldSize', 'mapSeed',
         'startClimate', 'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
         'cargoFood', 'climateBalance', 'layoutStyle', 'disasters', 'fairStarts',
-        'startSeparation', 'resourceDistribution', 'guaranteeBasics', 'mapVisibility', 'enemyVisibility')]
+        'startSeparation', 'resourceDistribution', 'guaranteeBasics', 'mapVisibility', 'enemyVisibility',
+        'pirateFrequency', 'pirateStrength', 'merchantFrequency')]
 
 
 class Island(C.Structure):
@@ -103,6 +104,7 @@ def settings(**changes):
     value.startClimate = value.startIsland = -1
     value.disasters = 1
     value.mapVisibility = 1
+    value.pirateFrequency = value.pirateStrength = value.merchantFrequency = 1
     for key, item in changes.items():
         setattr(value, key, item)
     return value
@@ -367,6 +369,24 @@ __declspec(dllexport) int fixtureCargoCertificate(void*ship,void*figure,uint32_t
                 self.assertGreaterEqual(dx*dx+dy*dy, 1024**2)
         for island, owner in zip(first[2], range(4)):
             self.assertEqual(self.dll.WorldSettingsStartOwner(island), owner)
+
+    def test_activity_choices_preserve_fair_start_assignments_and_replay(self):
+        value = settings(difficulty=1, worldSize=2048, fairStarts=1, aiCount=3,
+                         startSeparation=2, startingFleet=2, mapSeed=123456789)
+        islands = self.fair_islands()
+        original_geometry = [bytes(island) for island in islands]
+        expected = self.read_fair(value, islands)
+        self.assertEqual((expected[0], expected[3], expected[4]), (1, 14, b''))
+        for frequency in range(3):
+            for strength in range(3):
+                for merchant in range(3):
+                    with self.subTest(frequency=frequency, strength=strength, merchant=merchant):
+                        value.pirateFrequency = frequency
+                        value.pirateStrength = strength
+                        value.merchantFrequency = merchant
+                        self.assertEqual(self.read_fair(value, islands), expected)
+                        self.assertEqual(self.read_fair(value, islands, replay=True), expected)
+                        self.assertEqual([bytes(island) for island in islands], original_geometry)
 
     def test_fair_start_respects_preferred_island_and_preserves_inactive_owner(self):
         value = settings(difficulty=1, worldSize=2048, fairStarts=1, aiCount=2,

@@ -23,10 +23,10 @@ from .world_options_visibility_hooks import IMPORT_HOOKS, verify_import_visibili
 
 
 PINNED_RUNTIMES = {
-    'world-only': '06d3ba48a7afb4c697f4046eb722f0da265d4085acf9e2a3b92c9d6edfdbb3cd',
-    'food-world': '1492266e16f67a99e5b000a6f0b0e1f2214d5f6921dbe77de365d09f901a503e',
+    'world-only': '027e6d0dcb4134fa591c0a36f1bcaea76d976bc3191b5fae1cdf6942c8becd16',
+    'food-world': 'b07e7a97335885bcb444be1dd043835b10280bef1dfb31d41c9bc880e8a73f6a',
 }
-PINNED_GENERATOR = 'ws6-e980d1f2563739790004625336b4a6f243c94fb0e00bc59bb80662f4546693ae'
+PINNED_GENERATOR = 'ws6-6113d0190fad378ad46a5a36c921b7d70b437f31359c6836ba3dd74c585f3327'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
     'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',
@@ -54,6 +54,24 @@ UNITS += ['developer/source/world_factory.c', old.AI_LOADER,
 
 def _sha(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def derive_activity_ai_inputs(profile: str, game: Path):
+    """Derive the new policy from each profile's exact historical AI inputs."""
+    from .world_native import derive_ai_candidate
+    from .world_options_factions import PROFILE_INPUT_SHA256, derive_faction_ai
+    if profile not in PROFILE_INPUT_SHA256:
+        raise old.RuntimeBuildError('Unknown faction activity native profile.')
+    frozen = checked_path(old.ROOT / '.local/baselines/world_settings/native')
+    result, proof = {}, {}
+    for name in ('CompLogic.dll', 'CompLogicClassic.dll'):
+        payload = name.removesuffix('.dll') + '.food-ai.dll'
+        prior = checked_path(frozen / payload).read_bytes()
+        if profile == 'world-only':
+            prior = derive_ai_candidate(name, checked_path(game / name).read_bytes(), prior)
+        expected = PROFILE_INPUT_SHA256[profile][name]
+        result[name], proof[name] = derive_faction_ai(name, prior, expected)
+    return result, proof
 
 
 def derive_sources(profile: str, files: dict[str, bytes], game: Path):
@@ -93,6 +111,15 @@ def derive_sources(profile: str, files: dict[str, bytes], game: Path):
     proof['strict_visibility_calls'] = verify_visibility_call_preimages(
         {name: (game / name).read_bytes() for name in {row[0] for row in CALLS}}, expected)
     result = apply_options(files)
+    activity_ai, activity_proof = derive_activity_ai_inputs(profile, game)
+    from .world_options_factions import PROFILE_INPUT_SHA256
+    from .world_options import replace
+    for name, value in activity_ai.items():
+        result[old.AI_LOADER] = replace(result[old.AI_LOADER],
+            PROFILE_INPUT_SHA256[profile][name].encode('ascii'), _sha(value).encode('ascii'),
+            'exact faction activity private AI fingerprint: ' + name)
+    proof['faction_activity_ai'] = activity_proof
+    proof['faction_activity_ai_sha256'] = {name: _sha(value) for name, value in activity_ai.items()}
     # These exact profile-specific fingerprints also guard new read-only data
     # interfaces and original renderer delegates in the live transaction.
     names = ('AnnoWelt.dll', 'AnnoFrame.dll', 'AnnoScene.dll',
@@ -202,9 +229,18 @@ def build_options_runtime(profile, game, tools=None, *, output=None, publish=Fal
         target = profiles / ('options-' + profile + '-' + report['runtime_sha256'][:16])
         if target.exists():
             raise old.RuntimeBuildError('Runtime profile exists; it was preserved.')
+        candidates, candidate_proof = derive_activity_ai_inputs(profile, game)
+        if (candidate_proof != report['native_preimage_proof']['faction_activity_ai'] or
+                {name: _sha(data) for name, data in candidates.items()} !=
+                report['native_preimage_proof']['faction_activity_ai_sha256']):
+            raise old.RuntimeBuildError('The private AI derivation changed after compilation.')
         target.mkdir()
         (target / 'AnnoWorldSettings.dll').write_bytes(normalized)
         (target / 'runtime_engine_edits.json').write_bytes(files[old.ENGINE_PLAN])
+        private = target / 'WorldSettingsAI'
+        private.mkdir()
+        for name, data in candidates.items():
+            (private / name).write_bytes(data)
         report['profile_root'] = str(target)
         (target / 'runtime-profile.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     return report

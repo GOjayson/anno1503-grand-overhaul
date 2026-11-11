@@ -15,7 +15,8 @@ def apply_menu(files: dict[str, bytes]) -> None:
         b' ID_CLIMATE_BALANCE,ID_LAYOUT_STYLE,ID_DISASTERS,ID_PRESET_PICK,ID_PRESET_NAME,ID_PRESET_SAVE,ID_PRESET_LOAD,ID_CLEAR_START,ID_START_HINT,\n'
         b' ID_TAB_WORLD=220,ID_TAB_PLAYERS,ID_TAB_START,ID_TAB_PRESETS,ID_TAB_ISLANDS,ID_TAB_VISIBILITY,\n'
         b' ID_FAIR_STARTS=230,ID_START_SEPARATION,ID_RESOURCE_DISTRIBUTION,ID_GUARANTEE_BASICS,\n'
-        b' ID_ISLAND_DETAILS,ID_USE_ISLAND,ID_FAIR_SUMMARY,ID_MAP_VISIBILITY,ID_ENEMY_VISIBILITY};', 'advanced menu control IDs')
+        b' ID_ISLAND_DETAILS,ID_USE_ISLAND,ID_FAIR_SUMMARY,ID_MAP_VISIBILITY,ID_ENEMY_VISIBILITY,\n'
+        b' ID_PIRATE_FREQUENCY,ID_PIRATE_STRENGTH,ID_MERCHANT_FREQUENCY};', 'advanced menu control IDs')
     menu = replace(menu,
         b' uint32_t previewSeed,previewCount;WSPlanIsland previewIslands[128];',
         b' uint32_t previewSeed,previewCount;WSPlanIsland previewIslands[128];\n'
@@ -99,7 +100,7 @@ def apply_menu(files: dict[str, bytes]) -> None:
         b'static int settingsNotification(int id,int notification){\n'
         b' if(id==ID_SEED||(id>=ID_CARGO_TOOLS&&id<=ID_CARGO_FOOD))return notification==EN_CHANGE;\n'
         b' if(id==ID_CARGO_MODE||id==ID_DISASTERS||id==ID_FAIR_STARTS||id==ID_GUARANTEE_BASICS)return notification==BN_CLICKED;\n'
-        b' if(id==ID_START_CLIMATE||id==ID_CLIMATE_BALANCE||id==ID_LAYOUT_STYLE||id==ID_START_SEPARATION||id==ID_RESOURCE_DISTRIBUTION||id==ID_MAP_VISIBILITY||id==ID_ENEMY_VISIBILITY)return notification==CBN_SELCHANGE;',
+        b' if(id==ID_START_CLIMATE||id==ID_CLIMATE_BALANCE||id==ID_LAYOUT_STYLE||id==ID_START_SEPARATION||id==ID_RESOURCE_DISTRIBUTION||id==ID_MAP_VISIBILITY||id==ID_ENEMY_VISIBILITY||id==ID_PIRATE_FREQUENCY||id==ID_PIRATE_STRENGTH||id==ID_MERCHANT_FREQUENCY)return notification==CBN_SELCHANGE;',
         'advanced control notifications')
     preview = replace(preview,
         b' d->previewValid=0;d->previewCount=0;EnableWindow(GetDlgItem(d->window,ID_START),FALSE);',

@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.9; mineral fix retained; in-game and restart reloads passed; brief flash absent during the check without detailed diagnostics |
+| World Settings | Priority | Experimental 0.7.0-dev.1 installed on the managed World-only copy; in-game/restart policy retention passed; four merchant ships observed; pirate gameplay remains unverified |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -68,7 +68,28 @@ The seven earlier menu additions are recorded in
 starting-position and resource controls have a separate
 [fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
 0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
-Development **0.6.0-dev.9** connects the separate loader used by the running
+Development **0.7.0-dev.1** adds independent pirate reinforcement frequency,
+new-ship strength and neutral merchant traffic choices on the **Players** page.
+The updated installer and desktop shortcut are installed on the managed
+World-only copy, with Food disabled. Automatic startup, loading the older `wr2`
+world, and creating/saving the new `pa1` world passed; its native saved policies
+match the chosen Frequent / Strong / Frequent settings. In-game loading,
+fresh-process loading and saved-policy retention passed through `pa2r` and
+`pa3`; four merchant ships were recorded. Pirates had not spawned: the native
+town-development prerequisite had only one qualifying town and requires three
+before its timer runs. Actual pirate armament, raid timing and merchant visit
+rates remain unverified. Automated suites,
+reproducible builds and preservation/restoration evidence are recorded in
+[Pirate activity and neutral trade](docs/WORLD_FACTION_ACTIVITY.md). The preceding
+renderer, chart, mineral, ownership, scout and camera implementation is retained.
+Food was neither installed nor tested in gameplay for this change.
+
+**Known limitation:** pirate strength affects newly created ships. The unchanged
+native save loader caps existing pirate ships at **six cannons** on reload,
+including native Normal armament above that limit. The saved strength choice
+persists for future creations; this build does not change that loading rule.
+
+The preceding **0.6.0-dev.9** connects the separate loader used by the running
 game's Load menu to exploration checkpoint restoration. All **208 visibility
 tests** and independent review of **six matching builds** passed. It retains
 the exact preceding mineral, camera, ownership and scout implementation.
@@ -91,8 +112,8 @@ builds passed. World-only installation/restoration passed, preserving saves,
 presets and all 51 preceding backup generations; two restored generations give
 53. The updated automatic shortcut preserves its preceding version, and fresh
 automatic startup and main-menu `wr1` loading passed. The user accepted mineral
-symbols, but normal in-game loading still produces a black map; that repair
-remains unfinished.
+symbols, but normal in-game loading still produced a black map at that stage;
+that repair was unfinished.
 The chart format, camera preparation, ownership and
 scout rules remain unchanged; Food gameplay is not being retested. The newer
 `wr1` test world has 50 islands on a 2048 map; these checks do not establish
@@ -209,6 +230,16 @@ choices, it provides:
   preview with the same generator version.
 - **Saved presets:** save and load every world setting, including the seed and
   preferred starting island, from inside the game.
+- **Pirate reinforcement frequency:** choose Rare, Normal or Frequent,
+  independently of the Pirates checkbox. Native fleet limits and target
+  selection still affect actual raid timing.
+- **Pirate strength:** choose Weak, Normal or Strong armament for newly
+  created pirate ships. This does not refill existing ships; the native loader
+  still caps pirate armament at six cannons when loading a save.
+- **Neutral merchant trade frequency:** choose Rare, Normal or Frequent
+  merchant fleet availability. Native routes, travel and trading opportunities
+  still determine visits. All three activity choices default to Normal;
+  disabling Pirates or Venetians disables the corresponding controls.
 - **Map visibility:** choose Unexplored (terra incognita), Geography revealed
   (the default), or Fully explored. Unexplored covers uncharted land and sea
   with an opaque layer in the main view. Your ships and settlements chart nearby
@@ -261,13 +292,15 @@ choices, it provides:
 - **Disasters:** enable or disable the inspected native endless-game option.
 
 Presets belong to the managed game copy and remain when restoring original
-game files. They require the matching generator fingerprint. Seed reuse is a
-map-generation feature, not a promise that AI events or a played game will
+game files. New presets use version 4. Version-3 presets from the exact preceding
+0.6.0-dev.9 generator can be loaded with the three activity choices set to
+Normal, without rewriting the older file. Other generator identities remain
+refused. Seed reuse is a map-generation feature, not a promise that AI events or a played game will
 unfold identically. Earlier presets remain on disk when a new generator
-refuses their fingerprint; they are not silently converted. Compilation,
-native fixtures and actual game acceptance are distinguished in the
-[visibility validation record](docs/WORLD_VISIBILITY_VALIDATION.md). The new
-batching candidate passed eight batch methods, 19 existing native methods,
+refuses their fingerprint. See the [activity and preset rules](docs/WORLD_FACTION_ACTIVITY.md).
+Compilation, native fixtures and actual game acceptance are distinguished in the
+[visibility validation record](docs/WORLD_VISIBILITY_VALIDATION.md). The historical
+0.6.0-dev.4 batching candidate passed eight batch methods, 19 existing native methods,
 independent source review, and 480 original-native cases comparing 20,352
 exact output tuples. Its 72 isolated compiled-DLL scene stages cover both Food
 selections, all six policies, 512/1024/2048 worlds and two seeds with AI zero;
@@ -279,7 +312,7 @@ with the current autosave archived separately. The production installation/
 restoration cycle passed and finished with World Settings enabled and Food
 disabled. The updated shortcut's fresh automatic startup and `wc4` load passed.
 The user's `wc5` display/save check and independent history certificate passed,
-but camera-motion lag remains unresolved.
+but camera-motion lag remained unresolved at that stage.
 
 The preceding V4 suite completed 350 tests: 345 passed and five Windows
 link-privilege tests were skipped. Its installer cycle, fresh `wc3` load,

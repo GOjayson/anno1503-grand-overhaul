@@ -27,7 +27,8 @@ FIELDS = ('size', 'difficulty', 'islandSize', 'islandCount', 'spacing', 'aiCount
           'plantFertility', 'mineralFertility', 'worldSize', 'mapSeed', 'startClimate',
           'startIsland', 'cargoMode', 'cargoTools', 'cargoWood', 'cargoFood',
           'climateBalance', 'layoutStyle', 'disasters', 'fairStarts',
-          'startSeparation', 'resourceDistribution', 'guaranteeBasics', 'mapVisibility', 'enemyVisibility')
+          'startSeparation', 'resourceDistribution', 'guaranteeBasics', 'mapVisibility', 'enemyVisibility',
+          'pirateFrequency', 'pirateStrength', 'merchantFrequency')
 
 
 class Settings(C.Structure):
@@ -44,7 +45,8 @@ def options(**values):
                       islandCount=24, spacing=16, cultures=255, factions=3,
                       startingMoney=30000, aiDifficulty=1, plantFertility=1,
                       mineralFertility=1, worldSize=1024, mapSeed=3719,
-                      startClimate=-1, startIsland=-1, disasters=1, startSeparation=1, mapVisibility=1)
+                      startClimate=-1, startIsland=-1, disasters=1, startSeparation=1, mapVisibility=1,
+                      pirateFrequency=1, pirateStrength=1, merchantFrequency=1)
     for key, value in values.items():
         setattr(result, key, value)
     return result
@@ -190,7 +192,7 @@ __declspec(dllexport) void ResourceNearby(uint32_t index,uint32_t*crops,uint32_t
         return result, list(out), error.value.decode()
 
     def test_real_catalogue_modes_preserve_census_geometry_and_special_islands(self):
-        self.assertEqual(C.sizeof(Settings),120)
+        self.assertEqual(C.sizeof(Settings),132)
         improved = 0
         for seed in (0,3719,123456789,0xffffffff):
             for fertility in range(4):
@@ -221,6 +223,7 @@ __declspec(dllexport) void ResourceNearby(uint32_t index,uint32_t*crops,uint32_t
             self.assertEqual([bytes(p) for p in first],[bytes(p) for p in again])
             settings.startingMoney=100000;settings.startingFleet=2;settings.cargoMode=1
             settings.cargoTools=25;settings.cargoWood=75;settings.cargoFood=40
+            settings.pirateFrequency=0;settings.pirateStrength=2;settings.merchantFrequency=0
             changed,_=self.build(settings)
             self.assertEqual([bytes(p) for p in first],[bytes(p) for p in changed])
 

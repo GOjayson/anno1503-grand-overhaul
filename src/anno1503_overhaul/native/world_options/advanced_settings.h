@@ -1,10 +1,14 @@
 #ifndef WS_ADVANCED_SETTINGS_H
 #define WS_ADVANCED_SETTINGS_H
+#include <stddef.h>
 #include <stdio.h>
 #define WS_WORLD_OPTIONS_GENERATOR "pending-build"
 
 /* The original 56-byte prefix retains every native bridge field offset. */
-_Static_assert(sizeof(WSWorldSettings)==120,"Advanced settings ABI differs");
+_Static_assert(sizeof(WSWorldSettings)==132,"Advanced settings ABI differs");
+_Static_assert(offsetof(WSWorldSettings,pirateFrequency)==120,"Existing settings prefix differs");
+_Static_assert(offsetof(WSWorldSettings,pirateStrength)==124,"Pirate strength offset differs");
+_Static_assert(offsetof(WSWorldSettings,merchantFrequency)==128,"Merchant frequency offset differs");
 _Static_assert(sizeof(WSIslandDetails)==44,"Island details ABI differs");
 static inline int wsAdvancedValidateSettings(const WSWorldSettings*s,char*error,uint32_t cap){
  const char*reason=NULL;
@@ -28,6 +32,9 @@ static inline int wsAdvancedValidateSettings(const WSWorldSettings*s,char*error,
  if(!reason&&(s->guaranteeBasics<0||s->guaranteeBasics>1))reason="Choose whether basic resources are guaranteed near starts.";
  if(!reason&&(s->mapVisibility<0||s->mapVisibility>2))reason="Choose unexplored, revealed geography or a fully explored map.";
  if(!reason&&(s->enemyVisibility<0||s->enemyVisibility>1))reason="Choose strict line of sight or reveal all activity.";
+ if(!reason&&(s->pirateFrequency<0||s->pirateFrequency>2))reason="Choose rare, normal or frequent pirate activity.";
+ if(!reason&&(s->pirateStrength<0||s->pirateStrength>2))reason="Choose weak, normal or strong pirate ships.";
+ if(!reason&&(s->merchantFrequency<0||s->merchantFrequency>2))reason="Choose rare, normal or frequent neutral merchant visits.";
  if(!reason&&s->mapVisibility==0&&s->startIsland>=0)reason="Unexplored worlds use an automatic starting island. Clear the preferred island or reveal the geography.";
  if(error&&cap)snprintf(error,cap,"%s",reason?reason:"");
  return reason==NULL;

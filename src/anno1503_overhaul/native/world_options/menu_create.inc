@@ -16,6 +16,8 @@ static int wsCreateMenu(DialogState*d,HWND w){
  const char*separation[]={"Close neighbours","Balanced separation","Distant rivals"};
  const char*visibility[]={"Unexplored (terra incognita)","Geography revealed","Fully explored"};
  const char*enemies[]={"Strict line of sight","Reveal all activity"};
+ const char*activity[]={"Rare","Normal","Frequent"};
+ const char*strength[]={"Weak","Normal","Strong"};
  const char*tabs[]={"World","Players","Starting","Presets","Islands","Visibility"};
  d->creatingPage=-1;d->preferredIsland=d->inspectedIsland=-1;d->pageControlCount=0;
  label(d,"World Settings",24,18,632,28);
@@ -45,7 +47,10 @@ static int wsCreateMenu(DialogState*d,HWND w){
  for(int i=0;i<8;i++){HWND c=control(d,"BUTTON",cultureNames[i],BS_AUTOCHECKBOX|WS_TABSTOP,24+(i%2)*324,314+(i/2)*32,296,26,ID_CULTURE+i);SendMessageA(c,BM_SETCHECK,BST_CHECKED,0);}
  label(d,"Pirates and Venetians",24,470,632,22);
  const char*special[]={"Pirates","Venetians"};for(int i=0;i<2;i++){HWND c=control(d,"BUTTON",special[i],BS_AUTOCHECKBOX|WS_TABSTOP,24+i*324,500,296,26,ID_FACTION+i);SendMessageA(c,BM_SETCHECK,BST_CHECKED,0);}
- label(d,"Island size and climate balance are independent of the stock difficulty preset.",24,560,620,50);
+ label(d,"Pirate reinforcement frequency",24,540,296,20);fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,562,296,140,ID_PIRATE_FREQUENCY),activity,3,1);
+ label(d,"Pirate strength (new ships)",348,540,296,20);fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,348,562,296,140,ID_PIRATE_STRENGTH),strength,3,1);
+ label(d,"Neutral merchant trade frequency",24,602,620,20);fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,624,620,140,ID_MERCHANT_FREQUENCY),activity,3,1);
+ label(d,"Routes and fleet limits still affect raid and merchant arrival times.",24,650,620,18);
 
  d->creatingPage=2;
  label(d,"Starting options",24,108,632,24);
@@ -99,7 +104,7 @@ static int wsCreateMenu(DialogState*d,HWND w){
  label(d,"Same seed + same world options reproduce the preview.",896,726,200,38);
  label(d,"Status",24,670,632,20);control(d,"STATIC",developmentConfigured&&prepareBackend?configuredStatus:noBackend,SS_LEFT,24,696,632,64,ID_STATUS);
  control(d,"BUTTON","Back",BS_PUSHBUTTON|WS_TABSTOP,388,768,120,32,ID_BACK);control(d,"BUTTON","Start",BS_DEFPUSHBUTTON|WS_TABSTOP,528,768,120,32,ID_START);
- wsMenuPutSeed(d,freshPreviewSeed(0));wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuStartHint(d);wsMenuIslandInfo(d);wsPresetRefresh(d,NULL);wsMenuPage(d,0);
+ wsMenuPutSeed(d,freshPreviewSeed(0));wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuStartHint(d);wsMenuIslandInfo(d);wsPresetRefresh(d,NULL);wsMenuPage(d,0);
  EnableWindow(GetDlgItem(w,ID_START),FALSE);d->creating=0;PostMessageA(w,WS_PREVIEW_MESSAGE,0,0);
  SetFocus(GetDlgItem(w,ID_WORLD_SIZE));return 1;
 }

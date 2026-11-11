@@ -9,12 +9,12 @@ from anno1503_overhaul import world_options_snapshot as snapshot
 
 
 def fixture(**changes):
-    settings = dict(zip(snapshot.SETTINGS_FIELDS, [120, 1, 3, 2, 0, 0, 255, 3,
-        30000, 0, 1, 1, 1, 1024, 4294967295, -1, -1, 0, 40, 40, 10, 0, 0, 1, 0, 1, 0, 0, 1, 0]))
+    settings = dict(zip(snapshot.SETTINGS_FIELDS, [132, 1, 3, 2, 0, 0, 255, 3,
+        30000, 0, 1, 1, 1, 1024, 4294967295, -1, -1, 0, 40, 40, 10, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1]))
     settings.update(changes)
     data = bytearray(snapshot.SNAPSHOT_SIZE)
     struct.pack_into('<4I', data, 0, len(data), 1, settings['mapSeed'], 2)
-    struct.pack_into('<I5i2I6iI15i', data, 16, *settings.values())
+    struct.pack_into('<I5i2I6iI18i', data, 16, *settings.values())
     for index, x in enumerate((0, 128)):
         struct.pack_into('<10I', data, snapshot.ROWS_OFFSET + index * 40, index, x, 0, 64, 64, index, 1, 0, 0, 2)
     return data
@@ -46,7 +46,9 @@ class OptionsSnapshotTests(unittest.TestCase):
         for key, value in [('startIsland', 2), ('startClimate', 6), ('disasters', 2),
                            ('layoutStyle', 3), ('climateBalance', 4), ('cargoFood', -1),
                            ('fairStarts', 2), ('startSeparation', -1), ('resourceDistribution', 3), ('guaranteeBasics', 2),
-                           ('mapVisibility', -1), ('mapVisibility', 3), ('enemyVisibility', -1), ('enemyVisibility', 2)]:
+                           ('mapVisibility', -1), ('mapVisibility', 3), ('enemyVisibility', -1), ('enemyVisibility', 2),
+                           ('pirateFrequency', -1), ('pirateFrequency', 3), ('pirateStrength', -1), ('pirateStrength', 3),
+                           ('merchantFrequency', -1), ('merchantFrequency', 3)]:
             with self.subTest(field=key), self.assertRaises(ValueError):
                 snapshot.decode(fixture(**{key: value}))
         data = fixture()
@@ -73,6 +75,31 @@ class OptionsSnapshotTests(unittest.TestCase):
             snapshot.decode(data)
         with self.assertRaises(ValueError):
             snapshot.decode(fixture()[:-1])
+
+    def test_activity_choices_preserve_plan_and_work_with_disabled_factions(self):
+        original = snapshot.decode(fixture())
+        self.assertEqual(snapshot.SETTINGS_SIZE, 132)
+        self.assertEqual(snapshot.ROWS_OFFSET, 148)
+        self.assertEqual(snapshot.SNAPSHOT_SIZE, 5268)
+        for frequency in range(3):
+            for strength in range(3):
+                for merchant in range(3):
+                    with self.subTest(frequency=frequency, strength=strength, merchant=merchant):
+                        result = snapshot.decode(fixture(factions=0, pirateFrequency=frequency,
+                            pirateStrength=strength, merchantFrequency=merchant))
+                        self.assertEqual(result['settings']['pirateFrequency'], frequency)
+                        self.assertEqual(result['settings']['pirateStrength'], strength)
+                        self.assertEqual(result['settings']['merchantFrequency'], merchant)
+                        self.assertEqual(result['plan_sha256'], original['plan_sha256'])
+
+    def test_legacy_binary_size_is_not_mistaken_for_migratable_text_preset(self):
+        data = fixture(size=120)
+        with self.assertRaises(ValueError):
+            snapshot.decode(data)
+        legacy = data[:136] + data[148:]
+        struct.pack_into('<I', legacy, 0, len(legacy))
+        with self.assertRaises(ValueError):
+            snapshot.decode(legacy)
 
 
 if __name__ == '__main__':
