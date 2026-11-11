@@ -70,14 +70,17 @@ The updated automatic shortcut preserves its V8 version exclusively and targets
 the installed self-contained V9 World-only package. Fresh automatic startup
 passed through the normal client handoff to the identical managed copy, with
 the exact V9 runtime, all 173 engine edits and empty error fields. Activation
-was not retried. Main-menu `wr1` loading and read-only native checks passed with
-all 27 visibility components, 173 engine edits and the 2048-world/50-island
-geometry matched to its same-save-derived reference. No original generated
+was not retried. Main-menu `wr1` loading was observed, with all 27 visibility
+components and 173 engine edits active and bounded diagnostic errors zero.
+The read-only observer verified the 2048-world/50-island geometry against its
+same-save-derived reference. It started after the asynchronous reload question,
+so this physical-world inspection may already describe the black-map state;
+it does not prove a before/after World-pointer comparison. No original generated
 preview match is claimed. The user confirmed: "Mineral symbols work. after
 loading map is black again". Normal in-game loading therefore **failed** in V9,
-despite the active `+A8` filename hook. Its separate `+B8` stream route and other
-native load paths remain under investigation; the actual UI route is not yet
-proved. The black-view diagnostic SHA-256 is
+despite the active `+A8` filename hook. Subsequent source tracing found a separate
+filename loader in View that publishes a replacement World. Repair and actual
+game acceptance of that boundary are pending. The black-view diagnostic SHA-256 is
 `4374e486b51f8ada0e6a606a68474f478588cbafa84f6be400fecb327f7ca00b`.
 
 The V8 investigation's `wr1` is a **different 2048-world with 50 islands**,
