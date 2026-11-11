@@ -39,6 +39,30 @@ def apply_menu(files: dict[str, bytes]) -> None:
     menu = replace(menu, b'static LRESULT CALLBACK windowProc(HWND w,UINT msg,WPARAM wp,LPARAM lp){',
         b'#include "menu_create.inc"\nstatic LRESULT CALLBACK windowProc(HWND w,UINT msg,WPARAM wp,LPARAM lp){',
         'readable menu creation include')
+    menu = replace(menu, b'static void start(DialogState*d){',
+        b'#include "menu_native_setup.inc"\nstatic void start(DialogState*d){',
+        'bounded native setup snapshot before custom binding')
+    menu = replace(menu,
+        b' if(!WorldSettingsBindStockAIProfiles(d->setup,d->settings.difficulty,d->settings.aiCount,error,sizeof error)){WorldSettingsFinishAttempt(0);invalidatePreview(d);status(d,error);return;}',
+        b' if(!wsMenuSnapshotNativeSetup(d->setup,d->frame)){wsMenuSetupFailed(d,wsMenuSetupResetMessage);return;}\n'
+        b' if(!WorldSettingsBindStockAIProfiles(d->setup,d->settings.difficulty,d->settings.aiCount,error,sizeof error)){wsMenuSetupFailed(d,error);return;}',
+        'native AI binding failure restores exact pre-custom fields')
+    # apply_menu also runs alone in source-only menu fixtures, before apply_start
+    # adds its disaster argument. Match both established staged signatures.
+    binding = b'wsBindNativeFactionOptions(d->frame,d->settings.factions'
+    suffix = b',d->settings.disasters)' if binding+b',d->settings.disasters)' in menu else b')'
+    menu = replace(menu,
+        b' if(!'+binding+suffix+b'){WorldSettingsFinishAttempt(0);invalidatePreview(d);status(d,"Native faction options are unavailable. Start is blocked.");return;}',
+        b' if(!'+binding+suffix+b'){wsMenuSetupFailed(d,"The game could not apply these faction options. Please try again.");return;}',
+        'native faction binding failure restores AI and native option bytes')
+    menu = replace(menu,
+        b'if(id==ID_BACK){WorldSettingsFinishAttempt(0);',
+        b'if(id==ID_BACK){if(!WorldSettingsRestoreNativeSetup())reportGenerationFailure(wsMenuSetupResetMessage);WorldSettingsFinishAttempt(0);',
+        'Back restores an uncommitted native setup')
+    menu = replace(menu,
+        b'case WM_CLOSE:WorldSettingsFinishAttempt(0);',
+        b'case WM_CLOSE:if(!WorldSettingsRestoreNativeSetup())reportGenerationFailure(wsMenuSetupResetMessage);WorldSettingsFinishAttempt(0);',
+        'Close restores an uncommitted native setup')
     # Replace the single original WM_CREATE body, retaining the existing native
     # message loop and Start/Back/commit route around it.
     begin, end = b' case WM_CREATE:{', b' case WM_COMMAND:{'
@@ -60,6 +84,34 @@ def apply_menu(files: dict[str, bytes]) -> None:
         'advanced input invalidates cached preview')
     menu = replace(menu, b'scaled(d,550+(i/2)*24)', b'scaled(d,614+(i/2)*24)', 'legend top')
     menu = replace(menu, b'scaled(d,564+(i/2)*24)', b'scaled(d,628+(i/2)*24)', 'legend bottom')
+    menu = replace(menu,
+        b'"Anno 1503 - World Settings (Development)"',
+        b'"Anno 1503 - World Settings"', 'beta menu window title')
+    menu = replace(menu,
+        b'__declspec(dllexport) int __cdecl WorldSettingsBeforeStart(void*setup,void*frame){return dialog(GetActiveWindow(),setup,(uint8_t*)frame);}',
+        b'#include "menu_generation.inc"\n'
+        b'__declspec(dllexport) int __cdecl WorldSettingsBeforeStart(void*setup,void*frame){\n'
+        b' return wsMenuGenerationStart(setup,frame,wsMenuClassifySelection(frame));\n}',
+        'explicit original or custom endless generation')
+    menu = replace(menu,
+        b'    const unsigned char *base=(const unsigned char*)frame;\n'
+        b'    int selected=WorldSettingsClassifyDirectSelection((const char*)base+0xc7430,260,base+0xc7534);\n'
+        b'    if(selected==0)return 1; /* Original tutorial/mission path, no UI or commit. */\n'
+        b'    if(selected!=1){\n'
+        b'        reportGenerationFailure("The selected endless scene differs from the inspected development source. Start is blocked.");\n'
+        b'        return 0;\n    }',
+        b'    int selected=wsMenuClassifySelection(frame);\n'
+        b'    if(selected!=1)return wsMenuGenerationStart(NULL,frame,selected);',
+        'direct tutorial and campaign route bypasses the chooser')
+    menu = replace(menu,
+        b'        reportGenerationFailure("The native endless setup object is unavailable. Start is blocked.");',
+        b'        WorldSettingsFinishAttempt(0);\n'
+        b'        reportGenerationFailure("The game setup is unavailable. Return to the menu and try again.");',
+        'missing direct setup clears pending custom options')
+    menu = replace(menu,
+        b'    return WorldSettingsBeforeStart(children[0],frame)>0?2:0;',
+        b'    return wsMenuGenerationStart(children[0],frame,selected);',
+        'direct original selection retains native route result one')
     files[menu_name] = menu
 
     preview_name = PRIVATE + 'world_menu_preview.inc'
@@ -120,5 +172,5 @@ def apply_menu(files: dict[str, bytes]) -> None:
         b'd->previewCount=(uint32_t)count;d->previewValid=1;wsMenuStartHint(d);wsMenuIslandInfo(d);status(d,wsMenuMapConcealed(d)?"World ready. Terra incognita keeps the map hidden until you explore in the game.":"Map ready. Start uses this preview; click an island to inspect it.");',
         'updated preview preserves chosen start hint')
     files[preview_name] = preview
-    for name in ('menu_presets_codec.inc', 'menu_values.inc', 'menu_create.inc', 'menu_preview.inc', 'menu_island_text.inc'):
+    for name in ('menu_presets_codec.inc', 'menu_values.inc', 'menu_create.inc', 'menu_preview.inc', 'menu_island_text.inc', 'menu_generation.inc', 'menu_native_setup.inc'):
         files[PRIVATE + name] = authored(name)

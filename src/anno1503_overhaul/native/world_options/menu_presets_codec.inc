@@ -13,6 +13,7 @@ static const char wsPresetLegacyHeader4[]="ANNO1503_WORLD_PRESET 4\nGENERATOR=ws
 static const char wsPresetLegacyHeader3[]="ANNO1503_WORLD_PRESET 3\nGENERATOR=ws6-e980d1f2563739790004625336b4a6f243c94fb0e00bc59bb80662f4546693ae\n";
 /* Exact dev.3 choices retain the identical layout and full 43-field ABI. */
 static const char wsPresetLegacyHeader5[]="ANNO1503_WORLD_PRESET 5\nGENERATOR=ws6-601be2d158e48f8b09bea0b310e4e9ecd2cab3c5ece5647d035af668e7c67f02\n";
+static const char wsPresetDev4Header5[]="ANNO1503_WORLD_PRESET 5\nGENERATOR=ws6-86ef692d92f3b8bcf7d1262a6a05a0c1f148e0fabf206733c3a37baf16957eac\n";
 typedef struct WSMenuPresetField {const char *name;size_t offset;int unsignedValue;} WSMenuPresetField;
 #define WS_PRESET_FIELD(name,isUnsigned) {#name,offsetof(WSWorldSettings,name),isUnsigned}
 static const WSMenuPresetField wsPresetFields[]={
@@ -95,12 +96,15 @@ static int wsPresetDecode(const char *data,uint32_t length,WSWorldSettings *out)
  canonical[n]=0;size_t at=sizeof(wsPresetHeader)-1;
  size_t fields=sizeof(wsPresetFields)/sizeof(wsPresetFields[0]);
  if(at>n||memcmp(canonical,wsPresetHeader,at)){
+  at=sizeof(wsPresetDev4Header5)-1;
+  if(at>n||memcmp(canonical,wsPresetDev4Header5,at)){
   at=sizeof(wsPresetLegacyHeader5)-1;
   if(at>n||memcmp(canonical,wsPresetLegacyHeader5,at)){
   at=sizeof(wsPresetLegacyHeader4)-1;fields=32u;
   if(at>n||memcmp(canonical,wsPresetLegacyHeader4,at)){
    at=sizeof(wsPresetLegacyHeader3)-1;fields=29u;
    if(at>n||memcmp(canonical,wsPresetLegacyHeader3,at))return 0;
+  }
   }
   }
  }

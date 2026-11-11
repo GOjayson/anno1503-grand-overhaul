@@ -245,6 +245,87 @@ def derive_ai_candidate(name: str, stock: bytes, frozen: bytes) -> bytes:
     return result
 
 
+def derive_public_ai_candidate(name: str, stock: bytes) -> bytes:
+    """Construct the reviewed stock-only World AI without a Food payload.
+
+    This additive beta path retains the historical constructor unchanged.
+    Both native inputs and complete outputs remain exact fingerprint pins.
+    """
+    if name not in _STOCK_AI_SHA256 or not isinstance(stock, bytes) or sha(stock) != _STOCK_AI_SHA256[name]:
+        raise NativeProfileError('Public World AI construction requires the exact supported stock module.')
+    info = _pe(stock)
+    setter = {'CompLogic.dll':0x6542, 'CompLogicClassic.dll':0x48c2}[name]
+    original_store = bytes.fromhex('8986b80a0000')
+    at = _offset(info, setter, 6)
+    if stock[at:at+6] != original_store:
+        raise NativeProfileError('Vanilla AI setter preimage differs.')
+    section_align, file_align = struct.unpack_from('<II', stock, info['opt']+32)
+    rva = _align(max(s['rva']+max(s['virtual_size'],s['size']) for s in info['sections']), section_align)
+    raw = _align(len(stock), file_align)
+    code = _policy_code(rva, setter)
+    pdata, pdata_size = struct.unpack_from('<II', stock, info['opt']+112+3*8)
+    if not pdata_size or pdata_size % 12:
+        raise NativeProfileError('Stock AI exception directory is invalid.')
+    pdata_at = _offset(info, pdata, pdata_size)
+    entries = [struct.unpack_from('<III',stock,pdata_at+i) for i in range(0,pdata_size,12)]
+    parent = next((e for e in entries if e[0] <= setter < e[1]), None)
+    if parent is None:
+        raise NativeProfileError('Stock AI setter unwind parent is missing.')
+    seen = set()
+    while True:
+        if parent in seen:
+            raise NativeProfileError('Cyclic stock AI unwind chain.')
+        seen.add(parent)
+        uw = _offset(info, parent[2], 4)
+        version_flags, prologue, count, frame = stock[uw:uw+4]
+        if version_flags & 7 != 1:
+            raise NativeProfileError('Stock AI unwind version differs.')
+        if not version_flags >> 3 & 4:
+            break
+        chain = _align(4+count*2,4)
+        parent = struct.unpack_from('<III',stock,_offset(info,parent[2]+chain,12))
+        if parent not in entries:
+            raise NativeProfileError('Stock AI unwind chain parent is not registered.')
+    payload = bytearray(code)
+    payload.extend(bytes(_align(len(payload),4)-len(payload)))
+    unwind_rva = rva + len(payload)
+    payload.extend(bytes.fromhex('21000000') + struct.pack('<III',*parent))
+    entries.append((rva,rva+len(code),unwind_rva))
+    entries.sort()
+    if any(a[1] > b[0] for a,b in zip(entries,entries[1:])):
+        raise NativeProfileError('AI exception functions overlap.')
+    payload.extend(bytes(_align(len(payload),4)-len(payload)))
+    new_pdata = rva + len(payload)
+    payload.extend(b''.join(struct.pack('<III',*entry) for entry in entries))
+    output = bytearray(stock)
+    header = info['table'] + 40*len(info['sections'])
+    if header+40 > info['header_size'] or output[header:header+40] != bytes(40):
+        raise NativeProfileError('No spare section header for World AI policy.')
+    output[at:at+6] = b'\xe9'+struct.pack('<i',rva-setter-5)+b'\x90'
+    struct.pack_into('<H',output,info['pe']+6,len(info['sections'])+1)
+    size = _align(len(payload),file_align)
+    struct.pack_into('<I',output,info['opt']+4,struct.unpack_from('<I',stock,info['opt']+4)[0]+size)
+    struct.pack_into('<I',output,info['opt']+56,_align(rva+len(payload),section_align))
+    struct.pack_into('<II',output,info['opt']+112+3*8,new_pdata,len(entries)*12)
+    output[header:header+40] = struct.pack('<8sIIIIIIHHI',b'.wspolcy',len(payload),rva,size,raw,0,0,0,0,0x60000020)
+    output.extend(bytes(raw-len(output))+payload+bytes(size-len(payload)))
+    struct.pack_into('<I',output,info['opt']+64,checksum(bytes(output)))
+    result = bytes(output)
+    _pe(result)
+    # Every original mapped byte apart from the one World setter hook remains
+    # exactly stock. No Food market/demand/production rewrite is copied.
+    for section in info['sections']:
+        begin, end = section['raw'], section['raw']+section['size']
+        actual, expected = bytearray(result[begin:end]), bytearray(stock[begin:end])
+        if begin <= at and at+6 <= end:
+            actual[at-begin:at-begin+6] = original_store
+        if actual != expected:
+            raise NativeProfileError('World AI policy changed an unrelated original section byte.')
+    if sha(result) != WORLD_ONLY_AI_SHA256[name]:
+        raise NativeProfileError('The public stock-only AI output differs from its reviewed fingerprint.')
+    return result
+
+
 def _food_forward(original: bytes, entry: dict) -> bytes:
     if sha(original) != entry['sources']['vanilla']:
         raise NativeProfileError('The original native fingerprint differs: ' + entry['name'])

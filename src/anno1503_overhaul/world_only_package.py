@@ -67,6 +67,29 @@ def _launcher_recipe(files: dict[str, bytes], source_game: str, copy_game: str) 
     files[name]=common._replace(files[name],anchor,block(replacement),name)
     files[name]=common._replace(files[name],b'self._sha(frame["path"]) != FRAME_SHA256',
                                b'self._sha(frame["path"]) != self.frame_sha',name)
+    files[name]=common._replace(files[name],b'    def inspect(self, pid):',block('''    def inspect_owned_bootstrap(self, pid, identity):
+        # Only the exact fresh source menu the handoff already certified and
+        # hid may omit the visible-window requirement. Ordinary inspection and
+        # the copied game's activation gate retain all existing requirements.
+        if (not isinstance(identity, tuple) or len(identity) != 4
+                or any(type(value) is not int or value <= 0 for value in identity)
+                or type(pid) is not int or pid != identity[0]):
+            raise RuntimeError("The owned hidden bootstrap identity is invalid.")
+        return self.inspect(pid, _owned_bootstrap=identity)
+
+    def inspect(self, pid, *, _owned_bootstrap=None):'''),name)
+    files[name]=common._replace(files[name],
+        b'            result["process_creation_time"] = created',block('''            result["process_creation_time"] = created
+            if _owned_bootstrap is not None and created != _owned_bootstrap[1]:
+                return finish("unsafe", "The owned hidden bootstrap process changed.")'''),name)
+    files[name]=common._replace(files[name],
+        b'                if not self.windows["visible"](hwnd) or self.windows["iconic"](hwnd):',block('''                if _owned_bootstrap is not None and hwnd != _owned_bootstrap[2]:
+                    row["reason"] = "This is not the exact owned bootstrap window."
+                    continue
+                if _owned_bootstrap is None and (not self.windows["visible"](hwnd) or self.windows["iconic"](hwnd)):'''),name)
+    files[name]=common._replace(files[name],b'                row.update(userptr=pointer)',block('''                row.update(userptr=pointer)
+                if _owned_bootstrap is not None and pointer != _owned_bootstrap[3]:
+                    return finish("unsafe", "The owned hidden bootstrap frame changed.")'''),name)
     # Flat package copies have no dependency on the user's editable install or
     # PYTHONPATH. Only these reviewed relative imports change spelling.
     context=_source('client_context.py')

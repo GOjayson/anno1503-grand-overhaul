@@ -21,7 +21,7 @@ FIELDS = ('mapSeed', 'startClimate', 'startIsland', 'cargoMode', 'cargoTools',
           'merchantFrequency', 'islandVariety', 'minPolar', 'maxPolar',
           'minTemperate', 'maxTemperate', 'minTropical', 'maxTropical',
           'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation')
-VERSION = '0.8.0-dev.4'
+VERSION = '0.9.0-beta.1'
 
 
 def generator_id() -> str:

@@ -208,14 +208,23 @@ def apply_factions(files: dict[str, bytes]) -> None:
 
 
 def apply_faction_load_validation(files: dict[str, bytes]) -> None:
-    """One read-only certificate per loaded Scene, before chart publication."""
+    """Certify only this mod's authenticated checkpoint before publication.
+
+    Original scenes and unmarked saves deliberately stage no exploration
+    checkpoint. Their native faction identities need not satisfy a generated
+    custom world's Pirate/Venetian certificate.
+    """
     name = PRIVATE + 'start_visibility_memory_io.inc'
     files[name] = replace(files[name],
         b'__declspec(dllexport) int WorldSettingsVisibilityAfterLoad(void*scene,char*error,uint32_t cap){\n',
         b'extern int WorldSettingsValidateFactionActivityWorld(void*,char*,uint32_t);\n'
-        b'__declspec(dllexport) int WorldSettingsVisibilityAfterLoad(void*scene,char*error,uint32_t cap){\n'
-        b' if(!WorldSettingsValidateFactionActivityWorld(wsCertPointer(scene,0x160),error,cap))return 0;\n',
-        'validate saved faction tags once at the native Scene load boundary')
+        b'__declspec(dllexport) int WorldSettingsVisibilityAfterLoad(void*scene,char*error,uint32_t cap){\n',
+        'declare saved faction validation at the native Scene load boundary')
+    files[name] = replace(files[name],
+        b' else if(!v.marked)ok=1;',
+        b' else if(v.marked&&!WorldSettingsValidateFactionActivityWorld(v.world,error,cap))ok=0;\n'
+        b' else if(!v.marked)ok=1;',
+        'validate saved faction tags only after the owned marked checkpoint identity')
 
 
 def _parent(raw, info, entries, hook):

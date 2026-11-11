@@ -50,8 +50,12 @@ def main(argv=None):
             progress=lambda message:print(message,file=sys.stderr,flush=True)
             if args.command in ('check-install','install'):
                 profile=load_profile(args.profile) if args.profile else default_profile()
-                if args.food_only:profile['features']['world_settings']=False
-                if args.world_only:profile['features']['food_overhaul']=False
+                if args.food_only:
+                    profile['features']['food_overhaul']=True
+                    profile['features']['world_settings']=False
+                if args.world_only:
+                    profile['features']['world_settings']=True
+                    profile['features']['food_overhaul']=False
                 if args.command=='check-install':
                     result=installer.check_install(args.source,args.copy,profile,args.baselines,args.package,progress)
                 else:

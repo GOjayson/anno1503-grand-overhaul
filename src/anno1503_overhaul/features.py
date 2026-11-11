@@ -129,7 +129,7 @@ def default_catalog() -> FeatureCatalog:
             description="The imported Food 0.5.0 overhaul, including its existing gameplay changes.",
             status="experimental",
             priority="priority",
-            default_enabled=True,
+            default_enabled=False,
             notes=("Imported working baseline; the overhaul is unfinished.",),
         ),
         Feature(

@@ -56,6 +56,7 @@ class InstallerLifecycleTests(unittest.TestCase):
             json.dumps({"copy_root": str(self.target)}), encoding="utf-8")
         self.profile = default_profile()
         self.profile["features"]["world_settings"] = False
+        self.profile["features"]["food_overhaul"] = True
         self.closed = self.patch(installer, "require_game_closed")
         self.patch(installer, "REPO", self.repo)
         self.validate_package = self.patch(packages, "validate_package", return_value={

@@ -308,6 +308,9 @@ def validate_package(path: Path | str, source_game: Path | str | None = None) ->
         raise PackageError("Select a prepared installer package folder")
     manifest = _json(_read(root, "manifest.json"), "package manifest")
     kind = manifest.get("kind")
+    if kind == "anno1503-public-beta-world-package":
+        from .beta_package import validate_beta_package
+        return validate_beta_package(root, source_game)
     if kind == "anno1503-world-options-installer-package":
         from .world_options_package import validate_options_package
         return validate_options_package(root, source_game)

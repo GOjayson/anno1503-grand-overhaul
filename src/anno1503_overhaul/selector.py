@@ -35,20 +35,22 @@ def main():
     from . import installer
 
     root = tk.Tk()
-    root.title('Anno 1503 Grand Overhaul — Installer')
+    root.title('Anno 1503 Grand Overhaul — Beta Setup')
     root.geometry('900x790')
     root.minsize(820, 740)
     panel = ttk.Frame(root, padding=22)
     panel.pack(fill='both', expand=True)
     ttk.Label(panel, text='Anno 1503 Grand Overhaul', font=('Segoe UI', 19, 'bold')).pack(anchor='w')
-    ttk.Label(panel, text='Install selected features on a separate game copy. Choose world options inside Anno.',
+    ttk.Label(panel, text='Choose your features. Setup creates a separate game copy; world options stay inside Anno.',
               wraplength=840).pack(anchor='w', pady=(6, 16))
     catalog = default_catalog()
     source = tk.StringVar(value=_registered_game())
-    target = tk.StringVar(value=str(installer.REPO / '.local/game-copies/Grand Overhaul'))
-    provider = tk.StringVar(value=str(installer.REPO / '.local/baselines'))
+    from .beta_paths import default_game_copy
+    target = tk.StringVar(value=str(default_game_copy()))
+    provider = tk.StringVar(value='')
     name = tk.StringVar(value='Default')
     flags = {f.id: tk.BooleanVar(value=f.default_enabled) for f in catalog.features}
+    desktop_shortcut = tk.BooleanVar(value=True)
     mutable, buttons = [], {}
     status = tk.StringVar(value='Choose features, then check the installation.')
     busy, checked = [False], [None]
@@ -62,7 +64,6 @@ def main():
     for label, variable, title in (
         ('Original game folder', source, 'Select the installed Anno 1503 History Edition folder'),
         ('Modded copy folder', target, 'Choose a separate folder for the modded game copy'),
-        ('World Settings files', provider, 'Select the baseline store containing food_overhaul, world_settings and launcher'),
     ):
         row = ttk.Frame(panel)
         row.pack(fill='x', pady=4)
@@ -102,7 +103,7 @@ def main():
 
     for key, description in (
         ('world_settings', 'Inspect islands, balance starts and resources, and choose your world options inside Anno.'),
-        ('food_overhaul', 'Food 0.5 and its existing gameplay changes.'),
+        ('food_overhaul', 'Optional Food 0.5 overhaul. Still experimental; leave unchecked for the standard food economy.'),
     ):
         check = ttk.Checkbutton(group, text=catalog[key].name, variable=flags[key], command=refresh)
         check.pack(anchor='w', pady=(2, 0))
@@ -110,9 +111,35 @@ def main():
         ttk.Label(group, text=description, foreground='#555555', wraplength=790).pack(anchor='w', padx=24, pady=(3, 9))
     ttk.Label(group, text='Features apply on a fresh launch. World options are chosen inside Anno.',
               wraplength=790).pack(anchor='w', pady=(1, 3))
+    shortcut_choice = ttk.Checkbutton(panel, text='Create a desktop shortcut for World Settings', variable=desktop_shortcut)
+    shortcut_choice.pack(anchor='w', pady=(6, 0))
+    mutable.append(shortcut_choice)
     ttk.Label(panel, text='Planned: better AI, local-host multiplayer and Knowledge overhaul.',
               foreground='#555555').pack(anchor='w', pady=(12, 8))
+    advanced = ttk.Frame(panel)
+    advanced_visible = [False]
+
+    def toggle_advanced():
+        advanced_visible[0] = not advanced_visible[0]
+        if advanced_visible[0]:
+            advanced.pack(fill='x', pady=(0, 8), before=profile_row)
+            root.geometry('900x890')
+        else:
+            advanced.pack_forget()
+            root.geometry('900x790')
+
+    ttk.Button(panel, text='Advanced: existing development files', command=toggle_advanced).pack(anchor='w', pady=(0, 6))
+    ttk.Label(advanced, text='Only for preserved development/combined installations. Beta World Settings prepares its own files.',
+              wraplength=790).pack(anchor='w')
+    advanced_row = ttk.Frame(advanced)
+    advanced_row.pack(fill='x', pady=4)
+    advanced_entry = ttk.Entry(advanced_row, textvariable=provider)
+    advanced_entry.pack(side='left', fill='x', expand=True, padx=(0, 8))
+    advanced_browse = ttk.Button(advanced_row, text='Browse…', command=lambda: choose_folder(provider, 'Select preserved development files'))
+    advanced_browse.pack(side='right')
+    mutable.extend((advanced_entry, advanced_browse))
     row = ttk.Frame(panel)
+    profile_row = row
     row.pack(fill='x', pady=(0, 12))
     ttk.Label(row, text='Profile name', width=22).pack(side='left')
     entry = ttk.Entry(row, textvariable=name)
@@ -170,8 +197,9 @@ def main():
         if not target.get().strip() or (kind in {'check', 'install'} and not source.get().strip()):
             messagebox.showerror('Choose game folders', 'Choose the required game folders first.', parent=root)
             return
-        values = (Path(source.get()), Path(target.get()), selection(), Path(provider.get()))
+        values = (Path(source.get()), Path(target.get()), selection(), Path(provider.get()) if provider.get().strip() else None)
         plan = checked[0]
+        want_shortcut = desktop_shortcut.get()
         busy[0] = True
         for widget in mutable:
             widget.state(['disabled'])
@@ -187,6 +215,11 @@ def main():
                     if plan is None:
                         raise installer.InstallerError('Check the installation first.')
                     result = installer.install(*values[:3], package=Path(plan['package_root']), progress=progress)
+                    if want_shortcut and result['profile']['features']['world_settings']:
+                        try:
+                            result['desktop_shortcut'] = installer.create_world_shortcut(values[1])
+                        except Exception:
+                            result['shortcut_note'] = 'The game is installed. The desktop shortcut could not be created; use Start with World Settings here.'
                 elif kind == 'restore':
                     result = installer.restore(values[1], progress=progress)
                 else:
@@ -240,7 +273,9 @@ def main():
                                            if result['profile']['features']['world_settings']
                                            else 'Food-only files are ready. Automatic World Settings startup is disabled.')
                             show_summary('Selected features installed in:\n' + result['copy_root'] + '\n' + launch_note +
-                                         '\nRestore before changing installed features.')
+                                         '\nRestore before changing installed features.' +
+                                         ('\nDesktop shortcut: ' + result['desktop_shortcut']['path'] if result.get('desktop_shortcut') else '') +
+                                         ('\n' + result['shortcut_note'] if result.get('shortcut_note') else ''))
                         elif operation == 'restore':
                             show_summary('Verified original game files restored in:\n' + result['copy_root'] +
                                          '\nSaves and backups preserved. Huge-world saves still require World Settings.')

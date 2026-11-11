@@ -270,6 +270,63 @@ def _request_menu_close(pid: int, hwnd: int):
         raise ContextError('The verified normal game menu could not close. No game was force-closed or activated.')
 
 
+def _set_bootstrap_visible(source: Path, identity: tuple, visible: bool):
+    """Change only our already certified source window, never an arbitrary PID.
+
+    The native observer must separately prove the main menu immediately before
+    hiding it. Window ownership, creation time, image path and live userdata are
+    rechecked here; restoration never adopts a replacement window or process.
+    """
+    if os.name != 'nt' or type(visible) is not bool:
+        raise ContextError('The normal-client window handoff requires Windows.')
+    if (not isinstance(identity, tuple) or len(identity) != 4
+            or any(type(value) is not int or value <= 0 for value in identity)):
+        raise ContextError('The normal-client window identity is invalid.')
+    pid, created, hwnd, frame = identity
+    source_exe = checked_path(source / 'Anno1503.exe')
+    with _WindowsContext(pid) as process:
+        if process.identity() != (source_exe, created):
+            raise ContextError('The owned normal-client process changed before its window handoff.')
+        user = C.WinDLL('user32', use_last_error=True)
+        user.IsWindow.argtypes, user.IsWindow.restype = [W.HWND], W.BOOL
+        user.GetWindowThreadProcessId.argtypes = [W.HWND, C.POINTER(W.DWORD)]
+        user.GetWindowThreadProcessId.restype = W.DWORD
+        user.GetWindowLongPtrW.argtypes, user.GetWindowLongPtrW.restype = [W.HWND, C.c_int], C.c_ssize_t
+        user.ShowWindow.argtypes, user.ShowWindow.restype = [W.HWND, C.c_int], W.BOOL
+        user.IsWindowVisible.argtypes, user.IsWindowVisible.restype = [W.HWND], W.BOOL
+
+        def owned():
+            owner = W.DWORD()
+            return (user.IsWindow(hwnd)
+                    and user.GetWindowThreadProcessId(hwnd, C.byref(owner))
+                    and owner.value == pid and user.GetWindowLongPtrW(hwnd, -21) == frame
+                    and process.identity() == (source_exe, created))
+
+        if not owned():
+            raise ContextError('The owned normal-client window changed before its handoff.')
+        # SW_SHOWNOACTIVATE restores an error path without stealing input from
+        # another application. ShowWindow's return is the PREVIOUS visibility.
+        user.ShowWindow(hwnd, 4 if visible else 0)
+        if not owned() or bool(user.IsWindowVisible(hwnd)) is not visible:
+            raise ContextError('The owned normal-client window visibility could not be verified.')
+
+
+class _HiddenBootstrapProbe:
+    """Narrow observer adapter for the one source menu we just hid ourselves."""
+    def __init__(self, probe, identity):
+        if not callable(getattr(probe, 'inspect_owned_bootstrap', None)):
+            raise ContextError('The source observer does not support the guarded hidden bootstrap.')
+        self.inputs, self._probe, self._identity = probe.inputs, probe, identity
+
+    def processes(self):
+        return self._probe.processes()
+
+    def inspect(self, pid):
+        if type(pid) is not int or pid != self._identity[0]:
+            raise ContextError('The hidden source observer cannot inspect another process.')
+        return self._probe.inspect_owned_bootstrap(pid, self._identity)
+
+
 def _menu_identity(observation: dict, pid: int, not_before: int):
     if (not isinstance(observation, dict) or observation.get('state') != 'menu'
             or observation.get('menu_proof_verified') is not True
@@ -329,6 +386,7 @@ def start_game(uri: str, source_game: Path, copy_game: Path, source_probe, *, co
         raise ContextError('Anno did not reach a verified normal main menu. No copy was started.')
     pid, created, hwnd, _ = chosen
     captured = capture_client_context(source, pid, created)
+    hidden_attempted = completed = False
     try:
         notify('normal_client_context_captured', captured.safe_summary())
         # Reobserve before initializing a second SDK session; source input may
@@ -337,10 +395,19 @@ def start_game(uri: str, source_game: Path, copy_game: Path, source_probe, *, co
         final = source_probe.inspect(pid) if ids == [pid] else None
         if _menu_identity(final, pid, not_before) != chosen:
             raise ContextError('Anno left its verified main menu. No game was closed or copy started.')
+        # Validate capability before changing any window. The ordinary probe's
+        # visible-menu requirement is not weakened for activation or discovery.
+        bootstrap_probe = _HiddenBootstrapProbe(source_probe, chosen)
+        hidden_attempted = True
+        _set_bootstrap_visible(source, chosen, False)
+        if _menu_identity(bootstrap_probe.inspect(pid), pid, not_before) != chosen:
+            raise ContextError('The hidden bootstrap left its verified main menu. No copy was started.')
+        notify('normal_source_menu_hidden', dict(pid=pid, process_creation_time=created,
+                                               overlapping_game_menus=False))
         # The client must still have its normal source session alive when the
         # copied SDK initializes. Closing it first was observed to fail normal
         # platform initialization. The guarded allowance names only this menu.
-        child = launch_copy(captured, target, source_identity=chosen, source_probe=source_probe)
+        child = launch_copy(captured, target, source_identity=chosen, source_probe=bootstrap_probe)
         notify('feature_copy_initialization_requested', dict(pid=child.pid, normal_source_menu_still_alive=True))
         message('Waiting for your selected-feature copy to finish normal startup…')
         copied_identity, copied_since = None, None
@@ -348,7 +415,7 @@ def start_game(uri: str, source_game: Path, copy_game: Path, source_probe, *, co
             ids = source_probe.processes()
             if len(ids) != 2 or set(ids) != {pid, child.pid}:
                 raise ContextError('The two verified startup processes changed. No source menu was closed.')
-            if _menu_identity(source_probe.inspect(pid), pid, not_before) != chosen:
+            if _menu_identity(bootstrap_probe.inspect(pid), pid, not_before) != chosen:
                 raise ContextError('The original game left its verified menu. It was not closed.')
             row = copy_probe.inspect(child.pid)
             if row and row.get('state') == 'unsafe':
@@ -366,7 +433,7 @@ def start_game(uri: str, source_game: Path, copy_game: Path, source_probe, *, co
         # Both menus must still be their exact observed instances before closing
         # only the normal bootstrap source. No force-close or confirmation occurs.
         if (set(source_probe.processes()) != {pid, child.pid}
-                or _menu_identity(source_probe.inspect(pid), pid, not_before) != chosen
+                or _menu_identity(bootstrap_probe.inspect(pid), pid, not_before) != chosen
                 or _menu_identity(copy_probe.inspect(child.pid), child.pid, not_before) != copied_identity):
             raise ContextError('A verified startup menu changed. Neither game was closed by the handoff.')
         _request_menu_close(pid, hwnd)
@@ -384,6 +451,7 @@ def start_game(uri: str, source_game: Path, copy_game: Path, source_probe, *, co
                 elif time.monotonic()-single_since >= 1.5:
                     notify('feature_copy_start_requested', dict(pid=child.pid, unchanged_normal_client_context=True,
                                                                normal_source_closed=True))
+                    completed = True
                     return child
                 time.sleep(0.2)
                 continue
@@ -394,3 +462,13 @@ def start_game(uri: str, source_game: Path, copy_game: Path, source_probe, *, co
         raise ContextError('The normal source menu did not close. No game was force-closed or activated.')
     finally:
         captured.clear()
+        if hidden_attempted and not completed:
+            restored = False
+            try:
+                _set_bootstrap_visible(source, chosen, True)
+                restored = True
+            except (ContextError, OSError, ValueError):
+                # Do not adopt a recycled HWND/process to restore visibility,
+                # and do not replace the original safe startup failure.
+                pass
+            notify('normal_source_menu_restore_visibility', dict(restored=restored))

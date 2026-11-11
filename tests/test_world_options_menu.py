@@ -229,7 +229,7 @@ class MenuStagingTests(unittest.TestCase):
         before = {name: hashlib.sha256(value).hexdigest() for name, value in files.items()}
         apply_menu(files)
         self.assertEqual(set(files) - set(before), {PRIVATE + name for name in
-            ('menu_values.inc', 'menu_create.inc', 'menu_preview.inc', 'menu_presets_codec.inc', 'menu_island_text.inc')})
+            ('menu_values.inc', 'menu_create.inc', 'menu_preview.inc', 'menu_presets_codec.inc', 'menu_island_text.inc', 'menu_generation.inc', 'menu_native_setup.inc')})
         self.assertEqual(before, {name: hashlib.sha256((FROZEN / name).read_bytes()).hexdigest()
                                   for name in before})
         for name in before:
@@ -376,6 +376,32 @@ class NativePresetCodecTests(unittest.TestCase):
         self.assertEqual(self.decoded(legacy.replace(b'\n', b'\r\n')), self.decoded(self.encoded))
         self.assertEqual(legacy, before)
         self.assert_rejected(legacy.replace(b'ws6-601b', b'ws6-701b'))
+
+    def test_exact_dev4_v5_preserves_all_fields_and_environment1(self):
+        header = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=menu-codec-native-fixture-v1\n'
+        prior = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=ws6-86ef692d92f3b8bcf7d1262a6a05a0c1f148e0fabf206733c3a37baf16957eac\n'
+        legacy = self.encoded.replace(header, prior)
+        before = bytes(legacy)
+        self.assertEqual(self.decoded(legacy), self.decoded())
+        self.assertEqual(self.decoded(legacy.replace(b'\n', b'\r\n')), self.decoded())
+        self.assertEqual(legacy, before)
+        self.assert_rejected(legacy.replace(b'ws6-86ef', b'ws6-96ef'))
+        environment = dict(difficulty=1, islandSize=3, islandCount=24, spacing=0, aiCount=0,
+            cultures=255, factions=3, startingMoney=30000, startingFleet=0, aiDifficulty=1,
+            plantFertility=1, mineralFertility=1, worldSize=1024, mapSeed=123456789,
+            startClimate=-1, startIsland=-1, cargoMode=0, cargoTools=40, cargoWood=40,
+            cargoFood=10, climateBalance=0, layoutStyle=0, disasters=1, fairStarts=0,
+            startSeparation=1, resourceDistribution=0, guaranteeBasics=0, mapVisibility=2,
+            enemyVisibility=1, pirateFrequency=1, pirateStrength=1, merchantFrequency=1,
+            islandVariety=2, minPolar=6, maxPolar=6, minTemperate=8, maxTemperate=8,
+            minTropical=10, maxTropical=10, disasterMask=21, disasterFrequency=582,
+            disasterSeverity=101, islandRotation=1)
+        self.assertEqual(set(environment), set(FIELDS))
+        env1 = prior + b''.join(f'{name}={environment[name]}\n'.encode() for name in FIELDS) + b'END\n'
+        original = bytes(env1)
+        self.assertEqual(self.decoded(env1), dict(size=176, **environment))
+        self.assertEqual(env1, original)
+        self.assert_rejected(env1.replace(b'ws6-86ef', b'ws6-86ee'))
 
     def test_exact_v4_predecessor_keeps_activity_and_defaults_new_policies(self):
         header = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=menu-codec-native-fixture-v1\n'

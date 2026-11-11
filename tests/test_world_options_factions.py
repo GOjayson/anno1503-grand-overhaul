@@ -367,18 +367,20 @@ def staged_sources():
     return files,apply_options(files)
 
 
+def staged_function(text, name):
+    start=text.rfind('\n',0,text.index(name+'('))+1
+    begin=text.index('{',text.index(name+'(',start));end=begin+1;depth=1
+    while depth:
+        depth+=(text[end]=='{')-(text[end]=='}');end+=1
+    return text[start:end]
+
+
 def lifecycle_source():
     _,staged=staged_sources();text=staged[f.PRIVATE+'world_ai.c'].decode()
-    def extract(name):
-        start=text.rfind('\n',0,text.index(name+'('))+1
-        begin=text.index('{',text.index(name+'(',start));end=begin+1;depth=1
-        while depth:
-            depth+=(text[end]=='{')-(text[end]=='}');end+=1
-        return text[start:end]
     names=('WorldSettingsBeginNativeWorldStart','WorldSettingsEndNativeWorldStart',
            'WorldSettingsExpectAIProfiles','WorldSettingsAIProfileAttemptFinished',
            'WorldSettingsAfterProfiles','WorldSettingsBindAIProfileWorld')
-    code='\n'.join(extract(name) for name in names)
+    code='\n'.join(staged_function(text,name) for name in names)
     prelude=r'''
 static int wsProfilesExpected=-1;static int32_t wsDiplomacyExpected;static char wsProfileError[512];static volatile LONG wsProfileStatus;
 static uint32_t wsNativeSequence,wsNativeActive,wsFactionsExpected,wsNativeFactions;static int wsNativeExpected,wsNativeChecked;static void*wsNativeWorld;
@@ -386,6 +388,10 @@ static int WorldSettingsIsActive(void){return 1;}
 void WorldSettingsAIProfileAttemptFinished(int);
 static void WorldSettingsFinishAttempt(int success){WorldSettingsAIProfileAttemptFinished(success);}
 static void WorldSettingsVisibilityReset(void){}
+/* These finalizers have independent compiled lifecycle/rollback fixtures.
+ * This fixture retains their typed call boundary while testing faction state. */
+static void WorldSettingsFinishDisasterAttempt(int complete){(void)complete;}
+static int WorldSettingsFinishNativeSetup(int complete){(void)complete;return 1;}
 static void*WorldSettingsLoadedAIModule(void){return approvedModule;}
 static int WorldSettingsCheckAIControllers(void*w,int n,void*a,char*e,uint32_t c){(void)w;(void)n;(void)a;(void)e;(void)c;return 1;}
 static int WorldSettingsCheckSpecialControllers(void*w,uint32_t n,void*a,char*e,uint32_t c){(void)w;(void)n;(void)a;(void)e;(void)c;return 1;}
@@ -408,6 +414,68 @@ __declspec(dllexport) int fixture_lifecycle(int failure){
  else if(!valid||!ended||wsFactionActivityExpected)return 4;
  return 0;
 }
+__declspec(dllexport) int fixture_original_after_cancel(void){
+ /* Generation chooser calls this exact finalizer before Original/tutorial/
+  * campaign start. Conflicting native factions must not acquire old choices. */
+ WorldSettingsExpectFactionActivity(3,2,2,2);WorldSettingsExpectAIProfiles(3,3,3);
+ WorldSettingsFinishAttempt(0);
+ if(wsFactionActivityExpected||wsProfilesExpected>=0)return 1;
+ uint32_t token=WorldSettingsBeginNativeWorldStart();if(!token||wsNativeExpected)return 2;
+ if(!WorldSettingsAfterProfiles(world))return 3;
+ if(!WorldSettingsEndNativeWorldStart(token,1))return 4;
+ return wsFactionActivityExpected?5:0;
+}
+__declspec(dllexport) void fixture_stage_old_choices(void){WorldSettingsExpectFactionActivity(3,2,2,2);WorldSettingsExpectAIProfiles(3,3,3);}
+__declspec(dllexport) int fixture_old_choices_pending(void){return wsFactionActivityExpected&&wsProfilesExpected>=0;}
+'''
+    return prelude+code+post
+
+
+def load_boundary_source():
+    """Execute the actual final staged AfterLoad with bounded I/O substitutes.
+
+    Faction validation remains the real compiled certificate above, including
+    controller identities and tags. File/chart/disaster boundaries are counted
+    substitutes; their independent native fixtures test their implementation.
+    """
+    _,staged=staged_sources()
+    code=staged_function(staged[f.PRIVATE+'start_visibility_memory_io.inc'].decode(),
+                         'WorldSettingsVisibilityAfterLoad')
+    prelude=r'''
+typedef struct WSMemoryFile {uint32_t width,height,policy;unsigned char guid[16];} WSMemoryFile;
+typedef struct WSMemoryPendingLoad {void*data;HANDLE file;BY_HANDLE_FILE_INFORMATION info;WSMemoryFile parsed;} WSMemoryPendingLoad;
+typedef struct WSVisibilityWorld {unsigned char*world;uint32_t width,height,flags;int marked;} WSVisibilityWorld;
+typedef struct WSDisasterContext {int placeholder;} WSDisasterContext;
+static WSMemoryPendingLoad wsMemoryLoad;
+static int loadMarked,loadCounts[6];
+#define WS_VISIBILITY_POLICY_MASK 0x7000u
+static void*wsCertPointer(const void*p,size_t offset){return wsAIPointer(p,offset);}
+static int wsCertRead(const void*p,void*out,size_t size){return wsAIRead(p,out,size);}
+static int wsMemoryRegular(HANDLE file,BY_HANDLE_FILE_INFORMATION*out){(void)file;(void)out;return 1;}
+static int wsMemorySameFile(const BY_HANDLE_FILE_INFORMATION*a,const BY_HANDLE_FILE_INFORMATION*b){(void)a;(void)b;return 1;}
+static int wsVisibilityWorldRead(void*object,WSVisibilityWorld*out){
+ loadCounts[0]++;if(object!=world)return 0;
+ *out=(WSVisibilityWorld){world,1024,1024,loadMarked?0x1000u:0u,loadMarked};return 1;
+}
+static int wsMemoryError(char*error,uint32_t cap,const char*message){return wsAIError(error,cap,message);}
+static void wsDisasterClearLoaded(void){loadCounts[1]++;}
+static int wsDisasterLoadContext(void*w,const WSMemoryFile*f,WSDisasterContext*out,char*e,uint32_t c){
+ (void)w;(void)f;(void)out;(void)e;(void)c;loadCounts[2]++;return 1;
+}
+static int WorldSettingsVisibilityApplyBlob(void*w,char*e,uint32_t c){(void)w;(void)e;(void)c;loadCounts[3]++;return 1;}
+static void wsDisasterPublish(const WSDisasterContext*c){(void)c;loadCounts[4]++;}
+static void WorldSettingsVisibilityCancelLoad(void){wsMemoryLoad.data=NULL;loadCounts[5]++;}
+'''
+    post=r'''
+__declspec(dllexport) int fixture_after_load(int pending,int marked,int badIdentity){
+ unsigned char scene[0x168]={0};char error[512];put(scene,0x160,(uintptr_t)world);
+ memset(&wsMemoryLoad,0,sizeof wsMemoryLoad);memset(loadCounts,0,sizeof loadCounts);loadMarked=marked;
+ if(pending){wsMemoryLoad.data=(void*)1;wsMemoryLoad.file=(HANDLE)1;wsMemoryLoad.parsed.width=1024;
+  wsMemoryLoad.parsed.height=1024;wsMemoryLoad.parsed.policy=marked?0x1000u:0u;}
+ if(badIdentity)wsMemoryLoad.parsed.guid[0]=1;
+ return WorldSettingsVisibilityAfterLoad(scene,error,sizeof error);
+}
+__declspec(dllexport) int fixture_load_count(int index){return index>=0&&index<6?loadCounts[index]:-1;}
 '''
     return prelude+code+post
 
@@ -422,7 +490,9 @@ class FactionStagingTests(unittest.TestCase):
         self.assertLess(ai.index('valid=WorldSettingsCheckSpecialControllers'),ai.index('valid=WorldSettingsBindFactionActivity'))
         memory=staged[f.PRIVATE+'start_visibility_memory_io.inc'].decode()
         boundary=memory.split('WorldSettingsVisibilityAfterLoad(void*scene,char*error,uint32_t cap){',1)[1]
-        self.assertTrue(boundary.startswith('\n if(!WorldSettingsValidateFactionActivityWorld('))
+        self.assertTrue(boundary.startswith('\n if(!wsMemoryLoad.data){'))
+        self.assertIn('else if(v.marked&&!WorldSettingsValidateFactionActivityWorld(v.world,error,cap))ok=0;',boundary)
+        self.assertLess(boundary.index('wsMemorySameFile'),boundary.index('WorldSettingsValidateFactionActivityWorld'))
         self.assertNotIn('WorldSettingsExpectFactionActivity',memory)
         from anno1503_overhaul.world_options import authored
         for name in ('start_visibility_runtime.inc','start_visibility_chart.inc','start_visibility_frame.inc','start_visibility_performance.inc'):
@@ -436,7 +506,7 @@ class FactionBinderTests(unittest.TestCase):
         compiler=ROOT/'.local/toolchain/ziglang/zig.exe'
         if not compiler.is_file():raise unittest.SkipTest('Reviewed local native fixture compiler is unavailable.')
         cls.temp=tempfile.TemporaryDirectory(prefix='anno-faction-fixture-');folder=Path(cls.temp.name)
-        source=folder/'fixture.c';source.write_text(SOURCE+lifecycle_source(),encoding='utf-8');output=folder/'fixture.dll'
+        source=folder/'fixture.c';source.write_text(SOURCE+lifecycle_source()+load_boundary_source(),encoding='utf-8');output=folder/'fixture.dll'
         env=dict(os.environ,ZIG_GLOBAL_CACHE_DIR=str(folder/'global'),ZIG_LOCAL_CACHE_DIR=str(folder/'local'))
         compiled=subprocess.run([str(compiler),'cc','-std=c11','-O2','-Wall','-Wextra','-Werror','-Wno-misleading-indentation','-shared','-I',str(ROOT/'src/anno1503_overhaul/native/world_options'),str(source),'-o',str(output)],env=env,capture_output=True,text=True)
         if compiled.returncode:raise AssertionError(compiled.stdout+compiled.stderr)
@@ -494,6 +564,44 @@ class FactionBinderTests(unittest.TestCase):
             self.assertEqual(self.lib.fixture_setup(3,classic),1)
             self.assertEqual(self.lib.fixture_validate(),1)
             self.assertEqual([self.lib.fixture_flags(i) for i in range(2)],[0xa5,0xa6])
+
+    def test_original_scene_and_native_save_bypass_custom_faction_certificate(self):
+        for classic,fault in itertools.product(range(2),(1,5,6,9)):
+            with self.subTest(classic=classic,fault=fault):
+                self.assertEqual(self.lib.fixture_setup(3,classic),1);self.lib.fixture_fault(fault)
+                before=[self.lib.fixture_flags(i)for i in range(2)]
+                self.assertEqual(self.lib.fixture_validate(),0)
+                self.lib.fixture_stage_old_choices()
+                # BeforeLoad stages neither an original scene nor an unmarked
+                # full save: both take the same native passthrough boundary.
+                for unused in ('new Original scene','unmarked native saved world'):
+                    self.assertEqual(self.lib.fixture_after_load(0,0,0),1)
+                    self.assertEqual([self.lib.fixture_load_count(i)for i in range(6)],[0,1,0,0,0,0])
+                    self.assertEqual(self.lib.fixture_old_choices_pending(),1)
+                self.assertEqual(self.lib.fixture_original_after_cancel(),0)
+                self.assertEqual(self.lib.fixture_old_choices_pending(),0)
+                self.assertEqual([self.lib.fixture_flags(i)for i in range(2)],before)
+
+    def test_marked_checkpoint_retains_identity_tag_and_atomic_publication_checks(self):
+        for classic in range(2):
+            self.assertEqual(self.lib.fixture_setup(3,classic),1)
+            self.assertEqual(self.lib.fixture_bind(3,2,2,0),1)
+            before=[self.lib.fixture_flags(i)for i in range(2)]
+            self.assertEqual(self.lib.fixture_after_load(1,1,0),1)
+            self.assertEqual([self.lib.fixture_load_count(i)for i in range(6)],[1,0,1,1,1,1])
+            self.assertEqual(self.lib.fixture_after_load(1,1,1),0)
+            self.assertEqual([self.lib.fixture_load_count(i)for i in range(6)],[1,0,0,0,0,1])
+            for fault in (5,6,9):
+                self.assertEqual(self.lib.fixture_setup(3,classic),1)
+                self.assertEqual(self.lib.fixture_bind(3,2,2,0),1)
+                self.lib.fixture_fault(fault)
+                self.assertEqual(self.lib.fixture_after_load(1,1,0),0)
+                self.assertEqual([self.lib.fixture_load_count(i)for i in range(6)],[1,0,0,0,0,1])
+                self.assertEqual([self.lib.fixture_flags(i)for i in range(2)],before)
+            self.assertEqual(self.lib.fixture_setup(3,classic),1)
+            self.lib.fixture_saved_flags(0,f.PIRATE_TAG|0x300)
+            self.assertEqual(self.lib.fixture_after_load(1,1,0),0)
+            self.assertEqual([self.lib.fixture_load_count(i)for i in range(6)],[1,0,0,0,0,1])
 
 
 if __name__=='__main__':unittest.main()

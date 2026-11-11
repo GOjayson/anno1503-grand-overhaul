@@ -100,6 +100,14 @@ def apply_start(files: dict[str, bytes]) -> None:
         'native disasters selection')
     ai = PRIVATE + 'world_ai.c'
     files[ai] = replace(files[ai], b'extern int WorldSettingsIsActive(void);',
+        b'extern int WorldSettingsIsActive(void);\n#ifndef WS_AI_FIXTURE\nextern int WorldSettingsFinishNativeSetup(int);\n#endif',
+        'native-start completion owns the bounded setup rollback')
+    files[ai] = replace(files[ai], b' if(!complete)InterlockedExchange(&wsProfileStatus,0);',
+        b' #ifndef WS_AI_FIXTURE\n'
+        b' if(!WorldSettingsFinishNativeSetup(complete)){complete=0;snprintf(wsProfileError,sizeof wsProfileError,"%s","The original game setup could not be restored safely. Close Anno and start it again before creating another world.");}\n'
+        b' #endif\n if(!complete)InterlockedExchange(&wsProfileStatus,0);',
+        'restore failed custom native starts and discard only on complete commit')
+    files[ai] = replace(files[ai], b'extern int WorldSettingsIsActive(void);',
         b'extern int WorldSettingsIsActive(void);\n'
         b'extern int WorldSettingsValidateChosenDisasters(void*,char*,uint32_t);\n'
         b'extern uint32_t WorldSettingsExpectedFairOwners(void);',

@@ -71,10 +71,10 @@ class CatalogTests(unittest.TestCase):
 
 
 class ProfileTests(unittest.TestCase):
-    def test_default_profile_enables_only_existing_priority_baselines(self):
+    def test_beta_default_selects_world_settings_without_implicitly_enabling_food(self):
         value = default_profile()
         self.assertEqual({key for key, flag in value["features"].items() if flag},
-                         {"food_overhaul", "world_settings"})
+                         {"world_settings"})
         self.assertEqual(validate_profile(value), value)
 
     def test_every_food_and_world_combination_preserves_the_selected_flags(self):

@@ -410,6 +410,7 @@ typedef uintptr_t (__cdecl*WSVisibilityNativeWildlife)(void*,uint32_t,void*);
 #define WS_VISIBILITY_NATIVE_WILDLIFE_CLIPPED(module) ((WSVisibilityNativeWildlife)((module)+0x9eb0))
 #endif
 static int wsVisibilityMapRefreshFromDraw(const WSVisibilityDrawContext*);
+#include "start_visibility_native.inc"
 static int wsVisibilityBeginDraw(void*world,void*list,void*renderer,WSVisibilityDrawContext*context,uint32_t time,int picking){
  WSVisibilityWorld v;uint32_t mode=0;
  if(!wsVisibilityWorldRead(world,&v))return wsVisibilityHasPolicy(world)?-1:0;
@@ -443,16 +444,20 @@ static void wsVisibilityEndDraw(int owned){
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDrawTerrain(void*world,void*list,uint32_t flags,uint32_t property,void*renderer){
  unsigned char*w=(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!w)return 0;
- uint64_t totalPerf=wsVisibilityPerformanceBegin();WSVisibilityDrawContext context;int owned=wsVisibilityBeginDraw(world,list,renderer,&context,property,0);if(owned<0){wsVisibilityPerformanceEnd(WS_PERF_DRAW_TOTAL,totalPerf);return 0;}
+ WSVisibilityNativeScope*previousNative=wsVisibilityNativeTLS;wsVisibilityNativeTLS=0;
+ uint64_t totalPerf=wsVisibilityPerformanceBegin();WSVisibilityDrawContext context;int owned=wsVisibilityBeginDraw(world,list,renderer,&context,property,0);if(owned<0){wsVisibilityNativeTLS=previousNative;wsVisibilityPerformanceEnd(WS_PERF_DRAW_TOTAL,totalPerf);return 0;}
  if(owned>0)wsVisibilityChartDrawStarted(&context);
+ WSVisibilityNativeScope native;wsVisibilityNativeEnter(&native,world,renderer,owned);native.previous=previousNative;
  uint64_t perf=wsVisibilityPerformanceBegin();uintptr_t result=WS_VISIBILITY_NATIVE_DRAW5(w)(world,list,flags,property,renderer);wsVisibilityPerformanceEnd(WS_PERF_NATIVE_DRAW,perf);
- wsVisibilityEndDraw(owned);wsVisibilityPerformanceEnd(WS_PERF_DRAW_TOTAL,totalPerf);return result;
+ wsVisibilityNativeLeave(&native);wsVisibilityEndDraw(owned);wsVisibilityPerformanceEnd(WS_PERF_DRAW_TOTAL,totalPerf);return result;
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDrawTerrainClipped(void*world,void*list,uint32_t flags,const int32_t*rect,uint32_t property,void*renderer){
  unsigned char*w=(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!w)return 0;
- uint64_t totalPerf=wsVisibilityPerformanceBegin();WSVisibilityDrawContext context;int owned=wsVisibilityBeginDraw(world,list,renderer,&context,property,1);if(owned<0){wsVisibilityPerformanceEnd(WS_PERF_DRAW_TOTAL,totalPerf);return 0;}
+ WSVisibilityNativeScope*previousNative=wsVisibilityNativeTLS;wsVisibilityNativeTLS=0;
+ uint64_t totalPerf=wsVisibilityPerformanceBegin();WSVisibilityDrawContext context;int owned=wsVisibilityBeginDraw(world,list,renderer,&context,property,1);if(owned<0){wsVisibilityNativeTLS=previousNative;wsVisibilityPerformanceEnd(WS_PERF_DRAW_TOTAL,totalPerf);return 0;}
+ WSVisibilityNativeScope native;wsVisibilityNativeEnter(&native,world,renderer,owned);native.previous=previousNative;
  uint64_t perf=wsVisibilityPerformanceBegin();uintptr_t result=WS_VISIBILITY_NATIVE_DRAW6(w)(world,list,flags,rect,property,renderer);wsVisibilityPerformanceEnd(WS_PERF_NATIVE_DRAW,perf);
- wsVisibilityEndDraw(owned);wsVisibilityPerformanceEnd(WS_PERF_DRAW_TOTAL,totalPerf);return result;
+ wsVisibilityNativeLeave(&native);wsVisibilityEndDraw(owned);wsVisibilityPerformanceEnd(WS_PERF_DRAW_TOTAL,totalPerf);return result;
 }
 /* Land-wildlife actor passes run outside the row's valid-quadrant gate. Only
  * the three hash-pinned native land-wildlife classes have these hooks. Their
@@ -489,12 +494,16 @@ static int wsVisibilityWildlifeHidden(void*actor,void*world){
  return -1; /* A verified land actor outside every verified island is refused. */
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDrawWildlife(void*actor,uint32_t time,void*renderer){
+ const WSVisibilityActorLayout*native=wsVisibilityNativeActor(actor,renderer);
+ if(native&&(native->vtable==0xf0ed0u||native->vtable==0xf13d0u||native->vtable==0xf1738u))return WS_VISIBILITY_NATIVE_WILDLIFE(wsVisibilityNativeTLS->module,native->vtable==0xf0ed0u)(actor,time,renderer);
  unsigned char*w=(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");void*world=0;int legacy=0;
  if(!w||!wsVisibilityWildlifeRead(actor,w,&world,&legacy))return 0;
  int hidden=wsVisibilityWildlifeHidden(actor,world);if(hidden){if(hidden<0)InterlockedExchange(&wsVisibilityLastError,7);return 0;}
  return WS_VISIBILITY_NATIVE_WILDLIFE(w,legacy)(actor,time,renderer);
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDrawWildlifeClipped(void*actor,uint32_t time,void*renderer){
+ const WSVisibilityActorLayout*native=wsVisibilityNativeActor(actor,renderer);
+ if(native&&(native->vtable==0xf0ed0u||native->vtable==0xf13d0u||native->vtable==0xf1738u))return WS_VISIBILITY_NATIVE_WILDLIFE_CLIPPED(wsVisibilityNativeTLS->module)(actor,time,renderer);
  unsigned char*w=(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");void*world=0;int legacy=0;
  if(!w||!wsVisibilityWildlifeRead(actor,w,&world,&legacy))return 0;
  int hidden=wsVisibilityWildlifeHidden(actor,world);if(hidden){if(hidden<0)InterlockedExchange(&wsVisibilityLastError,7);return 0;}
@@ -730,6 +739,8 @@ static void*wsVisibilityUnknownActorTarget(void*actor,unsigned char*module,uint3
  return wsVisibilityWithinModule(module,vt,slot+8u)&&target&&WS_VISIBILITY_UNKNOWN_TARGET_OK(module,target)?target:0;
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDispatchResident100(void*actor,uint32_t time,void*renderer){
+ const WSVisibilityActorLayout*native=wsVisibilityNativeActor(actor,renderer);
+ if(native)return wsVisibilityResidentInvoke(WS_VISIBILITY_NATIVE_RESIDENT(wsVisibilityNativeTLS->module,native->draw),actor,time,renderer);
  unsigned char*module=wsVisibilityDrawContext?wsVisibilityDrawContext->view.module:(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!module)return 0;
  const WSVisibilityActorLayout*a=0;int visible=0,fast=wsVisibilityFastActorDecision(actor,module,&a,&visible);
  if(!fast)a=wsVisibilityActorLayout(actor,module);
@@ -738,6 +749,8 @@ __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDispatchResident1
  return wsVisibilityResidentInvoke(WS_VISIBILITY_NATIVE_RESIDENT(module,a->draw),actor,time,renderer);
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDispatchResident108(void*actor,uint32_t time,void*renderer){
+ const WSVisibilityActorLayout*native=wsVisibilityNativeActor(actor,renderer);
+ if(native)return wsVisibilityResidentInvoke(WS_VISIBILITY_NATIVE_RESIDENT(wsVisibilityNativeTLS->module,native->clipped),actor,time,renderer);
  unsigned char*module=wsVisibilityDrawContext?wsVisibilityDrawContext->view.module:(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!module)return 0;
  const WSVisibilityActorLayout*a=0;int visible=0,fast=wsVisibilityFastActorDecision(actor,module,&a,&visible);
  if(!fast)a=wsVisibilityActorLayout(actor,module);
@@ -746,6 +759,8 @@ __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDispatchResident1
  return wsVisibilityResidentInvoke(WS_VISIBILITY_NATIVE_RESIDENT(module,a->clipped),actor,time,renderer);
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDispatchOccurrence100(void*actor,uint32_t time,void*renderer,uint32_t flags){
+ const WSVisibilityActorLayout*native=wsVisibilityNativeActor(actor,renderer);
+ if(native)return wsVisibilityOccurrenceInvoke(WS_VISIBILITY_NATIVE_OCCURRENCE(wsVisibilityNativeTLS->module,native->draw),actor,time,renderer,flags,native);
  unsigned char*module=wsVisibilityDrawContext?wsVisibilityDrawContext->view.module:(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!module)return 0;
  const WSVisibilityActorLayout*a=0;int visible=0,fast=wsVisibilityFastActorDecision(actor,module,&a,&visible);
  if(!fast)a=wsVisibilityActorLayout(actor,module);
@@ -788,6 +803,8 @@ static int wsVisibilityOreSprite(const WSVisibilityDrawContext*c,void*renderer,c
  return 1;
 }
 static uintptr_t wsVisibilityStaticInvoke(void*target,void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot,uintptr_t caller){
+ const WSVisibilityNativeScope*native=wsVisibilityNativeTLS;
+ if(native&&!wsVisibilityDrawContext&&renderer==native->renderer&&target==native->display+(slot==0x180u?0x49410u:0x49bd0u))return WS_VISIBILITY_NATIVE_STATIC(target)(renderer,frame,orientation,phase,flags,position);
  if(slot==0x180u)InterlockedExchange64(&wsVisibilityRenderTarget180,(LONG64)(uintptr_t)target);
  else if(slot==0x188u)InterlockedExchange64(&wsVisibilityRenderTarget188,(LONG64)(uintptr_t)target);
  int marked=wsVisibilityDrawContext&&wsVisibilityDrawContext->view.marked;
@@ -800,6 +817,7 @@ static uintptr_t wsVisibilityStaticInvoke(void*target,void*renderer,void*frame,u
  return WS_VISIBILITY_NATIVE_STATIC(target)(renderer,frame,orientation,phase,flags,position);
 }
 static uintptr_t wsVisibilityStaticDraw(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot,uintptr_t caller){
+ if(wsVisibilityNativeTLS&&!wsVisibilityDrawContext&&renderer==wsVisibilityNativeTLS->renderer)return wsVisibilityStaticInvoke(wsVisibilityNativeTLS->display+(slot==0x180u?0x49410u:0x49bd0u),renderer,frame,orientation,phase,flags,position,slot,caller);
  const WSVisibilityDrawContext*c=wsVisibilityDrawContext;int fast=wsVisibilityFastRenderer(c,renderer);
  void*target=fast?wsVisibilityFastPointer(c->fast->display+0xf63740,slot):wsCertPointer(wsCertPointer(renderer,0),slot);
  void*hook=slot==0x180u?(void*)WorldSettingsVisibilityRenderStatic180:(void*)WorldSettingsVisibilityRenderStatic188;
@@ -817,6 +835,7 @@ __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDrawStatic188(voi
  return wsVisibilityStaticDraw(renderer,frame,orientation,phase,flags,position,0x188,WS_CHART_CALLER());
 }
 static uintptr_t wsVisibilityRenderStatic(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot,uintptr_t caller){
+ if(wsVisibilityNativeTLS&&!wsVisibilityDrawContext&&renderer==wsVisibilityNativeTLS->renderer)return wsVisibilityStaticInvoke(wsVisibilityNativeTLS->display+(slot==0x180u?0x49410u:0x49bd0u),renderer,frame,orientation,phase,flags,position,slot,caller);
  const WSVisibilityDrawContext*c=wsVisibilityDrawContext;
  if(wsVisibilityFastRenderer(c,renderer))return wsVisibilityStaticInvoke(slot==0x180u?c->fast->original180:c->fast->original188,renderer,frame,orientation,phase,flags,position,slot,caller);
  unsigned char*display=(unsigned char*)WS_CERT_MODULE("AnnoDisplay.dll");

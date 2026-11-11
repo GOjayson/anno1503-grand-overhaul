@@ -20,9 +20,10 @@ static int wsCreateMenu(DialogState*d,HWND w){
  const char*strength[]={"Weak","Normal","Strong"};
  const char*variety[]={"Allow repeated templates","Prefer unique templates","Prefer varied island shapes"};
  const char*severity[]={"Mild","Normal","Severe"};
- const char*tabs[]={"World","Players","Starting","Presets","Details","Visibility","Islands","Disasters"};
+ const char*tabs[]={"Map","Players","Start","Presets","Details","Explore","Islands","Disasters"};
  d->creatingPage=-1;d->preferredIsland=d->inspectedIsland=-1;d->pageControlCount=0;
- label(d,"World Settings",24,18,632,28);
+ label(d,"Custom world",24,18,220,28);
+ label(d,"Choose options below. The map updates automatically.",250,22,394,24);
  for(int i=0;i<8;i++)control(d,"BUTTON",tabs[i],BS_PUSHBUTTON|WS_TABSTOP,24+i*79,58,75,32,ID_TAB_WORLD+i);
 
  d->creatingPage=0;
@@ -37,11 +38,11 @@ static int wsCreateMenu(DialogState*d,HWND w){
  label(d,"Layout style",348,328,296,20);fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,348,350,296,180,ID_LAYOUT_STYLE),layout,3,0);
  label(d,"Resource distribution",24,396,620,20);fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,418,620,180,ID_RESOURCE_DISTRIBUTION),distribution,3,0);
  control(d,"BUTTON","Guarantee basic resources near every player's start",BS_AUTOCHECKBOX|WS_TABSTOP,24,464,620,28,ID_GUARANTEE_BASICS);
- label(d,"Spread separates each resource; Specialised regions groups it. Fertility controls world abundance; individual islands can differ.\r\n\r\nNearby basics: grain, flax, potatoes, iron and salt within a quarter world (at least 128 tiles) of each starting island's edge. May add resources above fertility; not the complete Food diet.",24,510,620,138);
+ label(d,"Spread resources across islands, or group them into specialised regions. Fertility controls the overall abundance.\r\n\r\nGuaranteed basics adds grain, flax, potatoes, iron and salt near each player's start, even if this exceeds the selected fertility. It does not guarantee the complete Food overhaul diet.",24,510,620,138);
 
  d->creatingPage=1;
  label(d,"Players and cultures",24,108,632,24);
- label(d,"Stock difficulty preset",24,142,296,20);fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,164,296,180,ID_DIFFICULTY),diff,3,1);
+ label(d,"Game difficulty preset",24,142,296,20);fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,164,296,180,ID_DIFFICULTY),diff,3,1);
  label(d,"AI opponents",348,142,296,20);fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP,348,164,296,100,ID_AI),ai,4,0);
  label(d,"AI difficulty",24,204,296,20);fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,226,296,180,ID_AI_DIFFICULTY),aggression,4,1);
  label(d,"Peaceful AI never starts a war. Other levels increase its chance of starting one.",348,212,296,54);
@@ -76,7 +77,7 @@ static int wsCreateMenu(DialogState*d,HWND w){
  label(d,"Saved presets",24,226,620,22);control(d,"COMBOBOX","",CBS_DROPDOWNLIST|CBS_SORT|WS_TABSTOP|WS_VSCROLL,24,252,620,220,ID_PRESET_PICK);
  control(d,"BUTTON","Save current settings",BS_PUSHBUTTON|WS_TABSTOP,24,312,296,34,ID_PRESET_SAVE);
  control(d,"BUTTON","Load selected preset",BS_PUSHBUTTON|WS_TABSTOP,348,312,296,34,ID_PRESET_LOAD);
- label(d,"Presets keep the seed and every option, including a preferred starting island. Load a preset to recreate its preview.\r\n\r\nThe same seed and the same world settings reproduce the map preview in this generator version. A seed alone does not include your other choices.\r\n\r\nPresets stay with this modded game copy and are kept when restoring original game files.",24,394,620,190);
+ label(d,"Save a favourite setup, or load one to restore all options and its map seed. A seed alone does not include the other options.\r\n\r\nPresets stay with this game copy and are kept when restoring original game files.",24,394,620,156);
 
  d->creatingPage=4;
  label(d,"Island details and starting conditions",24,108,632,24);
@@ -91,7 +92,7 @@ static int wsCreateMenu(DialogState*d,HWND w){
  fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,176,620,180,ID_MAP_VISIBILITY),visibility,3,1);
  label(d,"Enemy activity",24,236,620,22);
  fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,262,620,150,ID_ENEMY_VISIBILITY),enemies,2,0);
- label(d,"Unexplored covers this preview and uncharted land and sea. Ships, settlements and deployed military units chart nearby areas, which stay remembered. Geography revealed shows island locations; Fully explored charts the whole map.\r\n\r\nStrict line of sight hides moving units beyond 48 tiles of your ships, settlements or deployed military units. Buildings stay as last seen until revisited. Reveal all activity shows live activity in charted areas. Both keep unexplored areas covered.\r\n\r\nOlder saves without exploration history start around your current units; buildings are remembered as you see them. Preferred climates and balanced starts still work; Unexplored disables preview island selection.",24,332,620,280);
+ label(d,"Unexplored hides the preview, land and sea until your ships, settlements or deployed units explore them. Geography revealed shows island locations. Fully explored reveals the whole map.\r\n\r\nStrict line of sight shows moving enemies within 48 tiles. Buildings remain as last seen until you return. Reveal all activity shows current activity in charted areas. Unknown areas stay covered in both modes.\r\n\r\nUnexplored disables preview island selection; preferred climates and balanced starts still work.",24,332,620,248);
 
  d->creatingPage=6;
  label(d,"Island variety and climate limits",24,108,632,24);
@@ -107,7 +108,7 @@ static int wsCreateMenu(DialogState*d,HWND w){
   control(d,"EDIT","128",WS_BORDER|ES_NUMBER|WS_TABSTOP,508,y,136,28,ID_MAX_POLAR+i*2);
  }
  control(d,"STATIC","",SS_LEFT,24,518,620,24,ID_CLIMATE_SUMMARY);
- label(d,"Counts include cultures, Pirates and Venetians. Minimum 0 uses automatic allocation; maximum 128 is unrestricted.\r\nEach group must allow at least two islands for all climates and essential resources. Cultures may require more.",24,556,620,108);
+ label(d,"Counts include natives, Pirates and Venetians. Leave 0 / 128 for automatic limits. Each group must allow at least two islands to keep all climates and essential resources; cultures may require more.",24,556,620,92);
 
  d->creatingPage=7;
  label(d,"Disasters",24,108,632,24);
@@ -121,7 +122,7 @@ static int wsCreateMenu(DialogState*d,HWND w){
   fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,274,y,170,140,ID_DISASTER_FREQUENCY+i),activity,3,1);
   fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,464,y,180,140,ID_DISASTER_SEVERITY+i),severity,3,1);
  }
- label(d,"Each type has its own frequency. Fire and plague keep Normal severity. Disabled types retain your choices.\r\nEvents still depend on native conditions; frequency does not guarantee a fixed interval. Eruptions need a volcano.",24,546,620,118);
+ label(d,"Disabled disasters keep your choices for later. Fire and plague use Normal severity.\r\nFrequency changes how often an event can occur; the game's usual conditions still apply. Eruptions need a volcano.",24,546,620,108);
 
  d->creatingPage=-1;
  label(d,"Map seed",688,58,408,20);control(d,"EDIT","",WS_BORDER|ES_NUMBER|WS_TABSTOP,688,82,280,28,ID_SEED);SendDlgItemMessageA(w,ID_SEED,EM_SETLIMITTEXT,10,0);
@@ -130,11 +131,11 @@ static int wsCreateMenu(DialogState*d,HWND w){
  if(!d->preview)return 0;
  control(d,"STATIC","",SS_LEFT,688,558,408,40,ID_START_HINT);
  for(int i=0;i<6;i++)label(d,previewClimateNames[i],710+(i%2)*212,610+(i/2)*24,174,20);
- label(d,"P: Pirates   V: Venetians   S: human   1-3: AI",688,692,408,24);
+ label(d,"P: Pirates   V: Venetians   S: You   1-3: AI",688,692,408,24);
  control(d,"BUTTON","Regenerate map",BS_PUSHBUTTON|WS_TABSTOP,688,726,196,32,ID_REGENERATE);
  label(d,"Same seed + same world options reproduce the preview.",896,726,200,38);
  label(d,"Status",24,670,632,20);control(d,"STATIC",developmentConfigured&&prepareBackend?configuredStatus:noBackend,SS_LEFT,24,696,632,64,ID_STATUS);
- control(d,"BUTTON","Back",BS_PUSHBUTTON|WS_TABSTOP,388,768,120,32,ID_BACK);control(d,"BUTTON","Start",BS_DEFPUSHBUTTON|WS_TABSTOP,528,768,120,32,ID_START);
+ control(d,"BUTTON","Back",BS_PUSHBUTTON|WS_TABSTOP,388,768,120,32,ID_BACK);control(d,"BUTTON","Start custom world",BS_DEFPUSHBUTTON|WS_TABSTOP,528,768,120,32,ID_START);
  wsMenuPutSeed(d,freshPreviewSeed(0));wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuDisasterControls(d);wsMenuStartHint(d);wsMenuIslandInfo(d);wsPresetRefresh(d,NULL);wsMenuPage(d,0);
  EnableWindow(GetDlgItem(w,ID_START),FALSE);d->creating=0;PostMessageA(w,WS_PREVIEW_MESSAGE,0,0);
  SetFocus(GetDlgItem(w,ID_WORLD_SIZE));return 1;

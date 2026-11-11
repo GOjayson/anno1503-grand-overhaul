@@ -118,6 +118,9 @@ def prepare_edits(kind: str, package: Path, game: Path, output_dir: Path,
         if _overlap(output, game) or _overlap(output, package):
             raise AdapterError("Preparation output must be separate from the game and package")
         worker = Path(__file__).with_name("legacy_worker.py")
+        if getattr(sys, 'frozen', False):
+            from .frozen_runner import source_script
+            worker = source_script('legacy_worker.py')
         progress("Checking " + ("World Settings" if kind == "world" else "Food overhaul") + " inputs…")
         options = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
         result = subprocess.run(

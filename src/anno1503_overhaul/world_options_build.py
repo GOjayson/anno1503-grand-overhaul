@@ -24,10 +24,10 @@ from .world_options_disasters import DISASTER_CALLS, verify_disaster_preimages
 
 
 PINNED_RUNTIMES = {
-    'world-only': '5fa1a3f72ca8432a4052bdd80789a6e1f60957daca0efd2633d1cec839b3673a',
-    'food-world': 'e197c8bffcad870df3491c7065858914d8ffafa1b20d130a51c402219216e2b3',
+    'world-only': '91f0d2acbd3ad17f23cd4bfe4e0813c5e55c394ca06426b835b0015b3b926140',
+    'food-world': '1b7248098910f550d7cb5ffc74bcb415f41b47a34f6ac8585bd67f9b79869677',
 }
-PINNED_GENERATOR = 'ws6-86ef692d92f3b8bcf7d1262a6a05a0c1f148e0fabf206733c3a37baf16957eac'
+PINNED_GENERATOR = 'ws6-a2d7e8ee018ab1e6a18a933efbb8482391c78e35a54e29b05523e5af24a6ea2e'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
     'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',
@@ -76,6 +76,12 @@ def derive_activity_ai_inputs(profile: str, game: Path):
 
 
 def derive_sources(profile: str, files: dict[str, bytes], game: Path):
+    """Preserved historical local-input build route."""
+    return _derive_sources_exact(profile, files, game)
+
+
+def _derive_sources_exact(profile: str, files: dict[str, bytes], game: Path, *,
+                          asset_source=None, asset_root=None, activity_inputs=None):
     if profile not in PINNED_RUNTIMES:
         raise old.RuntimeBuildError('Choose the stock World-only or Food + World native profile.')
     files = dict(files)
@@ -121,7 +127,8 @@ def derive_sources(profile: str, files: dict[str, bytes], game: Path):
         proof['island_shapes'] = validate_island_shapes(
             files[PRIVATE + 'world_catalogue.h'],
             (old.ROOT / 'src/anno1503_overhaul/native/world_options/island_shapes.h').read_bytes(),
-            template_resolver(game, old.ROOT / '.local/baselines/world_settings/assets'))
+            template_resolver(game if asset_source is None else asset_source,
+                              old.ROOT / '.local/baselines/world_settings/assets' if asset_root is None else asset_root))
     except IslandCatalogueError as exc:
         raise old.RuntimeBuildError('Exact island shape metadata or source inputs differ.') from exc
     from .world_island_rotation import definition_dimensions, validate_rotation_metadata
@@ -131,12 +138,14 @@ def derive_sources(profile: str, files: dict[str, bytes], game: Path):
             files[PRIVATE + 'world_catalogue.h'],
             (native_options / 'island_rotation_plan.h').read_bytes(),
             (native_options / 'island_rotation_definitions.h').read_bytes(),
-            template_resolver(game, old.ROOT / '.local/baselines/world_settings/assets'),
+            template_resolver(game if asset_source is None else asset_source,
+                              old.ROOT / '.local/baselines/world_settings/assets' if asset_root is None else asset_root),
             [definition_dimensions(game / name) for name in ('Anlagen.dat', 'Anlagen.addon')])
     except IslandCatalogueError as exc:
         raise old.RuntimeBuildError('Exact island rotation metadata or landscape dimensions differ.') from exc
     result = apply_options(files)
-    activity_ai, activity_proof = derive_activity_ai_inputs(profile, game)
+    activity_ai, activity_proof = (derive_activity_ai_inputs(profile, game)
+                                   if activity_inputs is None else activity_inputs)
     from .world_options_factions import PROFILE_INPUT_SHA256
     from .world_options import replace
     for name, value in activity_ai.items():
@@ -162,6 +171,44 @@ def derive_sources(profile: str, files: dict[str, bytes], game: Path):
 
 
 def build_options_runtime(profile, game, tools=None, *, output=None, publish=False):
+    """Preserved historical builder and publication location."""
+    return _build_options_runtime(profile, game, tools, output=output, publish=publish)
+
+
+def _public_runtime_inputs(input_root):
+    from .beta_inputs import validate_beta_inputs
+    from .world_options_factions import PROFILE_INPUT_SHA256, derive_faction_ai
+    verified = validate_beta_inputs(input_root)
+    values, proof = {}, {}
+    for name in ('CompLogic.dll', 'CompLogicClassic.dll'):
+        prior = checked_path(verified['ai_base_root'] / name).read_bytes()
+        values[name], proof[name] = derive_faction_ai(name, prior, PROFILE_INPUT_SHA256['world-only'][name])
+        if checked_path(verified['private_ai_root'] / name).read_bytes() != values[name]:
+            raise old.RuntimeBuildError('Public beta private AI differs from its exact stock-derived policy.')
+    return dict(verified=verified, activity_inputs=(values, proof))
+
+
+def build_public_options_runtime(input_root, *, output, require_reviewed=True):
+    """Compile the World-only beta from freshly reconstructed public inputs.
+
+    No historical local runtime, Food AI or frozen private package is opened.
+    The default accepts only the currently reviewed generator/runtime pair;
+    maintainers may create an uninstalled candidate before reviewing its pin.
+    """
+    if type(require_reviewed) is not bool:
+        raise old.RuntimeBuildError('Choose an explicit reviewed-runtime policy.')
+    if require_reviewed and generator_id() != PINNED_GENERATOR:
+        raise old.RuntimeBuildError('Public beta generator source changed after runtime review; nothing was compiled.')
+    inputs = _public_runtime_inputs(checked_path(input_root))
+    verified = inputs['verified']
+    game = verified.get('native_host_root', verified['source_game'])
+    report = _build_options_runtime('world-only', game, output=output, _public_inputs=inputs)
+    if require_reviewed and (not report['matches_reviewed_runtime'] or report['generator_id'] != PINNED_GENERATOR):
+        raise old.RuntimeBuildError('The public beta candidate differs from the reviewed runtime; nothing was installed.')
+    return report
+
+
+def _build_options_runtime(profile, game, tools=None, *, output=None, publish=False, _public_inputs=None):
     if os.name != 'nt':
         raise old.RuntimeBuildError('Native compilation requires 64-bit Windows and the reviewed Zig toolchain.')
     repo, game = checked_path(old.ROOT), checked_path(game)
@@ -180,17 +227,36 @@ def build_options_runtime(profile, game, tools=None, *, output=None, publish=Fal
             raise old.RuntimeBuildError('Reviewed staged source changed: ' + name)
         original[name] = value
     generation = generator_id()
-    files, proof = derive_sources(profile, original, game)
-    tools = checked_path(tools if tools is not None else repo / '.local/toolchain')
-    zig = checked_path(tools / 'ziglang/zig.exe')
-    version = subprocess.check_output([str(zig), 'version'], text=True).strip()
+    if _public_inputs is None:
+        files, proof = derive_sources(profile, original, game)
+        tools = checked_path(tools if tools is not None else repo / '.local/toolchain')
+        zig = checked_path(tools / 'ziglang/zig.exe')
+    else:
+        if profile != 'world-only' or publish:
+            raise old.RuntimeBuildError('Public beta inputs belong only to a separate World-only build.')
+        verified = _public_inputs['verified']
+        files, proof = _derive_sources_exact(profile, original, game,
+            asset_source=verified['source_data_root'], asset_root=verified['assets_root'],
+            activity_inputs=_public_inputs['activity_inputs'])
+        proof['public_beta_inputs'] = verified['manifest']
+        zig = checked_path(verified['compiler_path'])
+    compiler_options = ({'creationflags':subprocess.CREATE_NO_WINDOW}
+                        if _public_inputs is not None and os.name == 'nt' else {})
+    version = subprocess.check_output([str(zig), 'version'], text=True, **compiler_options).strip()
     if version != '0.16.0':
         raise old.RuntimeBuildError('This native build requires the reviewed Zig 0.16.0 toolchain.')
-    builds = checked_path(repo / '.local/builds', exists=False)
-    builds.mkdir(parents=True, exist_ok=True)
-    output = checked_path(output if output is not None else builds / ('options-' + profile + '-' + uuid.uuid4().hex), exists=False)
-    if output == builds or not output.is_relative_to(builds) or output.exists() or output.is_relative_to(game):
-        raise old.RuntimeBuildError('Choose a new build folder beneath ignored .local/builds.')
+    if _public_inputs is None:
+        builds = checked_path(repo / '.local/builds', exists=False)
+        builds.mkdir(parents=True, exist_ok=True)
+        output = checked_path(output if output is not None else builds / ('options-' + profile + '-' + uuid.uuid4().hex), exists=False)
+        if output == builds or not output.is_relative_to(builds) or output.exists() or output.is_relative_to(game):
+            raise old.RuntimeBuildError('Choose a new build folder beneath ignored .local/builds.')
+    else:
+        output = checked_path(output, exists=False)
+        protected = (repo, game, verified['source_game'], verified['root'])
+        if output.exists() or any(output == p or output in p.parents for p in protected) or any(
+                output.is_relative_to(p) for p in protected if p != repo):
+            raise old.RuntimeBuildError('Choose a new independent public beta build folder.')
     stage = output / 'package'
     stage.mkdir(parents=True)
     for name, data in files.items():
@@ -229,7 +295,7 @@ def build_options_runtime(profile, game, tools=None, *, output=None, publish=Fal
                '-I', str(working), '-o', str(runtime), *[str(stage / name) for name in UNITS],
                '-lbcrypt', '-luser32', '-lgdi32', '-lkernel32']
     result = subprocess.run(command, cwd=working, env=environment, stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT, encoding='utf-8', errors='replace')
+                            stderr=subprocess.STDOUT, encoding='utf-8', errors='replace', **compiler_options)
     (output / 'build.log').write_text(result.stdout, encoding='utf-8')
     if result.returncode:
         raise old.RuntimeBuildError('World options compilation failed; staged sources and build.log were retained: ' + str(output))

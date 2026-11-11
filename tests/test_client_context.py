@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch, Mock
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from anno1503_overhaul import client_context as context
@@ -132,14 +133,22 @@ class ClientContextTests(unittest.TestCase):
             child_started = False
             copy_menu_observed = False
             extra_pid = False
+            hidden = False
+            visibility_requests = None
             mode = state
             inputs = dict(source=source, exe_sha256=context.EXE_SHA256)
             def processes(self):
                 return ([7] if existing or (self.started and not self.closed) else []) + ([8] if self.child_started else []) + ([9] if self.extra_pid else [])
             def inspect(self, pid):
+                return dict(state='waiting' if self.hidden else self.mode, pid=pid, process_creation_time=116444736000001100,
+                            hwnd=12, frame_pointer=16, menu_proof_verified=True)
+            def inspect_owned_bootstrap(self, pid, identity):
+                if identity != (7,116444736000001100,12,16) or pid != 7:
+                    raise AssertionError('Wrong owned bootstrap identity')
                 return dict(state=self.mode, pid=pid, process_creation_time=116444736000001100,
                             hwnd=12, frame_pointer=16, menu_proof_verified=True)
         clock, probe = Clock(), Probe()
+        probe.visibility_requests=[]
         class CopyProbe:
             inputs = dict(source=target, exe_sha256=context.EXE_SHA256)
             mode = copy_state
@@ -161,10 +170,17 @@ class ClientContextTests(unittest.TestCase):
             probe.closed = close
         def initialize(*_, **__):
             if probe.closed: raise AssertionError('The normal source session must remain alive during copied SDK initialization.')
+            if not probe.hidden: raise AssertionError('The normal source menu must be hidden before a copy can open.')
             probe.child_started = True
             captured.clear()
             return Mock(pid=8)
         close_menu = stack.enter_context(patch.object(context, '_request_menu_close', side_effect=normal_close))
+        def visibility(root, identity, visible):
+            if root != source or identity != (7,116444736000001100,12,16):
+                raise AssertionError('Only the exact owned source window may change visibility')
+            probe.visibility_requests.append(visible)
+            probe.hidden=not visible
+        probe.visibility = stack.enter_context(patch.object(context, '_set_bootstrap_visible', side_effect=visibility))
         launch = stack.enter_context(patch.object(context, 'launch_copy', side_effect=initialize))
         return source, target, probe, captured, route, capture, close_menu, launch
 
@@ -178,8 +194,12 @@ class ClientContextTests(unittest.TestCase):
         route.assert_called_once_with('uplay://launch/123/0')
         capture.assert_called_once_with(source, 7, 116444736000001100)
         close_menu.assert_called_once_with(7, 12)
-        launch.assert_called_once_with(captured, target,
-                                      source_identity=(7,116444736000001100,12,16),source_probe=probe)
+        launch.assert_called_once()
+        args,kwargs=launch.call_args
+        self.assertEqual(args,(captured,target))
+        self.assertEqual(kwargs['source_identity'],(7,116444736000001100,12,16))
+        self.assertIsInstance(kwargs['source_probe'],context._HiddenBootstrapProbe)
+        self.assertEqual(probe.visibility_requests,[False])
         self.assertNotIn('private-value', json.dumps(events))
         self.assertNotIn('private-argument', json.dumps(events))
         self.assertTrue(captured._used)
@@ -228,6 +248,8 @@ class ClientContextTests(unittest.TestCase):
             launch.assert_called_once()
             close_menu.assert_not_called()
             self.assertFalse(probe.closed)
+            self.assertFalse(probe.hidden)
+            self.assertEqual(probe.visibility_requests,[False,True])
 
     def test_extra_game_process_is_never_adopted_or_closed(self):
         source,target,probe,_,_,_,close_menu,launch=self._bridge_fixture()
@@ -245,6 +267,107 @@ class ClientContextTests(unittest.TestCase):
         with self.assertRaises(context.ContextError):
             context.start_game('uplay://launch/123/0',source,target,probe,copy_probe=probe.copy_probe,timeout=8)
         for action in (route,capture,close_menu,launch):action.assert_not_called()
+
+    def test_missing_hidden_observer_capability_refuses_before_hiding_or_copy(self):
+        source,target,probe,_,_,_,close_menu,launch=self._bridge_fixture()
+        probe.inspect_owned_bootstrap=None
+        with self.assertRaises(context.ContextError):
+            context.start_game('uplay://launch/123/0',source,target,probe,copy_probe=probe.copy_probe,timeout=8)
+        probe.visibility.assert_not_called()
+        launch.assert_not_called()
+        close_menu.assert_not_called()
+
+    def test_hidden_menu_change_restores_only_its_owned_source_and_never_starts_copy(self):
+        source,target,probe,_,_,_,close_menu,launch=self._bridge_fixture()
+        original=probe.visibility.side_effect
+        def changed(*args):
+            original(*args)
+            if args[2] is False:probe.mode='world'
+        probe.visibility.side_effect=changed
+        with self.assertRaises(context.ContextError):
+            context.start_game('uplay://launch/123/0',source,target,probe,copy_probe=probe.copy_probe,timeout=8)
+        self.assertEqual(probe.visibility_requests,[False,True])
+        self.assertFalse(probe.hidden)
+        launch.assert_not_called();close_menu.assert_not_called()
+
+    def test_failed_or_uncertain_hiding_restores_visibility_without_starting_copy(self):
+        source,target,probe,_,_,_,close_menu,launch=self._bridge_fixture()
+        original=probe.visibility.side_effect
+        def changed(*args):
+            original(*args)
+            if args[2] is False:raise context.ContextError('window changed')
+        probe.visibility.side_effect=changed
+        with self.assertRaisesRegex(context.ContextError,'window changed'):
+            context.start_game('uplay://launch/123/0',source,target,probe,copy_probe=probe.copy_probe,timeout=8)
+        self.assertEqual(probe.visibility_requests,[False,True])
+        launch.assert_not_called();close_menu.assert_not_called()
+
+    def test_visibility_restore_failure_does_not_mask_original_safe_error(self):
+        source,target,probe,_,_,_,close_menu,launch=self._bridge_fixture(copy_state='unsafe')
+        original=probe.visibility.side_effect
+        def changed(*args):
+            if args[2] is True:raise context.ContextError('replacement window refused')
+            original(*args)
+        probe.visibility.side_effect=changed
+        events=[]
+        with self.assertRaisesRegex(context.ContextError,'copied game startup could not be verified'):
+            context.start_game('uplay://launch/123/0',source,target,probe,copy_probe=probe.copy_probe,
+                               event=lambda k,v:events.append((k,v)),timeout=8)
+        self.assertIn(('normal_source_menu_restore_visibility',dict(restored=False)),events)
+        self.assertNotIn('private-value',json.dumps(events))
+        close_menu.assert_not_called()
+
+    def _window_fixture(self):
+        source,_=self._fixture();process=Mock();process.identity.return_value=(source/'Anno1503.exe',123)
+        factory=Mock();factory.return_value.__enter__=Mock(return_value=process)
+        factory.return_value.__exit__=Mock(return_value=False)
+        state=dict(visible=True);user=Mock()
+        user.IsWindow.return_value=True
+        def owner(hwnd,target):target._obj.value=7;return 10
+        user.GetWindowThreadProcessId.side_effect=owner
+        user.GetWindowLongPtrW.return_value=16
+        user.IsWindowVisible.side_effect=lambda _:state['visible']
+        def show(hwnd,mode):
+            previous=state['visible'];state['visible']=mode!=0;return previous
+        user.ShowWindow.side_effect=show
+        stack=__import__('contextlib').ExitStack();self.addCleanup(stack.close)
+        stack.enter_context(patch.object(context,'os',SimpleNamespace(name='nt')))
+        stack.enter_context(patch.object(context,'_WindowsContext',factory))
+        stack.enter_context(patch.object(context.C,'WinDLL',return_value=user,create=True))
+        return source,process,user,state
+
+    def test_window_api_hides_and_restores_only_exact_owned_identity_without_activation(self):
+        source,process,user,state=self._window_fixture()
+        context._set_bootstrap_visible(source,(7,123,12,16),False)
+        self.assertFalse(state['visible']);user.ShowWindow.assert_called_once_with(12,0)
+        context._set_bootstrap_visible(source,(7,123,12,16),True)
+        self.assertTrue(state['visible']);self.assertEqual(user.ShowWindow.call_args.args,(12,4))
+        user.SetForegroundWindow.assert_not_called();user.PostMessageW.assert_not_called()
+
+    def test_window_api_refuses_recycled_pid_wrong_path_hwnd_owner_and_changed_frame(self):
+        for mutation in ('creation','path','hwnd','owner','frame'):
+            source,process,user,state=self._window_fixture()
+            if mutation=='creation':process.identity.return_value=(source/'Anno1503.exe',124)
+            elif mutation=='path':process.identity.return_value=(source/'another.exe',123)
+            elif mutation=='hwnd':user.IsWindow.return_value=False
+            elif mutation=='owner':user.GetWindowThreadProcessId.side_effect=lambda h,p:(setattr(p._obj,'value',8),10)[1]
+            elif mutation=='frame':user.GetWindowLongPtrW.return_value=17
+            with self.subTest(mutation=mutation),self.assertRaises(context.ContextError):
+                context._set_bootstrap_visible(source,(7,123,12,16),False)
+            user.ShowWindow.assert_not_called()
+
+    def test_window_api_checks_identity_again_after_showwindow(self):
+        source,process,user,state=self._window_fixture()
+        process.identity.side_effect=[(source/'Anno1503.exe',123),(source/'Anno1503.exe',123),(source/'Anno1503.exe',124)]
+        with self.assertRaisesRegex(context.ContextError,'visibility could not be verified'):
+            context._set_bootstrap_visible(source,(7,123,12,16),False)
+        user.ShowWindow.assert_called_once_with(12,0)
+
+    def test_hidden_adapter_rejects_a_different_pid_before_observation(self):
+        probe=Mock();probe.inputs={}
+        wrapper=context._HiddenBootstrapProbe(probe,(7,123,12,16))
+        with self.assertRaises(context.ContextError):wrapper.inspect(8)
+        probe.inspect_owned_bootstrap.assert_not_called()
 
     def test_explicit_bootstrap_allowance_is_bound_to_context_and_exact_menu(self):
         source,target=self._fixture()

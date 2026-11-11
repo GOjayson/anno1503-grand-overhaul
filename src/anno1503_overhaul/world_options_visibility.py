@@ -90,5 +90,5 @@ def apply_visibility(files: dict[str, bytes]) -> None:
                  'start_visibility_control.inc', 'start_visibility_performance.inc',
                  'start_visibility_map_refresh.inc', 'start_visibility_memory_io.inc',
                  'start_visibility_chart.h', 'start_visibility_chart.inc',
-                 'start_visibility_exploration.inc', 'start_visibility_frame.inc'):
+                 'start_visibility_exploration.inc', 'start_visibility_frame.inc', 'start_visibility_native.inc'):
         files[PRIVATE + name] = authored(name)

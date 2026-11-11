@@ -40,6 +40,9 @@ def _selection(profile: dict) -> dict:
 
 
 def _workspace() -> Path:
+    if getattr(sys, 'frozen', False):
+        from .beta_paths import package_workspace
+        return package_workspace()
     path = checked_path(REPO / '.local' / 'installer', exists=False)
     path.mkdir(parents=True, exist_ok=True)
     return checked_path(path)
@@ -111,14 +114,25 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
         journal = adapter.read_manifest(target)
         if journal and journal['status'] not in {'restored', 'rolled_back'}:
             raise InstallerError('Restore original game in this copy before changing or reinstalling its features.')
-    progress('Checking local mod files…')
+    progress('Preparing the selected mod files…')
     if package is None:
-        output = _workspace() / ('package-' + uuid.uuid4().hex)
+        if baseline_dir is None:
+            from .beta_paths import package_workspace
+            output = package_workspace() / ('package-' + uuid.uuid4().hex)
+        else:
+            output = _workspace() / ('package-' + uuid.uuid4().hex)
         if profile['features']['world_settings']:
-            provider = baseline_dir if baseline_dir is not None else REPO / '.local' / 'baselines'
-            from .world_options_package import prepare_options_package
-            package = prepare_options_package(provider, output, source, target,
-                                               food_enabled=profile['features']['food_overhaul'])
+            if baseline_dir is None:
+                if profile['features']['food_overhaul']:
+                    raise InstallerError('The combined Food + World development build needs its preserved development files. Choose World Settings alone for the public beta, or select the matching files under Advanced. Food is never enabled automatically.')
+                from .beta_package import prepare_beta_package
+                from .beta_paths import compiler_path
+                progress('Building World Settings from your verified game files. This can take a few minutes…')
+                package = prepare_beta_package(output, source, target, compiler_path=compiler_path())
+            else:
+                from .world_options_package import prepare_options_package
+                package = prepare_options_package(baseline_dir, output, source, target,
+                                                   food_enabled=profile['features']['food_overhaul'])
         else:
             package = prepare_food_package(output, source, copy_game=target)
     package = checked_path(package)
@@ -126,7 +140,7 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
     if Path(metadata.get('copy_root') or '').resolve() != target:
         raise InstallerError('These prepared mod files belong to another modded copy. Prepare a package for this copy.')
     if profile['features']['world_settings']:
-        expected_food = (metadata['food_enabled'] if metadata['kind'] == 'anno1503-world-options-installer-package'
+        expected_food = (metadata['food_enabled'] if metadata['kind'] in {'anno1503-world-options-installer-package', 'anno1503-public-beta-world-package'}
                          else metadata['kind'] != 'anno1503-world-only-installer-package')
         if expected_food != profile['features']['food_overhaul']:
             raise InstallerError('The prepared package has a different Food selection. Check the selected features again.')
@@ -159,6 +173,12 @@ def install(source_game: Path, copy_game: Path, profile: dict, *,
     require_game_closed()
     plan = check_install(source_game, copy_game, profile, baseline_dir, package, progress)
     source, root, package = (Path(plan[key]) for key in ('source_root', 'copy_root', 'package_root'))
+    launcher_runtime = None
+    if getattr(sys, 'frozen', False) and plan['profile']['features']['world_settings']:
+        from .beta_paths import application_data
+        from .frozen_runner import application_root, retain_worker
+        progress('Keeping a version-matched launcher for this installation…')
+        launcher_runtime = retain_worker(application_root(), application_data() / 'Launchers')
     require_game_closed()
     if plan['creates_copy']:
         clone_game(source, root, repo=REPO, progress=progress)
@@ -191,6 +211,8 @@ def install(source_game: Path, copy_game: Path, profile: dict, *,
         record = dict(schema=1, copy_root=str(root), source_root=str(source), baseline='vanilla',
                       status='prepared', profile=profile, package_root=str(package),
                       package_manifest_sha256=plan['package_manifest_sha256'], prepared_at=_now())
+        if launcher_runtime is not None:
+            record['launcher_runtime'] = launcher_runtime
         atomic_json(root / INSTALL_RECORD, record)
         journal = adapter.install_prepared(root, prepared, 'vanilla', progress)
         record.update(status='installed', installed_at=_now(), changed_files=len(journal['edits']))
@@ -243,13 +265,45 @@ def launch_world_settings(copy_game: Path):
         raise InstallerError('Install World Settings on this copy before starting its launcher.')
     _verify_journal(root)
     package = checked_path(Path(record['package_root']))
-    validate_package(package, source_game=Path(marker['source_root']))
+    retained = record.get('launcher_runtime')
+    if retained:
+        from .frozen_runner import validate_package_closure, verify_retained_worker
+        executable = verify_retained_worker(retained)
+        validate_package_closure(package, record['package_manifest_sha256'], copy_root=root)
+    else:
+        validate_package(package, source_game=Path(marker['source_root']))
+        executable = Path(sys.executable)
     config = json.loads((package / 'launcher' / 'launcher_config.json').read_bytes())
     if Path(config.get('copy_root', '')).resolve() != root:
         raise InstallerError('The automatic launcher is bound to another game copy.')
-    executable = Path(sys.executable)
     pythonw = executable.with_name('pythonw.exe')
     if pythonw.is_file():
         executable = pythonw
     return subprocess.Popen([str(executable), '-B', str(package / 'launcher' / 'launch_world_settings.pyw')],
                             cwd=package / 'launcher', creationflags=subprocess.CREATE_NO_WINDOW)
+
+
+def create_world_shortcut(copy_game: Path):
+    """Create an entry for the installed version-owned launcher, without starting Anno."""
+    from .packages import validate_package
+    from .shortcuts import create_desktop_shortcut
+    root = checked_path(copy_game)
+    marker = read_copy_marker(root)
+    record = _read_install(root)
+    if not record or record['status'] != 'installed' or not record['profile']['features']['world_settings']:
+        raise InstallerError('Install World Settings before creating its shortcut.')
+    _verify_journal(root)
+    package = checked_path(Path(record['package_root']))
+    retained = record.get('launcher_runtime')
+    if retained:
+        from .frozen_runner import validate_package_closure, verify_retained_worker
+        verify_retained_worker(retained)
+        validate_package_closure(package, record['package_manifest_sha256'], copy_root=root)
+        executable = checked_path(Path(retained['launcher_path']))
+    else:
+        validate_package(package, source_game=Path(marker['source_root']))
+        executable = Path(sys.executable)
+        windowless = executable.with_name('pythonw.exe')
+        if windowless.is_file():
+            executable = windowless
+    return create_desktop_shortcut(executable, ['-B', str(package / 'launcher/launch_world_settings.pyw')], package / 'launcher')
