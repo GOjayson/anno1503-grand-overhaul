@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest a change or explain a missing capability.
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the player problem and the result you want. Check the [roadmap](https://github.com/GOjayson/anno1503-grand-overhaul/blob/main/docs/ROADMAP.md) for existing plans. Research goals, such as eight AI players or local-host multiplayer, still need engine verification.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Feature area
+      options:
+        - World Settings
+        - Food overhaul
+        - Installer or launcher
+        - Future AI, multiplayer or Knowledge overhaul
+        - Documentation or community
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would this help you do?
+      description: Describe the current difficulty or missing option, using an example if possible.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain what should happen and where the player would use it. World-specific options belong inside Anno.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Current setup, if relevant
+      description: Include mod/game versions, selected features and Original game or Custom world when they affect the proposal. Leave out account details, startup arguments and private game files.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or examples
+      description: Describe any workaround or another way to meet the same need. Links and sketches are welcome; do not attach copyrighted game files.

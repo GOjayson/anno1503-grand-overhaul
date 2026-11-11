@@ -1,4 +1,17 @@
-# Third-party tools in the beta
+# Third-party notices
+
+## Community policy
+
+[CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md) adapts Contributor Covenant 2.1,
+with the enforcement contact method changed for this repository. The policy
+retains its separate [Creative Commons Attribution 4.0 International
+license](https://creativecommons.org/licenses/by/4.0/), rather than the project
+MIT License. Its attribution and related references remain in the policy.
+The [official v2.1 source](https://github.com/EthicalSource/contributor_covenant/blob/8a3be1350b07f38b53bbc7073f765a48c4c53ce1/content/version/2/1/code_of_conduct.md)
+and [upstream license](https://github.com/EthicalSource/contributor_covenant/blob/8a3be1350b07f38b53bbc7073f765a48c4c53ce1/LICENSE.md)
+are pinned to that release.
+
+## Tools in the beta
 
 The standalone Windows beta includes its Python runtime, user-interface
 libraries, executable loader, file-analysis libraries and an offline compiler.

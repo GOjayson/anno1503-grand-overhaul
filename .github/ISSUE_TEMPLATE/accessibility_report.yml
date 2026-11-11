@@ -1,0 +1,43 @@
+name: Accessibility report
+description: Tell us about a barrier to using the mod or its documentation.
+title: "[Accessibility] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tell us what prevents you from using the project and what would help. You do not need to disclose a disability or medical information. A [blank issue](https://github.com/GOjayson/anno1503-grand-overhaul/issues/new) is also available if this form is difficult to use. See our [accessibility statement](https://github.com/GOjayson/anno1503-grand-overhaul/blob/main/ACCESSIBILITY.md).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Installer
+        - Automatic launcher
+        - In-game World Settings menu or preview
+        - Game controls or display
+        - Documentation or GitHub pages
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: barrier
+    attributes:
+      label: What happens, and what do you need instead?
+      description: Describe the task you are trying to complete and the barrier you encounter.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to encounter the barrier
+      description: Include a menu, button, page or keyboard sequence if you can.
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment, if relevant
+      description: Useful details may include mod/game versions and language, Windows version, screen resolution and scaling, keyboard or assistive tools, selected Food/World features and Original game or Custom world. Include only what you are comfortable sharing.
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested improvement or supporting image
+      description: A suggestion or cropped screenshot is optional. Remove personal details; do not attach startup arguments, raw logs, game files or saves.

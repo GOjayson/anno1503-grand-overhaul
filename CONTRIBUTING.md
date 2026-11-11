@@ -1,5 +1,15 @@
 # Contributing
 
+Follow the [Code of Conduct](CODE_OF_CONDUCT.md). Use the [issue chooser](https://github.com/GOjayson/anno1503-grand-overhaul/issues/new/choose)
+for bugs, feature requests or accessibility barriers. Report vulnerabilities
+through the [security policy](SECURITY.md), without posting sensitive details.
+
+By submitting original work for inclusion, you agree to license it under the
+project's [MIT License](LICENSE). Existing third-party materials retain their
+own terms; identify their source and license, and only submit material you have
+the right to contribute. The adapted Code of Conduct has its separate terms
+listed in [third-party notices](docs/THIRD_PARTY_NOTICES.md).
+
 Work in this repository, outside your installed game. Read `AGENTS.md` and the
 architecture/feature-status documents before changing native code or installers.
 

@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security reporting
+    url: https://github.com/GOjayson/anno1503-grand-overhaul/blob/main/SECURITY.md
+    about: Follow the security policy for vulnerability reports and private reporting options.
+  - name: Installation and troubleshooting
+    url: https://github.com/GOjayson/anno1503-grand-overhaul/blob/main/docs/INSTALLER.md
+    about: Read setup, restoration and supported-build guidance before opening an issue.

@@ -56,12 +56,20 @@ This is a beta, not a claim that every map combination or long campaign has been
 - [Changelog](docs/CHANGELOG.md)
 - [World options and validation](docs/WORLD_ENVIRONMENT_OPTIONS.md)
 - [Island catalogue audit](docs/WORLD_ISLAND_CATALOGUE.md)
-- [Report a problem](https://github.com/GOjayson/anno1503-grand-overhaul/issues)
+- [Report a problem or suggest a feature](https://github.com/GOjayson/anno1503-grand-overhaul/issues/new/choose)
+- [Accessibility and reporting barriers](ACCESSIBILITY.md)
+- [Report a security vulnerability privately](SECURITY.md)
 
 When reporting a problem, include the mod version, selected features, game mode, what you expected and what happened. Keep a copy of an affected save. Do not post Ubisoft startup arguments, account information or original game files.
 
 ## Contributors
 
-Development happens in this repository, outside the installed game. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md). For source setup and the earlier implementation record, see [development history](docs/DEVELOPMENT_HISTORY.md).
+Development happens in this repository, outside the installed game. Read [CONTRIBUTING.md](CONTRIBUTING.md), the [Code of Conduct](CODE_OF_CONDUCT.md) and [AGENTS.md](AGENTS.md). For source setup and the earlier implementation record, see [development history](docs/DEVELOPMENT_HISTORY.md).
 
 Only mod source, tests, authored assets and documentation belong in the public repository. Native game files and local build/test data stay private.
+
+## License
+
+Original project code, documentation and authored artwork are available under the [MIT License](LICENSE), except where a separate license is identified. Third-party components and the adapted Code of Conduct retain their own terms; see [third-party notices](docs/THIRD_PARTY_NOTICES.md).
+
+This license grants no rights to Ubisoft's game files, assets or trademarks. Anno 1503 Grand Overhaul is an independent community project and requires a supported game installation.

@@ -1,0 +1,77 @@
+name: Bug report
+description: Report a problem with the mod, installer or launcher.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe one problem so we can reproduce it. Reports are public: leave out account details, Ubisoft startup arguments, environment values and raw launch logs. Do not attach game executables, DLLs, islands or saves. Keep an affected save privately for follow-up. For a security vulnerability, follow the [security policy](https://github.com/GOjayson/anno1503-grand-overhaul/blob/main/SECURITY.md) instead.
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions and environment
+      description: Include what you know; write "unknown" for details you cannot find.
+      placeholder: |
+        Mod version:
+        Anno 1503 History Edition version/build:
+        Game language:
+        Windows version:
+    validations:
+      required: true
+  - type: dropdown
+    id: features
+    attributes:
+      label: Installed features
+      options:
+        - World Settings only
+        - Food overhaul only
+        - World Settings and Food overhaul
+        - Restored original game
+        - Not sure
+    validations:
+      required: true
+  - type: dropdown
+    id: game_route
+    attributes:
+      label: Where does it happen?
+      options:
+        - Endless game - Original game
+        - Endless game - Custom world
+        - Tutorial
+        - Campaign
+        - Other scenario
+        - Loading an existing save
+        - Installer or launcher, before game setup
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include whether this is a new world, an in-game reload or a load after restarting Anno. Say how often it happens.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual result
+      placeholder: |
+        Expected:
+        Actual:
+    validations:
+      required: true
+  - type: textarea
+    id: world_options
+    attributes:
+      label: World options, if relevant
+      description: Give the seed and preset name, plus the selected world options. Include AI count, cultures/Pirates/Venetians, fertility, visibility and disaster choices when relevant. For a load problem, say whether the save was made with Original game or Custom world.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Error message or screenshots, if available
+      description: Paste the exact error text or a cropped screenshot. Remove personal details first. Do not paste startup arguments or upload raw logs, game files or saves.
