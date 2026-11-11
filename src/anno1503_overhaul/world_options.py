@@ -18,7 +18,7 @@ FIELDS = ('mapSeed', 'startClimate', 'startIsland', 'cargoMode', 'cargoTools',
           'cargoWood', 'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
           'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics',
           'mapVisibility', 'enemyVisibility')
-VERSION = '0.6.0-dev.7'
+VERSION = '0.6.0-dev.8'
 
 
 def generator_id() -> str:

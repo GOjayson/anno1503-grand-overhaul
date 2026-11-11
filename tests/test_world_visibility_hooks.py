@@ -29,7 +29,7 @@ POINTERS = (tuple(('AnnoWelt.dll', slot, target) for slot, target in DISPATCH) +
             tuple(('AnnoDisplay.dll', slot, target) for slot, target in RENDER_DISPATCH) +
             tuple(('AnnoFrame.dll', slot, target) for slot, target in CONTROL_DISPATCH))
 COMPONENTS = len(POINTERS) + len(call_visibility.CALLS)
-TRANSACTION_CAPACITY = 35 + 173
+TRANSACTION_CAPACITY = 36 + 173
 PREPARED_COMPONENTS = 9 + len(call_visibility.CALLS) + 173
 
 
@@ -236,7 +236,7 @@ class VisibilityStagingTests(unittest.TestCase):
             self.assertEqual(result.count(token), 1)
         for macro, count in ((b'POINTER', len(POINTERS)), (b'CALL', len(call_visibility.CALLS)), (b'HOOK', COMPONENTS)):
             self.assertIn(b'#define WS_VISIBILITY_' + macro + b'_COUNT ' + str(count).encode() + b'u', result)
-        self.assertEqual(PREPARED_COMPONENTS + len(POINTERS), 208)
+        self.assertEqual(PREPARED_COMPONENTS + len(POINTERS), 209)
         self.assertLess(result.index(b'wsPrepareVisibility(self,patches,'),
                         result.index(b'if(!wsSuspendThreads('))
         pause = result.index(b'if(!wsSuspendThreads(')
@@ -434,7 +434,7 @@ __declspec(dllexport) void fixture_restore_only(void){for(uint32_t i=preparedCou
         before = self.image_hash()
         self.assertEqual(self.lib.fixture_count(), PREPARED_COMPONENTS)
         self.assertEqual(self.lib.fixture_prepare(PREPARED_COMPONENTS), 1)
-        self.assertEqual(self.lib.fixture_count(), 208)
+        self.assertEqual(self.lib.fixture_count(), 209)
         self.lib.fixture_reset()
         initial = TRANSACTION_CAPACITY - len(POINTERS)
         self.assertEqual(self.lib.fixture_prepare(initial), 1)

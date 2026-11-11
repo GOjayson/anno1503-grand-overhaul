@@ -629,8 +629,50 @@ static int wsVisibilityFastRenderer(const WSVisibilityDrawContext*c,void*rendere
  return c&&c->fast&&c->fast->targetsReady&&c->fast->renderer==renderer&&
   wsVisibilityFastPointer(renderer,0)==c->fast->display+0xf63740;
 }
+/* OccurErzSymbol's native getter19370 returns its parent Island at+10.
+ * Island getter9fb0 then returns World at+38. Keep this adapter specific
+ * to the verified mineral class; other occurrence classes keep their rules. */
+
+typedef struct WSVisibilityOreDrawScope {
+ const WSVisibilityDrawContext*context;void*actor,*parent,*renderer;
+} WSVisibilityOreDrawScope;
+/* Only one synchronous exact Ore native call owns this stack scope. Nested
+ * actor dispatches clear it; every return restores the previous TLS pointer. */
+static _Thread_local WSVisibilityOreDrawScope*wsVisibilityOreDrawTLS;
+static int wsVisibilityOrePoint(const WSVisibilityDrawContext*c,float x,float z){
+ return wsVisibilityPointValid(&c->view,x,z)&&(c->view.map!=0||wsVisibilityChartPoint(&c->view,x,z));
+}
+static int wsVisibilityOreParentInContext(const WSVisibilityDrawContext*c,void*parent,float x,float z){
+ if(!c||!parent||!wsVisibilityPointValid(&c->view,x,z))return 0;
+ const WSVisibilityIsland*p=wsVisibilityIslandAt(c,x,z);
+ if(!p||p->object!=parent){
+  p=0;for(uint32_t id=0;id<WS_VISIBILITY_ISLAND_LIMIT;id++)if(c->present[id]&&c->islands[id].object==parent){p=c->islands+id;break;}
+ }
+ if(!p||x<(float)p->x||z<(float)p->y||x>=(float)(p->x+p->width)||z>=(float)(p->y+p->height))return 0;
+ void*vt=0,*world=0,*registered=0;uint16_t box[4];
+ const WSVisibilityFastIsland*s=c->fast?c->fast->islands+p->id:0;
+ if(s&&s->ready&&s->object==parent){
+  /* FastPrepare proved this current draw's World and Island spans. Every
+   * binding/class/coordinate field is fresh; no OS query cache is added. */
+  registered=wsVisibilityFastPointer(c->view.world,0x6640u+(size_t)p->id*8u);
+  vt=wsVisibilityFastPointer(parent,0);world=wsVisibilityFastPointer(parent,0x38);
+  memcpy(box,(unsigned char*)parent+8,sizeof box);
+ }else{
+  registered=wsCertPointer(c->view.world,0x6640u+(size_t)p->id*8u);
+  vt=wsCertPointer(parent,0);world=wsCertPointer(parent,0x38);
+  if(!wsCertRead((unsigned char*)parent+8,box,sizeof box))return 0;
+ }
+ return registered==parent&&world==c->view.world&&
+  (vt==c->view.module+0xf2da8u||vt==c->view.module+0xf33e8u||vt==c->view.module+0xf37a0u)&&
+  box[0]==p->x&&box[1]==p->y&&box[2]==p->width&&box[3]==p->height;
+}
 static int wsVisibilityActorDecision(void*actor,const WSVisibilityActorLayout*a,unsigned char*module){
- void*world=wsCertPointer(actor,a->worldOffset);WSVisibilityWorld view;WSVisibilityDrawContext local;
+ void*parent=wsCertPointer(actor,a->worldOffset),*world=parent;WSVisibilityWorld view;WSVisibilityDrawContext local;
+ if(a->vtable==0xf58e8u){
+  void*vt=wsCertPointer(parent,0);
+  if(!parent||(vt!=module+0xf2da8u&&vt!=module+0xf33e8u&&vt!=module+0xf37a0u))return 0;
+  world=wsCertPointer(parent,0x38);if(!world||!wsVisibilityWorldRead(world,&view)||view.module!=module)return 0;
+ }
  const WSVisibilityDrawContext*context=wsVisibilityDrawContext;int separate=0;
  if(context&&context->view.marked&&context->view.world!=world)return 0;
  if(!context||context->view.world!=world){
@@ -640,8 +682,10 @@ static int wsVisibilityActorDecision(void*actor,const WSVisibilityActorLayout*a,
   context=&local;separate=1;
  }
  if(context->view.module!=module)return 0;
+ if(a->vtable==0xf58e8u){float x,z;if(!wsVisibilityFloat(actor,a->xOffset,&x)||!wsVisibilityFloat(actor,a->zOffset,&z)||!wsVisibilityOreParentInContext(context,parent,x,z))return 0;}
  if(separate){WSVisibilityChartReadView read;if(!wsVisibilityChartReadBegin(&context->view,&read))return 0;
-  int visible=wsVisibilityChartMarkContext(context)&&wsVisibilityActorInContext(context,actor,a);wsVisibilityChartReadEnd(&read);return visible;}
+  int visible=wsVisibilityChartMarkContext(context);if(visible){if(a->vtable==0xf58e8u){float x,z;visible=wsVisibilityFloat(actor,0x20,&x)&&wsVisibilityFloat(actor,0x28,&z)&&wsVisibilityOrePoint(context,x,z);}else visible=wsVisibilityActorInContext(context,actor,a);}wsVisibilityChartReadEnd(&read);return visible;}
+ if(a->vtable==0xf58e8u){float x,z;return wsVisibilityFloat(actor,0x20,&x)&&wsVisibilityFloat(actor,0x28,&z)&&wsVisibilityOrePoint(context,x,z);}
  return wsVisibilityActorInContext(context,actor,a);
 }
 /* A successful probe certifies all audited actor fields once for THIS call.
@@ -659,12 +703,26 @@ static int wsVisibilityFastActorDecision(void*actor,unsigned char*module,const W
      wsVisibilityFastPointer(vt,0xb0)!=module+a->xGetter||wsVisibilityFastPointer(vt,0xc0)!=module+a->zGetter){
    InterlockedExchange(&wsVisibilityLastError,9);return 1;
   }
-  if(wsVisibilityFastPointer(actor,a->worldOffset)!=c->view.world)return 1;
+  void*parent=wsVisibilityFastPointer(actor,a->worldOffset);
+  if(a->vtable!=0xf58e8u&&parent!=c->view.world)return 1;
   float x,z;memcpy(&x,(unsigned char*)actor+a->xOffset,4);memcpy(&z,(unsigned char*)actor+a->zOffset,4);
+  if(a->vtable==0xf58e8u&&!wsVisibilityOreParentInContext(c,parent,x,z))return 1;
   void*owner=a->ownerOffset?wsVisibilityFastPointer(actor,a->ownerOffset):0;
-  *visible=wsVisibilityActorValuesInContext(c,a,x,z,owner);return 1;
+  *visible=a->vtable==0xf58e8u?wsVisibilityOrePoint(c,x,z):wsVisibilityActorValuesInContext(c,a,x,z,owner);return 1;
  }
  return 0;
+}
+
+static uintptr_t wsVisibilityResidentInvoke(WSVisibilityNativeResident target,void*actor,uint32_t time,void*renderer){
+ WSVisibilityOreDrawScope*previous=wsVisibilityOreDrawTLS;wsVisibilityOreDrawTLS=0;
+ uintptr_t result=target(actor,time,renderer);wsVisibilityOreDrawTLS=previous;return result;
+}
+static uintptr_t wsVisibilityOccurrenceInvoke(WSVisibilityNativeOccurrence target,void*actor,uint32_t time,void*renderer,uint32_t flags,const WSVisibilityActorLayout*a){
+ WSVisibilityOreDrawScope scope={wsVisibilityDrawContext,actor,0,renderer},*previous=wsVisibilityOreDrawTLS;
+ if(a&&a->vtable==0xf58e8u&&scope.context&&scope.context->view.marked&&wsVisibilityFastRenderer(scope.context,renderer)){
+  scope.parent=wsCertPointer(actor,0x10);wsVisibilityOreDrawTLS=&scope;
+ }else wsVisibilityOreDrawTLS=0;
+ uintptr_t result=target(actor,time,renderer,flags);wsVisibilityOreDrawTLS=previous;return result;
 }
 static void*wsVisibilityUnknownActorTarget(void*actor,unsigned char*module,uint32_t slot){
  if(wsVisibilityDrawContext&&wsVisibilityDrawContext->view.marked){InterlockedExchange(&wsVisibilityLastError,9);return 0;}
@@ -675,25 +733,25 @@ __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDispatchResident1
  unsigned char*module=wsVisibilityDrawContext?wsVisibilityDrawContext->view.module:(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!module)return 0;
  const WSVisibilityActorLayout*a=0;int visible=0,fast=wsVisibilityFastActorDecision(actor,module,&a,&visible);
  if(!fast)a=wsVisibilityActorLayout(actor,module);
- if(!a){void*target=wsVisibilityUnknownActorTarget(actor,module,0x100);return target?WS_VISIBILITY_UNKNOWN_RESIDENT(target)(actor,time,renderer):0;}
+ if(!a){void*target=wsVisibilityUnknownActorTarget(actor,module,0x100);return target?wsVisibilityResidentInvoke(WS_VISIBILITY_UNKNOWN_RESIDENT(target),actor,time,renderer):0;}
  if(!(fast?visible:wsVisibilityActorDecision(actor,a,module)))return 0;
- return WS_VISIBILITY_NATIVE_RESIDENT(module,a->draw)(actor,time,renderer);
+ return wsVisibilityResidentInvoke(WS_VISIBILITY_NATIVE_RESIDENT(module,a->draw),actor,time,renderer);
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDispatchResident108(void*actor,uint32_t time,void*renderer){
  unsigned char*module=wsVisibilityDrawContext?wsVisibilityDrawContext->view.module:(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!module)return 0;
  const WSVisibilityActorLayout*a=0;int visible=0,fast=wsVisibilityFastActorDecision(actor,module,&a,&visible);
  if(!fast)a=wsVisibilityActorLayout(actor,module);
- if(!a){void*target=wsVisibilityUnknownActorTarget(actor,module,0x108);return target?WS_VISIBILITY_UNKNOWN_RESIDENT(target)(actor,time,renderer):0;}
+ if(!a){void*target=wsVisibilityUnknownActorTarget(actor,module,0x108);return target?wsVisibilityResidentInvoke(WS_VISIBILITY_UNKNOWN_RESIDENT(target),actor,time,renderer):0;}
  if(!(fast?visible:wsVisibilityActorDecision(actor,a,module)))return 0;
- return WS_VISIBILITY_NATIVE_RESIDENT(module,a->clipped)(actor,time,renderer);
+ return wsVisibilityResidentInvoke(WS_VISIBILITY_NATIVE_RESIDENT(module,a->clipped),actor,time,renderer);
 }
 __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityDispatchOccurrence100(void*actor,uint32_t time,void*renderer,uint32_t flags){
  unsigned char*module=wsVisibilityDrawContext?wsVisibilityDrawContext->view.module:(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!module)return 0;
  const WSVisibilityActorLayout*a=0;int visible=0,fast=wsVisibilityFastActorDecision(actor,module,&a,&visible);
  if(!fast)a=wsVisibilityActorLayout(actor,module);
- if(!a){void*target=wsVisibilityUnknownActorTarget(actor,module,0x100);return target?WS_VISIBILITY_UNKNOWN_OCCURRENCE(target)(actor,time,renderer,flags):0;}
+ if(!a){void*target=wsVisibilityUnknownActorTarget(actor,module,0x100);return target?wsVisibilityOccurrenceInvoke(WS_VISIBILITY_UNKNOWN_OCCURRENCE(target),actor,time,renderer,flags,0):0;}
  if(!(fast?visible:wsVisibilityActorDecision(actor,a,module)))return 0;
- return WS_VISIBILITY_NATIVE_OCCURRENCE(module,a->draw)(actor,time,renderer,flags);
+ return wsVisibilityOccurrenceInvoke(WS_VISIBILITY_NATIVE_OCCURRENCE(module,a->draw),actor,time,renderer,flags,a);
 }
 __declspec(dllexport) int __cdecl WorldSettingsVisibilityMinimapExclude(void*actor,uint32_t reason){
  unsigned char*module=(unsigned char*)WS_CERT_MODULE("AnnoWelt.dll");if(!module)return 1;
@@ -711,6 +769,24 @@ __declspec(dllexport) uintptr_t __cdecl WorldSettingsVisibilityRenderStatic188(v
 #ifndef WS_CHART_CALLER
 #define WS_CHART_CALLER() ((uintptr_t)__builtin_return_address(0))
 #endif
+
+/* Native72460 and the mineral bit14 variant submit only through Display180.
+ * The exact caller and actor anchor prevent a remembered-building exemption
+ * from escaping this Ore call. Unknown terrain always keeps its chart gate. */
+static int wsVisibilityOreSprite(const WSVisibilityDrawContext*c,void*renderer,const float*position,uint32_t slot,uintptr_t caller){
+ const WSVisibilityOreDrawScope*s=wsVisibilityOreDrawTLS;if(!s||slot!=0x180u)return 0;
+ if(caller!=(uintptr_t)c->view.module+0x725eeu&&caller!=(uintptr_t)c->view.module+0x7145eu)return 0;
+ if(s->context!=c||s->renderer!=renderer||!wsVisibilityFastRenderer(c,renderer))return -1;
+ const WSVisibilityActorLayout*a=0;int visible=0,fast=wsVisibilityFastActorDecision(s->actor,c->view.module,&a,&visible);
+ if(!fast){a=wsVisibilityActorLayout(s->actor,c->view.module);visible=a&&a->vtable==0xf58e8u&&wsVisibilityActorDecision(s->actor,a,c->view.module);}
+ if(!visible||!a||a->vtable!=0xf58e8u)return -1;
+ float xyz[3],x,z;void*parent=0;
+ if(fast){parent=wsVisibilityFastPointer(s->actor,0x10);memcpy(&x,(unsigned char*)s->actor+0x20,4);memcpy(&z,(unsigned char*)s->actor+0x28,4);}
+ else{parent=wsCertPointer(s->actor,0x10);if(!wsVisibilityFloat(s->actor,0x20,&x)||!wsVisibilityFloat(s->actor,0x28,&z))return -1;}
+ if(parent!=s->parent||!wsVisibilitySpriteCoordinates(c,position,xyz))return -1;
+ if(xyz[0]!=x||xyz[2]!=z||!wsVisibilityOreParentInContext(c,s->parent,x,z)||!wsVisibilityOrePoint(c,xyz[0],xyz[2]))return -1;
+ return 1;
+}
 static uintptr_t wsVisibilityStaticInvoke(void*target,void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot,uintptr_t caller){
  if(slot==0x180u)InterlockedExchange64(&wsVisibilityRenderTarget180,(LONG64)(uintptr_t)target);
  else if(slot==0x188u)InterlockedExchange64(&wsVisibilityRenderTarget188,(LONG64)(uintptr_t)target);
@@ -718,8 +794,9 @@ static uintptr_t wsVisibilityStaticInvoke(void*target,void*renderer,void*frame,u
  int known=marked&&wsVisibilityFastRenderer(wsVisibilityDrawContext,renderer)&&
   target==(slot==0x180u?wsVisibilityDrawContext->fast->original180:wsVisibilityDrawContext->fast->original188);
  if(!target||(!known&&!(marked?WS_VISIBILITY_STATIC_TARGET_OK(target):WS_VISIBILITY_LEGACY_STATIC_TARGET_OK(target)))){InterlockedExchange(&wsVisibilityLastError,8);return 0;}
- int remembered=marked?wsVisibilityChartGhostSprite(wsVisibilityDrawContext,frame,orientation,caller,position,&phase,&flags):0;
- if(remembered<0||(!remembered&&!WorldSettingsVisibilitySpriteVisible(position)))return 0;
+ int mineral=marked?wsVisibilityOreSprite(wsVisibilityDrawContext,renderer,position,slot,caller):0;if(mineral<0)return 0;
+ int remembered=marked&&!mineral?wsVisibilityChartGhostSprite(wsVisibilityDrawContext,frame,orientation,caller,position,&phase,&flags):0;
+ if(remembered<0||(!remembered&&!mineral&&!WorldSettingsVisibilitySpriteVisible(position)))return 0;
  return WS_VISIBILITY_NATIVE_STATIC(target)(renderer,frame,orientation,phase,flags,position);
 }
 static uintptr_t wsVisibilityStaticDraw(void*renderer,void*frame,uint32_t orientation,uint32_t phase,uint32_t flags,const float*position,uint32_t slot,uintptr_t caller){

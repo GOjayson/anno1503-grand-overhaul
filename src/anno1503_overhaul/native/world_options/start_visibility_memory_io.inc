@@ -259,3 +259,42 @@ __declspec(dllexport) int WorldSettingsVisibilityReleaseUnpublishedScene(void*sc
 __declspec(dllexport) uint32_t WorldSettingsCopyMemoryError(void*buffer){
  if(!buffer)return 0;uint32_t n=0;while(n<sizeof wsMemoryIOError-1u&&wsMemoryIOError[n])n++;memcpy(buffer,wsMemoryIOError,n);((char*)buffer)[n]=0;return n+1u;
 }
+
+/* Exact HE Frame 76B50 file-load boundary only.
+ * Scene+A8 is signed-32-bit HRESULT: Frame tests EAX then JS at 76B56/76B58.
+ * All three certified Scene vtables use native A8 target 3AC0. That adapter
+ * writes arg5 to Scene+178 and arg4 to Scene+160, then tail-dispatches B0.
+ * The separate Scene+B8 stream-loading branch is deliberately untouched. */
+typedef int32_t (*WSMemoryNativeLoadA8)(void*,const char*,uint32_t,void*,unsigned char);
+static _Thread_local int wsMemoryInGameLoadBusy;
+__declspec(dllexport) int32_t WorldSettingsVisibilityLoadFileA8(
+ void*scene,const char*filename,uint32_t index,void*world,unsigned char flag){
+ const int32_t failure=(int32_t)0x80004005u;
+ char error[512]={0},captured[MAX_PATH];
+ unsigned char*module=(unsigned char*)WS_CERT_MODULE("AnnoScene.dll");
+ void*vt=wsCertPointer(scene,0),*target=NULL;
+ /* An outer certified factory/file load owns its staged checkpoint. Never
+  * cancel that owner or stage another checkpoint on recursive entry. */
+ if(wsMemoryInGameLoadBusy||wsMemoryLoad.data||wsMemoryLoad.file){
+  wsMemoryError(error,sizeof error,"A native exploration load is already pending.");goto refused;
+ }
+ if(!module||!scene||!wsCertMemory(scene,0x180,0)||
+    (vt!=module+0x35498&&vt!=module+0x36108&&vt!=module+0x3f648)||
+    (target=wsCertPointer(vt,0xa8))!=(void*)(module+0x3ac0)||
+    !wsCertMemory(target,0x1c,1)){
+  wsMemoryError(error,sizeof error,"The native in-game file-load boundary differs.");goto refused;
+ }
+ if(!wsMemoryString(filename,captured)){
+  wsMemoryError(error,sizeof error,"The native load filename is invalid or too long.");goto refused;
+ }
+ wsMemoryInGameLoadBusy=1;
+ if(!WorldSettingsVisibilityBeforeLoad(captured,error,sizeof error))goto failed;
+ int32_t loaded=((WSMemoryNativeLoadA8)target)(scene,captured,index,world,flag);
+ if(loaded<0){WorldSettingsVisibilityCancelLoad();wsMemoryInGameLoadBusy=0;return loaded;}
+ if(!WorldSettingsVisibilityAfterLoad(scene,error,sizeof error))goto failed;
+ wsMemoryInGameLoadBusy=0;return loaded;
+ failed:WorldSettingsVisibilityCancelLoad();wsMemoryInGameLoadBusy=0;
+ refused:
+ snprintf(wsMemoryIOError,sizeof wsMemoryIOError,"%s",error[0]?error:"The exploration checkpoint could not be loaded.");
+ WS_MEMORY_REPORT_FAILURE(wsMemoryIOError);return failure;
+}

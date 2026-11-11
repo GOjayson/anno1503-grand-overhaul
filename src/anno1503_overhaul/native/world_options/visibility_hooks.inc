@@ -1,5 +1,5 @@
 /* Part of the existing paused-thread transaction. Eleven dispatch pointers and
- * fifteen prepared branches share preflight, commit and rollback. */
+ * sixteen prepared branches share preflight, commit and rollback. */
 #include "visibility_native_pins.h"
 typedef struct WSVisibilityHook {const wchar_t*module;uint32_t slot,target;const char*exportName;} WSVisibilityHook;
 static const WSVisibilityHook wsVisibilityHookPlan[]={
@@ -31,7 +31,8 @@ static const WSVisibilityCall wsVisibilityCallPlan[]={
  {L"AnnoFrame.dll",0x8040au,5,{0xe8,0x81,0x57,0xff,0xff},"WorldSettingsVisibilitySave",1,0},
  {L"AnnoFrame.dll",0x1ca76u,6,{0xff,0x90,0x18,1,0,0},"WorldSettingsVisibilityFinishFrame",1,1},
  {L"AnnoFrame.dll",0x169acu,6,{0xff,0x90,0xf0,0,0,0},"WorldSettingsVisibilityInteractionProperty",1,0},
- {L"AnnoFrame.dll",0x16a72u,6,{0xff,0x90,0xf0,0,0,0},"WorldSettingsVisibilityInteractionProperty",1,0}
+ {L"AnnoFrame.dll",0x16a72u,6,{0xff,0x90,0xf0,0,0,0},"WorldSettingsVisibilityInteractionProperty",1,0},
+ {L"AnnoFrame.dll",0x76b50u,6,{0xff,0x90,0xa8,0,0,0},"WorldSettingsVisibilityLoadFileA8",1,0}
 };
 _Static_assert(sizeof wsVisibilityHookPlan/sizeof wsVisibilityHookPlan[0]==WS_VISIBILITY_POINTER_COUNT,"Visibility pointer count differs");
 _Static_assert(sizeof wsVisibilityCallPlan/sizeof wsVisibilityCallPlan[0]==WS_VISIBILITY_CALL_COUNT,"Visibility call count differs");

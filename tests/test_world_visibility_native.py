@@ -544,11 +544,13 @@ __declspec(dllexport) int scoped_reads_case(uint32_t which){
   for(size_t i=0;i<sizeof wsVisibilityActorLayouts/sizeof wsVisibilityActorLayouts[0];i++){
    const WSVisibilityActorLayout*a=&wsVisibilityActorLayouts[i];
    for(uint32_t owner=0;owner<3;owner++)for(uint32_t position=0;position<3;position++){
-    memset(actorBytes,0,sizeof actorBytes);ptr(actorBytes,moduleBytes+a->vtable);ptr(actorBytes+a->worldOffset,worldBytes);
+    memset(actorBytes,0,sizeof actorBytes);ptr(actorBytes,moduleBytes+a->vtable);ptr(actorBytes+a->worldOffset,a->vtable==0xf58e8u?islandBytes:worldBytes);
     if(a->ownerOffset)ptr(actorBytes+a->ownerOffset,owner==1?humanBytes:(owner==2?enemyBytes:0));
     float coordinate=position==0?128.0f:(position==1?20.0f:255.0f);memcpy(actorBytes+a->xOffset,&coordinate,4);memcpy(actorBytes+a->zOffset,&coordinate,4);
     const WSVisibilityActorLayout*actual=0;int visible=-1;
-    if(!wsVisibilityFastActorDecision(actorBytes,moduleBytes,&actual,&visible)||actual!=a||visible!=wsVisibilityActorInContext(&context,actorBytes,a)){result=1;goto done;}
+    int expected=wsVisibilityActorInContext(&context,actorBytes,a);
+    if(a->vtable==0xf58e8u&&(coordinate<16.0f||coordinate>=32.0f))expected=0;
+    if(!wsVisibilityFastActorDecision(actorBytes,moduleBytes,&actual,&visible)||actual!=a||visible!=expected){result=1;goto done;}
    }
   }
  }else if(which==1){
@@ -794,7 +796,7 @@ __declspec(dllexport) int memory_case(uint32_t which){
   return 0;
  }
  if(which==19){
-  prepare(wsVisibilityEncode(0,0),0);ptr(actorBytes,moduleBytes+0xf58e8);ptr(actorBytes+0x10,worldBytes);float x=20.0f,z=20.0f;memcpy(actorBytes+0x20,&x,4);memcpy(actorBytes+0x28,&z,4);
+  prepare(wsVisibilityEncode(0,0),0);ptr(actorBytes,moduleBytes+0xf58e8);ptr(actorBytes+0x10,islandBytes);float x=20.0f,z=20.0f;memcpy(actorBytes+0x20,&x,4);memcpy(actorBytes+0x28,&z,4);
   if(WorldSettingsVisibilityDispatchOccurrence100(actorBytes,71,tableBytes,0x12345678)||spyResidentCalls)return 1;
   wsPut16(islandBytes+0x12e,1);
   if(WorldSettingsVisibilityDispatchOccurrence100(actorBytes,71,tableBytes,0x12345678)||spyResidentCalls)return 4;

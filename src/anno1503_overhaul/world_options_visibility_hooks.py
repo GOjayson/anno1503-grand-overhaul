@@ -72,12 +72,12 @@ def verify_control_visibility_preimages(data: bytes, expected_sha: str):
 def apply_visibility_hooks(files: dict[str, bytes]) -> None:
     value = files[INSTALLER]
     value = replace(value, b'#define WS_MAX_HOOKS (16+WS_ENGINE_PATCH_COUNT)',
-        b'#define WS_MAX_HOOKS (35+WS_ENGINE_PATCH_COUNT)', 'bounded visibility dispatch transaction capacity')
+        b'#define WS_MAX_HOOKS (36+WS_ENGINE_PATCH_COUNT)', 'bounded visibility dispatch transaction capacity')
     value = replace(value, b'static char wsInstallError[512];',
         b'static char wsInstallError[512];\n'
         b'#define WS_VISIBILITY_POINTER_COUNT 11u\n'
-        b'#define WS_VISIBILITY_CALL_COUNT 15u\n'
-        b'#define WS_VISIBILITY_HOOK_COUNT 26u\n'
+        b'#define WS_VISIBILITY_CALL_COUNT 16u\n'
+        b'#define WS_VISIBILITY_HOOK_COUNT 27u\n'
         b'static DWORD wsVisibilityPatchStatusUnlocked(void);',
         'visibility readiness declarations')
     value = replace(value, b' ReleaseSRWLockShared(&wsInstallLock);return result;',

@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.7; user confirmed smooth camera movement and correct remembered towns/fog in the 1024-world test |
+| World Settings | Priority | Experimental 0.6.0-dev.8; mineral symbols accepted in-game; loading from inside a running game still produces a black map |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -68,7 +68,20 @@ The seven earlier menu additions are recorded in
 starting-position and resource controls have a separate
 [fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
 0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
-Development **0.6.0-dev.7** reduces further duplicate graphics and island memory
+Development **0.6.0-dev.8** repairs mineral-symbol visibility and adds checkpoint
+handling for the inspected in-game filename path. All 187 visibility tests and independent review of six matching
+builds passed. World-only installation/restoration passed, preserving saves,
+presets and all 51 preceding backup generations; two restored generations give
+53. The updated automatic shortcut preserves its preceding version, and fresh
+automatic startup and main-menu `wr1` loading passed. The user accepted mineral
+symbols, but normal in-game loading still produces a black map; that repair
+remains unfinished.
+The chart format, camera preparation, ownership and
+scout rules remain unchanged; Food gameplay is not being retested. The newer
+`wr1` test world has 50 islands on a 2048 map; these checks do not establish
+Huge-world camera performance.
+
+The preceding **0.6.0-dev.7** reduces further duplicate graphics and island memory
 checks within individual calls, retaining fresh fields and original fallbacks.
 All 169 visibility tests, six matching builds and World-only installation/
 restoration passed. Saves, presets and all preceding backups were retained.

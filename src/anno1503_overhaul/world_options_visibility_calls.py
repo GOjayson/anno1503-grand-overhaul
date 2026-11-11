@@ -31,6 +31,7 @@ CALLS = (
     ('AnnoFrame.dll', 'native_attempt', 0x1ca76, bytes.fromhex('ff9018010000'), 'WorldSettingsVisibilityFinishFrame'),
     ('AnnoFrame.dll', 'native_attempt', 0x169ac, bytes.fromhex('ff90f0000000'), 'WorldSettingsVisibilityInteractionProperty'),
     ('AnnoFrame.dll', 'native_attempt', 0x16a72, bytes.fromhex('ff90f0000000'), 'WorldSettingsVisibilityInteractionProperty'),
+    ('AnnoFrame.dll', 'native_attempt', 0x76b50, bytes.fromhex('ff90a8000000'), 'WorldSettingsVisibilityLoadFileA8'),
 )
 
 

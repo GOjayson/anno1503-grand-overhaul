@@ -10,7 +10,7 @@ It does not support arbitrary combinations of future native modifications.
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.7; user confirmed smooth camera movement and correct remembered towns/fog in the 1024-world test | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
+| World Settings | Priority | Experimental 0.6.0-dev.8; mineral symbols accepted in-game; normal in-game loading still produces a black map | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
 | Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
 | Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
@@ -27,7 +27,23 @@ The UI should explain their status and the validator must enforce it too.
 
 ## Expanded in-game World Settings
 
-The 0.6.0-dev.7 candidate reduces more duplicate graphics and island memory
+The 0.6.0-dev.8 candidate repairs mineral symbols whose native parent is an
+island, including icons over remembered mine buildings, and adds checkpoint
+handling for the inspected in-game filename path. Native mineral
+quantity/discovery rules remain authoritative; this does not add remembered
+depletion quantities. Uncharted terrain stays covered. All 187 visibility tests
+and independent review of six matching builds passed. World-only installation/
+restoration passed, preserving saves, presets and all 51 preceding backups;
+two restored generations give 53. The updated shortcut preserves its preceding
+version. Fresh automatic startup and main-menu `wr1` loading passed; the user
+accepted mineral symbols. Normal in-game loading still produces a black map,
+so the load repair remains unfinished. The chart format, camera
+preparation, ownership and scout rules are unchanged. Food gameplay is not being
+retested.
+The later 2048-world/50-island `wr1` investigation does not extend the preceding
+1024-world camera acceptance.
+
+The preceding 0.6.0-dev.7 candidate reduces more duplicate graphics and island memory
 checks inside individual calls, retaining fresh fields and original fallbacks.
 All 169 visibility tests, six matching builds and World-only installation/
 restoration passed. Automatic startup and `wc6` loading passed, with smooth

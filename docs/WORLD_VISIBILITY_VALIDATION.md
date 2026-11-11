@@ -1,5 +1,97 @@
 # Map visibility and terra incognita validation
 
+## 0.6.0-dev.8 mineral symbols and in-game file loading
+
+V9 targets two failures found after V8's bounded 1024-world acceptance:
+missing mineral symbols and a black unexplored view after loading a save from
+inside a running game. **Automated and World-only installation/restoration
+checks passed. Mineral symbols were accepted in-game; normal in-game loading
+still produces a black map, so the load repair is unfinished.** Food gameplay
+is not being retested.
+
+| Identity | Published dev.8 build |
+| --- | --- |
+| Generator | `ws6-a3e06d19042a3029a92dac09b02b693f32afe50324c9ca940cd3fbe9e22b2586` |
+| World-only runtime SHA-256 | `06f0c2e3f8b67559aae34ba938dc6625a9dba4235cd83b0f11cc8ded54e7a160` |
+| Food + World runtime SHA-256 | `b21de828431791b8fa0a928bc47bf4c6621229f6d0deed56bc909c3d1df2f796` |
+
+The exact HE mineral occurrence stores its parent **Island**, rather than World,
+at `+0x10`; that island supplies World at `+0x38`. Both actor paths now validate
+the island's registration, class, world and coordinate bounds. A synchronous
+scope around the exact original mineral draw allows its neutral icon over a
+remembered mine footprint. The final sprite check binds the actor, parent,
+renderer, coordinates and two audited native callers, and restores the previous
+scope on return. Other actor calls cannot borrow it, and unknown terrain retains
+its chart gate. Native quantity, discovery and drawing eligibility remain
+unchanged. This adds **no last-seen mineral-depletion memory**.
+
+In-game filename loading uses Frame `0x76B50` and Scene `+A8`, bypassing the
+existing main-menu factory wrapper. V9 captures the bounded filename and stages,
+loads and applies that file's checkpoint before Frame publishes the scene.
+The wrapper preserves all five native arguments and signed 32-bit HRESULTs,
+refuses nested staging on that thread, and leaves caller-owned scene lifetime
+unchanged.
+The separate Scene `+B8` stream-loading route is untouched. Chart storage and
+save format, camera preparation, ownership controls and scout sources remain
+exact; **305 other native function bodies** are unchanged against V8.
+
+All **187 visibility tests passed in 90.337 seconds**, without skips or failures.
+The new file-load fixtures exercise real Windows files, checksums and sharing
+locks with synthetic Scene/World graphs and unchanged chart lifecycle code.
+They cover reused/reallocated addresses, rollback, a same-GUID 1024-to-2048
+transition, missing history, corrupt/locked input, native failures and the fifth
+stack argument. Mineral fixtures cover 42 cases; their draw spy translates the
+audited native eligibility branch. These fixtures do not run Anno or establish
+GPU presentation. The focused-suite transcript SHA-256 is
+`a208f5080b0b7fe3d90b7b86afb992d3b12742a328e0c648ac79cc8d3b66b394`.
+
+Independent pre/post-pin review passed **six matching builds**, with three
+identical runtimes per feature selection. Four pre-pin candidates and the two
+final publication builds passed; both package profiles were prepared and
+validated. The reviewed contract has **87 actual / 61 required exports,
+27 visibility components, 173 engine edits and 209 transaction components**.
+The **35 generator inputs, 66 staged sources, 43 imported compiled inputs and
+488 imported files** retain their established membership. A separate five-suite
+portable check ran **87 tests in 69.227 seconds: 84 passed and three Windows
+symlink-privilege checks were skipped**, without failures.
+
+The closed-game World-only restore/install/restore/install cycle passed,
+including production exact preparation no-ops, restoration to all **23 stock
+inputs** and removal of all **19 introduced files** on each restore. Two complete
+protected-state passes retained **48 named / 49 native saves, all 96 save-directory
+files, five presets, 23 original source inputs, 297 historical backup files and
+all 488/43 imported inputs**. All 51 preceding managed backup generations remain
+exact; two newly restored generations give **53**. `wc6`, `wc7` and `wr1` retain
+their certified hashes. The current autosave was archived exclusively and never
+restored to older bytes. Both prepared profiles were validated; Food was not
+installed in this cycle, which ended with World Settings on and Food off.
+
+The updated automatic shortcut preserves its V8 version exclusively and targets
+the installed self-contained V9 World-only package. Fresh automatic startup
+passed through the normal client handoff to the identical managed copy, with
+the exact V9 runtime, all 173 engine edits and empty error fields. Activation
+was not retried. Main-menu `wr1` loading and read-only native checks passed with
+all 27 visibility components, 173 engine edits and the 2048-world/50-island
+geometry matched to its same-save-derived reference. No original generated
+preview match is claimed. The user confirmed: "Mineral symbols work. after
+loading map is black again". Normal in-game loading therefore **failed** in V9,
+despite the active `+A8` filename hook. Its separate `+B8` stream route and other
+native load paths remain under investigation; the actual UI route is not yet
+proved. The black-view diagnostic SHA-256 is
+`4374e486b51f8ada0e6a606a68474f478588cbafa84f6be400fecb327f7ca00b`.
+
+The V8 investigation's `wr1` is a **different 2048-world with 50 islands**,
+although it reuses the GUID of the earlier 1024-world/24-island `wc7`.
+Its exclusive native archive has SHA-256
+`236aea81dae452a35a4d1a9da4045e73ebe526236ac9d51bd9153a99f4cb71a1`.
+Read-only checks matched 75 positive deposits to their live parent islands and
+global coordinates, with live quantities equal to saved quantities times 256.
+Loading `wr1` from inside V8 reproduced the black view; Anno then closed
+normally. Its geometry reference is derived from that same native checkpoint:
+**no original generated-preview match or starting-options provenance is claimed**.
+V8's earlier smooth-camera result below remains bounded to its 1024-world test;
+it does not establish V9 or Huge-world performance.
+
 ## 0.6.0-dev.7 invocation-span candidate
 
 V7 improved camera movement in the actual game, but lag remains. V8 reduces
