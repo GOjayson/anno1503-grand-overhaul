@@ -1,15 +1,92 @@
 # Map visibility and terra incognita validation
 
-## 0.6.0-dev.3 repair in progress
+## 0.6.0-dev.4 performance candidate
 
-The latest source addresses three user-reported failures in V3. Automated
+This candidate addresses V4's remaining lag by batching remembered-sprite
+capture within each current draw. It preserves the chart format, save ABI,
+all existing hooks, exact line-of-sight rules, remembered appearance and exact
+per-figure/per-quad animation time. It adds no cross-draw native pointers or
+observation timestamp shortcut. V4's bounded ownership/scout success below
+remains separate from acceptance of this new performance candidate.
+
+| Identity | Reviewed dev.4 candidate |
+| --- | --- |
+| Generator | `ws6-bb6c7cd8c16e0aaa71a5693f960770dd2f85af479830ad17ca2c3527867dedfb` |
+| World-only runtime SHA-256 | `95ee49834a60393f95043e3c52323f5b846bf03ecce5fbdc660971dfb1f2ab4f` |
+| Food + World runtime SHA-256 | `9afe681786d84267c48d13f029194d975b8a1fef6b843b7a1c59e5e804717c5b` |
+
+Each profile produced three byte-identical runtimes: two independently
+reviewed candidates and its completed publication build. The independent
+six-build audit passed **34 raw LF/index generator inputs, all 488/43 immutable
+inputs, the 65-source staged closure, the unchanged 85-export ABI, all nine
+native module pins and the complete 26-visibility/208-component transaction**,
+including native function bounds and TLS. Canonical pins were promoted only
+after the four-build pre-pin review. The full suite completed **358 tests in
+195.016 seconds: 353 passed and five Windows link-privilege tests were
+skipped**, with no failures or errors. Closed-game preservation and the
+production installer/restoration cycle passed. The final World-only build is
+installed. Fresh automatic native startup and loading `wc4` passed. The user
+confirmed remembered towns look correct and saved `wc5`, but camera movement
+still feels laggy while a stationary view is smooth. **This candidate has not
+resolved the reported performance problem.** Food gameplay is not being repeated.
+
+Before the cycle, the closed-game preservation check retained **43 named
+worlds / 44 native saves, all 68 protected save-directory files, five presets,
+41 preceding backup generations, 23 original source inputs, 297 historical
+backups and all 488/43 imported inputs**. The current progressed autosave was
+archived exclusively and verified byte-for-byte; no older autosave was
+restored. The subsequent closed-game cycle retained that exact save tree,
+all five presets, the 41 earlier backup generations and every original input.
+Three new restored generations give **44**. All pre-existing validation
+evidence remained byte-exact across the two full evidence-hash passes.
+
+The final installation has **World Settings enabled and Food disabled**,
+using the reviewed World-only runtime above. The automatic-launch shortcut
+was updated and its preceding V4 shortcut preserved. A fresh automatic launch
+passed with the exact installed runtime. The loaded `wc4` reported all **26
+visibility components and 173 engine edits** active, last error **0**, and no
+pending masked rows or owned copies. A separate read-only observer matched the
+24-island geometry/resources and found the deployed human scout eligible for
+vision. Those native checks do not establish smooth camera movement.
+
+The independently inspected `wc5` retains the world identity, 1024-square
+dimensions, Unexplored/Strict policy, all 24 island geometries/climates, the 13
+interpreted crop bits and physical ore masks. All **2,320** preceding chart
+bits and **8,499** known minimap bits remain, with **18** and **61** added.
+All **5,252** preceding observed cells remain observed. The 178 preceding
+island-0 and 113 island-7 anchors retain every recorded byte, including times;
+these are bounded disk comparisons, not complete current-sight or intervening
+travel proofs. Both original save files were archived exclusively. No V5
+fresh-save reload or performance acceptance is claimed.
+
+Eight new batch methods and 19 existing native methods passed. Independent
+source review and a repeat of the eight batch methods passed. Original native
+instruction execution passed **480 cases**, comparing **20,352 exact output
+tuples** across both profiles, two relocations, all camera rotations, shared
+quads, static/animated and period-zero assets, live-cell exclusion, cross-quad
+footprints and exact last matching cell times. Conflicting phases and changed
+asset bindings retain their refusal paths. These are CPU/helper proofs, not
+GPU ordering or actual game acceptance.
+
+Actual compiled-DLL APIs passed **72 isolated scene stages** across both Food
+selections, all six policies, 512/1024/2048 worlds and two seeds, with AI zero.
+They do not run Anno. In the paired synthetic Windows benchmark, actual capture
+preparation for 4,000 figures fell from **4.40 to 1.34 ms** for static figures
+and **5.33 to 1.26 ms** for mixed figures. Observation remained about **1.2 ms**
+and is unchanged. These timings measure this specific CPU work, **not game
+FPS or a demonstrated correction of the user's remaining lag**.
+
+## V4 0.6.0-dev.3: ownership/scout checks passed, performance incomplete
+
+The V4 source addresses three user-reported failures in V3. Automated
 checks, reproduced builds, independent artifact review and the production
 installation/restoration cycle passed. A fresh automatic World-only startup
 loaded `wc3`. The user confirmed that foreign controls are blocked, own
 controls work and a deployed scout reveals land. This is bounded hands-on
 acceptance of those two repairs. The user saved `wc4`; its independent file
-inspection is pending. Lag improved but remains noticeable, so **performance
-is unresolved and complete repair acceptance has not passed**. No Food + World
+inspection passed, including retained exploration history. An eligible native
+scout observer was also confirmed. Lag improved but remains noticeable, so
+**performance is unresolved and complete repair acceptance has not passed**. No Food + World
 gameplay run is being repeated, at the user's request.
 
 | Identity | Reviewed 0.6.0-dev.3 repair |
@@ -41,14 +118,19 @@ rendering or performance.
 
 Automatic startup and the certified `wc3` load then passed in a fresh process,
 with the bounded activation/error checks clear. The separate 96-byte chart
-diagnostic was busy during rendering and has **not** passed its live read yet;
-a successful history diagnostic is not inferred from the other checks.
+diagnostic initially returned busy during rendering, then passed at an idle
+observation: 26 visibility components and 173 engine edits active, no error,
+zero pending rows or owned copies, and equal masked/restored totals of
+330,552. It reported 2,329 charted cells, 2,838 remembered anchors and 8,529
+known minimap pixels for the 1024-square Terra/Strict world. The save-memory
+error was empty. These counters are native state evidence, not game FPS or a
+complete rendered-frame proof.
 
 | Repair | Source and automated scope | Actual game status |
 | --- | --- | --- |
 | Dense building-memory lag | Mix aligned coordinate bits before hash-table indexing; preserve exact key comparisons and remembered appearance. Picking passes read history without observing or updating it, and skip presentation refresh work. Dense native lookup and full-wrapper fixtures pass. | The user reports improvement but still-noticeable lag. Performance remains unresolved; CPU-fixture speedup is not game FPS. |
 | Foreign building control | Restore the ordinary native ownership-selection test at two interaction consumers. Independently authorize the two shared production/food-sale and ship-queue command interfaces using the current registered building/city/island/player ownership graph. Reveal and remembered appearance grant no command authority. Unmarked native worlds keep their original delegation. | The user confirmed foreign controls blocked and own controls working. This is a bounded check; stale selections, broader command paths and read-only information/trade still need extended coverage. |
-| Missing military/scout exploration | Add eligible human-owned deployed scouts and military units to charting/current sight at the unchanged 48-tile radius. Six audited native classes share a bounded 4,096-record adapter traversal; this is not a native recruitment cap. Dead, transported, foreign, stale and malformed records are excluded. | The user confirmed a deployed scout reveals land and saved `wc4`. Independent save inspection, other unit classes and embarked/dead-unit behavior remain to be checked in the game. |
+| Missing military/scout exploration | Add eligible human-owned deployed scouts and military units to charting/current sight at the unchanged 48-tile radius. Six audited native classes share a bounded 4,096-record adapter traversal; this is not a native recruitment cap. Dead, transported, foreign, stale and malformed records are excluded. | The user confirmed a deployed scout reveals land and saved `wc4`. Independent history inspection and an eligible native scout observer check passed. Other unit classes and embarked/dead-unit behavior need broader game coverage. |
 
 The completed targeted groups contain **40 visibility/performance/land-unit
 methods**, **43 hook/branch checks** and **six ownership-command methods**.
@@ -108,7 +190,8 @@ appearance and ownership colour; they update on observation. Enemy ships and
 units still require current sight. Remembered draws do not create native live
 objects, but V3’s interaction path still allowed foreign native buildings to
 be controlled. Its renderer/picking fixtures did not establish ownership
-authorization; the dev.3 repair and its pending game checks are separate.
+authorization; the dev.3 repair and its bounded ownership/scout game checks
+are recorded separately above.
 
 Chart and building memory belong to each native checkpoint, using a bounded,
 checksummed `WSCHART` extension rather than a sidecar. Save As carries the

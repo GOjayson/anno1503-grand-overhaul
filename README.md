@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.3 repairs lag, foreign-building controls and missing land-unit exploration; automated builds and installer cycling passed; ownership/scout checks passed in a bounded game sample, with lag still unresolved |
+| World Settings | Priority | Experimental 0.6.0-dev.4 performance candidate; preceding ownership/scout checks passed in-game, but remaining lag needs new game acceptance |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -68,18 +68,27 @@ The seven earlier menu additions are recorded in
 starting-position and resource controls have a separate
 [fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
 0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
-Development **0.6.0-dev.3 is a repair in progress**, with targeted automated
-checks for dense building-memory lookups, ownership checks on building and
-shipyard commands, and exploration by deployed scouts and military units.
-Its full suite passed: 350 tests, with 345 passing and five Windows
-link-privilege skips. Each Food selection has three identical reviewed builds,
-and 72 isolated compiled-DLL scene stages passed. Both installer packages are
-prepared and validated, and the production installation/restoration cycle
-passed. A fresh automatic launch loaded `wc3`; the user confirmed that foreign
-controls are blocked, own controls work and a deployed scout reveals land. The
-user saved `wc4`, whose independent file inspection is pending. Lag improved
-but is still noticeable, so performance acceptance remains unresolved. Food +
-World gameplay is not being repeated at the user's request.
+Development **0.6.0-dev.4 targets the remaining lag** by grouping remembered
+sprites within each draw, preserving exact recorded appearance and animation
+time. All six builds passed independent review, with three identical runtimes per
+Food selection. Targeted tests, native instruction checks and 72 isolated
+compiled-DLL scene stages passed. The full suite completed 358 tests: 353
+passed and five Windows link-privilege tests were skipped. Closed-game data
+preservation and the production installation/restoration cycle passed. The
+new World-only build is installed and its shortcut was updated; automatic
+startup and loading `wc4` passed. The user confirmed correct remembered towns
+and saved `wc5`; independent file checks retained exploration history and world
+geometry. Camera movement still feels laggy while the stationary view is smooth,
+so the performance repair remains incomplete. CPU benchmarks show a reduction
+in this specific work; they do not establish game FPS.
+
+The preceding dev.3 V4 installation/restoration cycle and fresh `wc3` load
+passed. The user confirmed foreign controls blocked, own controls working and
+scout exploration, then saved `wc4`. Its exploration-history file certificate
+and an eligible native scout observer check passed. Lag improved but remained
+noticeable. Those bounded ownership/scout results remain valid evidence for V4;
+they are not acceptance of the new batching candidate. Food + World gameplay
+is not being repeated at the user's request.
 
 The preceding 0.6.0-dev.2 V3 candidate passed automated and installer checks.
 Its stock profile loaded `wv63`, displayed fog over unknown land and sea, and
@@ -144,9 +153,9 @@ choices, it provides:
 - **Map visibility:** choose Unexplored (terra incognita), Geography revealed
   (the default), or Fully explored. Unexplored covers uncharted land and sea
   with an opaque layer in the main view. Your ships and settlements chart nearby
-  areas in eight-tile cells, which stay remembered. The dev.3 repair also adds
-  deployed scouts and military units as observers; actual-game confirmation is
-  pending. The minimap covers unknown areas uniformly,
+  areas in eight-tile cells, which stay remembered. Deployed scouts and military
+  units also provide sight. Scout exploration passed a bounded game check;
+  other unit classes still need wider coverage. The minimap covers unknown areas uniformly,
   without island outlines. Geography revealed shows the terrain layout;
   Fully explored also unlocks island fertility information. Native island
   contact still controls native fertility and gameplay knowledge; it does not
@@ -198,21 +207,26 @@ map-generation feature, not a promise that AI events or a played game will
 unfold identically. Earlier presets remain on disk when a new generator
 refuses their fingerprint; they are not silently converted. Compilation,
 native fixtures and actual game acceptance are distinguished in the
-[visibility validation record](docs/WORLD_VISIBILITY_VALIDATION.md). The dev.3
-repair has passed 40 targeted visibility/performance/land-unit methods, 43
-hook/branch checks and six ownership-command methods. These include isolated
-native instruction and Windows memory fixtures; they do not prove game FPS or
-actual UI behavior. The full suite completed 350 tests in 182.664 seconds:
-345 passed and five Windows link-privilege tests were skipped. Independent
-review passed all six actual DLL builds, three identical builds per Food
-selection. Seventy-two isolated scene stages passed across both selections,
-all six policies, 512/1024/2048 worlds and two seeds, with zero ordinary AI.
-These stages do not run Anno. Both installer packages are prepared and
-validated, and the production installation/restoration cycle passed. Automatic
-startup and the `wc3` load passed in a fresh process. The user confirmed foreign
-controls blocked, own controls working and scout exploration, then saved `wc4`;
-its independent file check is pending. Lag remains noticeable despite an
-improvement. Broader gameplay and performance acceptance remain incomplete.
+[visibility validation record](docs/WORLD_VISIBILITY_VALIDATION.md). The new
+batching candidate passed eight batch methods, 19 existing native methods,
+independent source review, and 480 original-native cases comparing 20,352
+exact output tuples. Its 72 isolated compiled-DLL scene stages cover both Food
+selections, all six policies, 512/1024/2048 worlds and two seeds with AI zero;
+these stages do not run Anno. All six builds passed independent review with
+three identical runtimes per Food selection. The full suite completed 358
+tests in 195.016 seconds: 353 passed and five Windows link-privilege tests were
+skipped. Closed-game preservation retained all saves, presets and backups,
+with the current autosave archived separately. The production installation/
+restoration cycle passed and finished with World Settings enabled and Food
+disabled. The updated shortcut's fresh automatic startup and `wc4` load passed.
+The user's `wc5` display/save check and independent history certificate passed,
+but camera-motion lag remains unresolved.
+
+The preceding V4 suite completed 350 tests: 345 passed and five Windows
+link-privilege tests were skipped. Its installer cycle, fresh `wc3` load,
+`wc4` file checks and user-confirmed ownership/scout sample passed. Its
+remaining lag is the reason for the new candidate. Broader gameplay and
+long-session performance remain unverified.
 
 The preceding V3 suite ran 322 tests: 317 passed and five Windows link-privilege
 tests were skipped. Its 72 isolated compiled-DLL scene stages and three identical

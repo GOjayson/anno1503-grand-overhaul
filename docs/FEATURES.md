@@ -10,7 +10,7 @@ It does not support arbitrary combinations of future native modifications.
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.3 repairs lag, foreign-building controls and missing land-unit exploration; automated builds and installer cycling passed; ownership/scout checks passed in a bounded game sample, with lag still unresolved | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
+| World Settings | Priority | Experimental 0.6.0-dev.4 performance candidate; preceding ownership/scout checks passed in-game, but remaining lag needs new game acceptance | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
 | Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
 | Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
@@ -27,11 +27,13 @@ The UI should explain their status and the validator must enforce it too.
 
 ## Expanded in-game World Settings
 
-The 0.6.0-dev.3 repair retains V3’s charted land and sea, remembered buildings
-and checkpoint-bound exploration history. It adds deployed scouts/military
-observers, restores ownership checks independently of drawing, and repairs
-dense building-memory lookup cost. Actual-game confirmation is pending.
-Island inspection, balanced starts and resource distribution remain available. The installer selects the feature
+The 0.6.0-dev.4 candidate groups remembered-sprite capture within each draw
+to reduce CPU work. It keeps the chart format, save ABI, exact remembered
+times, visibility rules and existing hooks. The preceding dev.3 repair added
+deployed scouts/military observers and ownership checks separate from drawing;
+the user confirmed own/foreign controls and scout exploration in a bounded
+sample, but lag remained. Island inspection, balanced starts and resource
+distribution remain available. The installer selects the feature
 combination; it does not configure individual worlds. Six pages keep the
 choices beside the persistent preview area: World, Players, Starting,
 Presets, Islands and Visibility. Terra incognita covers that preview.
@@ -49,7 +51,7 @@ Presets, Islands and Visibility. Terra incognita covers that preview.
 | Climate balance | Balanced, favour temperate (north/prairie), tropical (jungle/steppe) or polar (polar/tundra). Enabled cultures, all six climates and essential resources remain required. |
 | Layout style | Evenly spread, grouped archipelagos or a central ocean. Geometry, native placement grid, ship reserves, border bounds and minimum spacing remain validated. An impossible choice fails rather than changing layout style silently. |
 | Disasters | Enable/disable the inspected native endless-game disaster option while retaining the separately selected faction options. |
-| Map visibility | Unexplored (terra incognita) covers uncharted land and sea with an opaque layer in the main view. Ships and settlements chart nearby eight-tile cells permanently; dev.3 also includes deployed scouts and military units, pending actual-game verification. Unknown minimap areas are uniform and show no island outlines. Geography revealed is the default and shows the terrain layout. Fully explored also unlocks island fertility information. Native island contact remains separate fertility/gameplay knowledge and does not reveal a whole island's terrain. Terra incognita covers setup geometry, details, start badges and resource summaries. |
+| Map visibility | Unexplored (terra incognita) covers uncharted land and sea with an opaque layer in the main view. Ships and settlements chart nearby eight-tile cells permanently; dev.3 also includes deployed scouts and military units. Scout exploration passed a bounded game check; other classes need wider coverage. Unknown minimap areas are uniform and show no island outlines. Geography revealed is the default and shows the terrain layout. Fully explored also unlocks island fertility information. Native island contact remains separate fertility/gameplay knowledge and does not reveal a whole island's terrain. Terra incognita covers setup geometry, details, start badges and resource summaries. |
 | Enemy activity | Strict line of sight (default) or Reveal all activity. Strict uses a fixed 48-tile radius around controllable human ships, owned settlement building-anchor rectangles and, in the dev.3 repair, eligible deployed scouts/military units. Enemy ships and units hide outside current sight. Buildings keep their last-seen appearance until revisited. Reveal all activity shows live activity within charted areas; Unexplored keeps unknown areas covered in both activity modes. |
 | Exploration history | Save and Save As include charted areas and remembered buildings in an automatic WSCHART extension inside the native checkpoint. History is checked against that exact checkpoint before loading. Older saves without the extension begin around current observers, with no invented historical buildings. Configuration stays in-game and requires no user-edited sidecar. |
 
@@ -76,18 +78,26 @@ foreign-owned and malformed unit records are refused. The fixed 48-tile
 activity range is unchanged. Drawing and remembering a foreign building do
 not authorize production, food-sale or ship-queue changes.
 
-The full repair suite completed 350 tests in 182.664 seconds: 345 passed and
-five Windows link-privilege tests were skipped. All six actual DLL builds
-passed independent artifact review, with three identical builds per Food
-selection. Seventy-two isolated compiled-DLL scene stages passed across both
-selections, all six policies, 512/1024/2048 worlds and two seeds, with zero
-ordinary AI. Those stages do not run Anno. Both installer packages are prepared
-and validated, and the production installation/restoration cycle passed. A
-fresh automatic startup loaded `wc3`. In a bounded hands-on check, the user
-confirmed foreign controls blocked, own controls working and deployed scout
-exploration. The user saved `wc4`; its independent file inspection is pending.
-Lag improved but remains noticeable, so performance acceptance is unresolved.
-The dense-lookup benchmark measures an isolated CPU fixture, not game FPS. See the
+The new dev.4 batching candidate passed eight batch methods, 19 existing
+native methods, independent source review and 480 original-native cases
+comparing 20,352 exact output tuples. Seventy-two isolated compiled-DLL scene
+stages passed across both selections, all six policies, 512/1024/2048 worlds
+and two seeds, with AI zero. They do not run Anno. All six builds passed independent review with three identical runtimes per
+Food selection. The full suite completed 358 tests in 195.016 seconds: 353
+passed and five Windows link-privilege tests were skipped. Closed-game
+preservation and the production installation/restoration cycle passed. The
+new World-only build is installed with its updated shortcut. Fresh automatic
+startup, `wc4` loading and the user's remembered-town display/`wc5` save check
+passed. Independent disk checks retained world geometry and exploration history.
+Camera movement remains laggy while a stationary view is smooth; performance
+is unresolved. CPU benchmarks of the specific capture preparation are not game FPS.
+
+V4's full repair suite completed 350 tests: 345 passed and five Windows
+link-privilege skips. Its production installer cycle, fresh automatic `wc3`
+load, independent `wc4` history inspection and eligible native scout observer
+check passed. The user confirmed foreign controls blocked, own controls
+working and a deployed scout exploring land. Lag improved but remained
+noticeable; broader performance acceptance did not pass. See the
 [visibility validation record](WORLD_VISIBILITY_VALIDATION.md) for exact scope.
 
 The preceding 0.6.0-dev.2 V3 profile had three matching builds per Food selection,

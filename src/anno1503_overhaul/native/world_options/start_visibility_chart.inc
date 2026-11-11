@@ -386,25 +386,45 @@ static inline int wsChartCaptureAssets(const WSVisibilityDrawContext*c,const uns
 #ifndef WS_CHART_CAPTURE_ASSETS_OK
 #define WS_CHART_CAPTURE_ASSETS_OK(context,quad) wsChartCaptureAssets((context),(quad))
 #endif
-static int wsChartCaptureGhostFigure(WSVisibilityDrawContext*c,WSChartDraw*d,const WSChartFigure*f){
- for(uint32_t qz=f->z&~7u;qz<f->z+f->height;qz+=8u)for(uint32_t qx=f->x&~7u;qx<f->x+f->width;qx+=8u){
-  unsigned char quad[0x390]={0};memcpy(quad,&c->fast->catalogue,8);uint32_t time=0;int occupied=0;
-  for(uint32_t z=qz;z<qz+8u&&z<c->view.height;z++)for(uint32_t x=qx;x<qx+8u&&x<c->view.width;x++){
-   const WSChartCell*r=wsChartActive.cells+(size_t)z*c->view.width+x;WSChartFigure figure;
-   if(!(r->flags&WS_CHART_BUILDING)||wsChartCachedFigure(c,x,z,r,&figure)!=1||!wsChartSameFigure(f,&figure))continue;
-   uint32_t index=(z&7u)*8u+(x&7u);memcpy(quad+8u+index*8u,r->visual,8);quad[0x34cu+index]=r->renderFlag;quad[0x38c]|=(unsigned char)(1u<<(z&7u));time=r->time;occupied=1;
+/* Capture the union of remembered cells once per8quad. Native57A0 ignores
+ * time;5950 animation keeps the last matching cell time perfigure/perquad,
+ * including non-renderable continuation cells. No cross-draw pointer cache. */
+static int wsChartCaptureBatchCall(WSVisibilityDrawContext*c,WSChartDraw*d,unsigned char*quad,const uint16_t xy[2],uint32_t kind,uint32_t time){
+ d->captureContext=c;d->captureQuad=quad;d->captureKind=(int)kind;
+ if(kind<4u)WS_CHART_NATIVE_STATIC(c->view.module,kind)(quad,xy,kind<3u?0u:time,d->captureObject);
+ else WS_CHART_NATIVE_COLOR(c->view.module)(quad,xy,0,time,d->captureObject);
+ d->captureContext=0;d->captureQuad=0;return !d->failed;
+}
+static int wsChartCaptureGhostQuad(WSVisibilityDrawContext*c,WSChartDraw*d,const WSChartCopy*copy){
+ unsigned char quad[0x390]={0},cellGroup[64],animated[64]={0};uint32_t anchors[64],times[64],count=0;
+ memset(cellGroup,255,sizeof cellGroup);memcpy(quad,&c->fast->catalogue,8);
+ uint32_t qx=copy->x+(copy->quadrant&1u)*8u,qz=copy->z+(copy->quadrant>>1)*8u;uint16_t xy[2]={(uint16_t)qx,(uint16_t)qz};
+ for(uint32_t cell=0;cell<64;cell++){
+  uint32_t x=qx+(cell&7u),z=qz+(cell>>3);const WSChartCell*r=wsChartActive.cells+(size_t)z*c->view.width+x;
+  if(!(r->flags&WS_CHART_BUILDING))continue;WSChartFigure figure;if(wsChartCachedFigure(c,x,z,r,&figure)!=1)return 0;
+  if(x<figure.x||z<figure.z||x>=figure.x+figure.width||z>=figure.z+figure.height||wsChartSeenBox(c,(float)figure.x,(float)figure.z,(float)(figure.x+figure.width),(float)(figure.z+figure.height)))continue;
+  uint32_t anchor=figure.z*c->view.width+figure.x,group=0;while(group<count&&anchors[group]!=anchor)group++;
+  if(group==count){anchors[count]=anchor;times[count]=0;count++;}times[group]=r->time;cellGroup[cell]=(unsigned char)group;
+  memcpy(quad+8u+cell*8u,r->visual,8);quad[0x34cu+cell]=r->renderFlag;quad[0x38c]|=(unsigned char)(1u<<(cell>>3));
+ }
+ if(!count)return 1;if(!WS_CHART_CAPTURE_ASSETS_OK(c,quad))return 0;
+ for(uint32_t cell=0;cell<64;cell++)if(cellGroup[cell]!=255u&&(quad[8u+cell*8u+3u]&0x40u)){
+  uint16_t id;memcpy(&id,quad+8u+cell*8u,2);if(id>=4000u)return 0;const WSChartAssetProof*p=(const WSChartAssetProof*)c->fast->chartAssets[id];if(!p||p->level<2)return 0;
+  for(uint32_t part=0;part<4;part++)if(p->frames[part].frame&&p->frames[part].period)animated[cellGroup[cell]]=1;
+ }
+ if(d->renderMode!=2u&&(!wsChartCaptureBatchCall(c,d,quad,xy,1,0)||!wsChartCaptureBatchCall(c,d,quad,xy,2,0)))return 0;
+ for(uint32_t group=0;group<count;group++)if(animated[group]){
+  int duplicate=0;for(uint32_t earlier=0;earlier<group;earlier++)if(animated[earlier]&&times[earlier]==times[group])duplicate=1;if(duplicate)continue;
+  unsigned char timed[0x390]={0};memcpy(timed,&c->fast->catalogue,8);
+  for(uint32_t cell=0;cell<64;cell++)if(cellGroup[cell]!=255u&&times[cellGroup[cell]]==times[group]){
+   memcpy(timed+8u+cell*8u,quad+8u+cell*8u,8);timed[0x34cu+cell]=quad[0x34cu+cell];timed[0x38c]|=(unsigned char)(1u<<(cell>>3));
   }
-  if(!occupied)continue;if(!WS_CHART_CAPTURE_ASSETS_OK(c,quad))return 0;uint16_t xy[2]={(uint16_t)qx,(uint16_t)qz};d->captureContext=c;d->captureQuad=quad;
-  if(d->renderMode!=2u){
-   d->captureKind=1;WS_CHART_NATIVE_STATIC(c->view.module,1)(quad,xy,0,d->captureObject);
-   d->captureKind=2;WS_CHART_NATIVE_STATIC(c->view.module,2)(quad,xy,0,d->captureObject);
-   d->captureKind=3;WS_CHART_NATIVE_STATIC(c->view.module,3)(quad,xy,time,d->captureObject);
-  }
-  if(d->renderMode!=1u){d->captureKind=4;WS_CHART_NATIVE_COLOR(c->view.module)(quad,xy,0,time,d->captureObject);}
-  d->captureContext=0;d->captureQuad=0;if(d->failed)return 0;
+  if(d->renderMode!=2u&&!wsChartCaptureBatchCall(c,d,timed,xy,3,times[group]))return 0;
+  if(d->renderMode!=1u&&!wsChartCaptureBatchCall(c,d,timed,xy,4,times[group]))return 0;
  }
  return 1;
 }
+
 static uint32_t wsChartCallerKind(const WSVisibilityDrawContext*c,uintptr_t caller){
  uintptr_t base=(uintptr_t)c->view.module;if(caller<base)return 0;uintptr_t r=caller-base;
  if(r>=0xc4d2eu&&r<=0xc4d35u)return 1;if(r>=0xc5048u&&r<=0xc504fu)return 2;if(r>=0xc5389u&&r<=0xc538fu)return 3;
@@ -430,7 +450,7 @@ static int wsVisibilityChartGhostSprite(const WSVisibilityDrawContext*c,void*fra
 static void wsChartFreeCopyList(WSChartCopy*copy){while(copy){WSChartCopy*next=copy->next;free(copy);copy=next;}}
 static int wsChartPrepareCopies(WSVisibilityDrawContext*c,WSChartDraw*d){
  if(c->view.enemy)return 1;uint32_t rows=0;if(!wsVisibilityListWritable(d->list,&rows))return 0;d->rows=rows;
- unsigned char*visited=(unsigned char*)calloc((wsChartActive.count+7u)>>3,1);if(!visited)return 0;size_t copyBytes=0;
+ unsigned char*visited=(unsigned char*)calloc(wsChartActive.bitBytes,1);if(!visited)return 0;size_t copyBytes=0;
  for(uint32_t n=0;n<rows;n++){
   unsigned char*row=(unsigned char*)d->list+8u+(size_t)n*88u;uint16_t xy[2];memcpy(xy,row,4);unsigned char valid=row[0x4d];
   if((valid&0xf0u)||(xy[0]&15u)||(xy[1]&15u)||xy[0]>=c->view.width||xy[1]>=c->view.height)goto invalid;
@@ -446,9 +466,12 @@ static int wsChartPrepareCopies(WSVisibilityDrawContext*c,WSChartDraw*d){
      copy=(WSChartCopy*)calloc(1,sizeof(*copy));if(!copy)goto invalid;copy->row=row;copy->original=original;copy->rowIndex=n;copy->x=xy[0];copy->z=xy[1];copy->quadrant=(unsigned char)q;copy->island=id;copy->renderer=(uintptr_t)d->renderer;memcpy(copy->bytes,original,0x390);copy->next=d->copies;d->copies=copy;copyBytes+=sizeof(*copy);
     }
     uint32_t cell=(z&7u)*8u+(x&7u);memcpy(copy->bytes+8u+cell*8u,r->visual,8);copy->bytes[0x34cu+cell]=r->renderFlag;copy->bytes[0x38c]|=(unsigned char)(1u<<(z&7u));
-    uint32_t anchor=f.z*c->view.width+f.x;unsigned char bit=(unsigned char)(1u<<(anchor&7u));if(!(visited[anchor>>3]&bit)){visited[anchor>>3]|=bit;if(!wsChartCaptureGhostFigure(c,d,&f))goto invalid;}
    }
   }
+ }
+ for(WSChartCopy*copy=d->copies;copy;copy=copy->next){
+  uint32_t x=copy->x+(copy->quadrant&1u)*8u,z=copy->z+(copy->quadrant>>1)*8u,index=(z>>3)*(c->view.width>>3)+(x>>3);unsigned char bit=(unsigned char)(1u<<(index&7u));
+  if(index/8u>=wsChartActive.bitBytes)goto invalid;if(visited[index>>3]&bit)continue;visited[index>>3]|=bit;if(!wsChartCaptureGhostQuad(c,d,copy))goto invalid;
  }
  /* No borrowed-list pointer is written until all copies, identities, asset
   * captures and every target span have passed the full two-phase preflight. */
