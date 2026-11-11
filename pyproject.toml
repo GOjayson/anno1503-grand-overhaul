@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "anno1503-grand-overhaul"
-version = "0.6.0.dev5"
+version = "0.6.0.dev6"
 description = "Modular overhaul development for Anno 1503 History Edition"
 requires-python = ">=3.10"
 authors = [{name = "GOjayson"}]

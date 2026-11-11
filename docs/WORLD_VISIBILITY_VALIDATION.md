@@ -1,5 +1,64 @@
 # Map visibility and terra incognita validation
 
+## 0.6.0-dev.6 observation-span candidate
+
+V7 targets the repeated memory queries identified in V6's live investigation.
+It removes duplicate protection queries only inside the current invocation's
+already verified object or constant-module span. Every field value, class,
+getter, ownership and catalogue binding is still read and checked freshly.
+Optional broad constant-span failure keeps the original slow proof path.
+There is no page cache, cross-draw pointer cache, observation skipping or
+timestamp quantization. **Live performance acceptance is pending.**
+
+| Identity | Reviewed dev.6 candidate |
+| --- | --- |
+| Generator | `ws6-c911f60f714bf54a1965ae0d71707950ae2f66884464024bbd43df6be440fadb` |
+| World-only runtime SHA-256 | `379c61f5593b3ce4726d77f0403fbcdf2baf74e72e115d7a5ba61a1c867f6991` |
+| Food + World runtime SHA-256 | `25b7f22d321c3d401d289174e0ccc5fee6b2c93ac5243c9beb2e5b697132ab30` |
+
+The actual V6 investigation used 100 brief controlled thread-location samples.
+Ninety located the selected thread at the return immediately after
+`NtQueryVirtualMemory`'s syscall. Fresh read-only checks matched the loaded
+NTDLL stubs and their exports; header comparison accounted only for the
+verified ASLR ImageBase change. These are location frequencies from a short,
+intrusive sample, **not percentages of CPU time, syscall durations or FPS**.
+The maximum suspend-call-through-resume duration was 0.0607 ms; all 100 owned
+suspensions were resumed. The sampled thread was chosen by a short CPU-time
+delta, without asserting that it was the game's main thread.
+
+Five new regression methods cover **213 bounded cases**. Separate paired
+benchmarks retained exact chart records, timestamps, generations and native
+producer-call counts across 48 cases. An independent 256-case field-mutation
+matrix and 176 protected-boundary cases passed. Minimum object extents,
+truncated objects, linked-node faults, and genuine partial-module slow fallback
+remain guarded. Twelve critical observation, late-binding, rendering-lifetime
+and save functions remain byte-identical to V6.
+
+All **160 visibility tests passed in 52.615 seconds**, without skips or failures.
+This is the focused V7 regression suite; V6's separate full-suite result below
+is not relabelled as a new V7 full-suite run. Both profiles have three identical
+reviewed builds. Pre/post-pin audits passed all **35 raw LF/index inputs,
+66 staged sources, 488/43 immutable inputs, unchanged 86 exports, nine native
+profile pins, 26 visibility components, 173 engine edits and 208 transaction
+components**, including native function bounds and TLS. Settings, preview,
+chart save and passive timing ABIs are unchanged.
+
+The new World-only package passed installation, exact preparation no-op,
+restoration to all 23 stock host inputs, and final reinstallation. Both package
+profiles were validated; Food was not installed in this focused cycle. The two
+full protected-state passes retained **44 named / 45 native saves, all 82
+save-directory files, five presets, 23 original source inputs, 297 historical
+backup files and all 488/43 imported inputs**. The 47 preceding managed backup
+generations remain exact; two newly restored generations give **49**. The
+current autosave was archived exclusively and never restored to older bytes.
+
+This focused cycle checks protected state at its start/end and guards each
+mutation's exact journal, payload, package and helper identities. It does not
+claim continuous atomic preservation or rerun V6's whole private-fixture archive
+scan. The updated desktop shortcut preserves its preceding version. A fresh
+automatic startup and actual `wc5` reload are being checked. Food remains an
+independent selection and its gameplay is not being repeated.
+
 ## 0.6.0-dev.5 camera-performance candidate
 
 V5 retained correct remembered towns and save history, but the user still
@@ -55,7 +114,10 @@ six-build post-pin audit passed the same guards. The full suite completed
 checks were skipped**, with no failures or errors. In separate isolated helper
 processes, both actual published DLLs passed fixed-size empty timing snapshots,
 null refusals and destination-canary checks. Those empty getter checks do not
-prove populated game timings. Installation/restoration checks are being completed.
+prove populated game timings. The production installation/restoration cycle
+passed for both selections, including exact preparation no-ops and restoration
+to the 23 stock host inputs. It finished with World Settings enabled and Food
+disabled. No Anno process or hook activation was used by that installer test.
 
 Anno closed normally before preservation. The closed checkpoint retains **44
 named saves / 45 native saves, all 76 protected save-directory files, five
@@ -63,6 +125,27 @@ presets, 44 preceding backup generations, 23 original source inputs and 297
 historical backup files**. Both `wc4` and the independently archived/certified
 `wc5` remain exact. The current autosave was archived exclusively; no older
 autosave was restored. Food gameplay is not being repeated.
+
+The completed cycle retained that entire protected state, all **44** preceding
+backup generations and three newly restored generations, giving **47**. Two
+full evidence passes retained all **43,396** pre-existing private evidence files
+byte-for-byte. The desktop shortcut was updated to the new self-contained
+World-only launcher, with the preceding shortcut preserved exactly. Fresh
+automatic startup and loading `wc5` passed with all **26 visibility components
+and 173 engine edits** active, error **0**, no pending masked rows or owned
+copies, and empty factory/hook/AI-loader/memory errors. A separate read-only
+observer matched the saved 24-island geometry/resources and the eligible scout.
+
+The user confirmed that remembered buildings and unexplored fog look correct,
+but reported camera movement **unchanged or worse**. **V6 has not resolved the
+reported lag.** A 20-second sample during the requested user camera check
+recorded **11.06 ms mean elapsed time per chart-observation call**, compared
+with **2.29 ms** for remembered-copy preparation and **1.01 ms** per fog pass.
+Native drawing averaged **3.02 ms per invocation**. These are nested elapsed
+call durations, not CPU utilization or FPS; a frame can invoke a stage more
+than once. Camera/input activity was not continuously instrumented. An earlier
+file labelled stationary is a mixed-activity sample: camera/zoom changed
+between screenshots, so it does not establish an idle-versus-moving comparison.
 
 ## 0.6.0-dev.4 performance candidate
 

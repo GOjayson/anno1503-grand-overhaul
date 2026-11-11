@@ -94,7 +94,22 @@ typedef struct WSChartFrameProof {
  void*frame,*vtable,*c8;uint16_t frames,period;void*array,*texture,*textureVT,*palette,*paletteVT,*colorGetter,*dataGetter,*shiftGetter,*formatGetter;uint32_t textureOffset,colorSelector,paletteShift,paletteBanks,formatOffset,formatBytes,format;
 } WSChartFrameProof;
 typedef struct WSChartAssetProof {struct WSChartAssetProof*next;void*definition,*vtable;unsigned char width,height;int level;uint32_t id;WSChartFrameProof frames[4];} WSChartAssetProof;
-static int wsChartColorChain(const WSVisibilityDrawContext*c,WSChartFrameProof*p){
+
+/* Current-draw constant module spans never exempt mutable object fields.
+ * Unsupported/partial constant spans retain the original slow proof path. */
+static int wsChartDisplayVTWithin(const WSVisibilityDrawContext*c,const void*pointer,size_t bytes){
+ uintptr_t p=(uintptr_t)pointer,start=(uintptr_t)(c->fast->display+0xf5f648u);
+ if(c->fast->chartDisplayVTSpanReady&&bytes<=0x6bf0u&&p>=start&&p-start<=0x6bf0u-bytes)return 1;
+ return wsVisibilityWithinModule(c->fast->display,pointer,bytes);
+}
+static void*wsChartVTGet(const WSVisibilityDrawContext*c,const void*object,size_t offset){
+ uintptr_t p=(uintptr_t)object,g=(uintptr_t)(c->fast->game+0x1f888u),d=(uintptr_t)(c->fast->display+0xf5f648u);
+ if(offset<=0x7e0u-8u&&c->fast->chartGameVTSpanReady&&p>=g&&p-g<=0x7e0u-offset-8u)return wsVisibilityFastPointer(object,offset);
+ if(offset<=0x6bf0u-8u&&c->fast->chartDisplayVTSpanReady&&p>=d&&p-d<=0x6bf0u-offset-8u)return wsVisibilityFastPointer(object,offset);
+ return wsCertPointer(object,offset);
+}
+
+static int wsChartColorChainSlow(const WSVisibilityDrawContext*c,WSChartFrameProof*p){
  unsigned char*d=c->fast->display;p->array=wsCertPointer(p->frame,0x18);p->texture=wsCertPointer(p->array,0);p->textureVT=wsCertPointer(p->texture,0);
  static const uint32_t first[]={0xf65a50u,0xf65ba8u,0xf65d00u,0xf65e58u},second[]={0xf65fc8u,0xf66138u};
  int group=0;for(size_t n=0;n<sizeof first/sizeof first[0];n++)if(p->textureVT==d+first[n])group=1;for(size_t n=0;n<sizeof second/sizeof second[0];n++)if(p->textureVT==d+second[n])group=2;
@@ -109,6 +124,27 @@ static int wsChartColorChain(const WSVisibilityDrawContext*c,WSChartFrameProof*p
  for(size_t n=0;n<sizeof tables/sizeof tables[0];n++)if(p->paletteVT==d+tables[n]){
   p->colorGetter=d+getters[n];p->colorSelector=selectors[n];p->paletteShift=shifts[n];p->paletteBanks=banks[n];p->dataGetter=d+(n?0x24d60u:0x24420u);p->shiftGetter=d+(shifts[n]==8u?0x243f0u:(shifts[n]==3u?0x244c0u:0x260a0u));
   if(wsCertPointer(p->paletteVT,0xf8)!=p->colorGetter||wsCertPointer(p->paletteVT,0xd0)!=p->dataGetter||wsCertPointer(p->paletteVT,0xe8)!=p->shiftGetter)return 0;
+  return p->format==23u||(p->paletteBanks&&wsCertMemory(p->palette,0x410u+(size_t)p->paletteBanks*1024u,0));
+ }
+ return 0;
+}
+static int wsChartColorChainFast(const WSVisibilityDrawContext*c,WSChartFrameProof*p){
+ unsigned char*d=c->fast->display;p->array=wsVisibilityFastPointer(p->frame,0x18);
+ if(!p->array||!wsCertMemory(p->array,8,0))return 0;p->texture=wsVisibilityFastPointer(p->array,0);
+ if(!p->texture||!wsCertMemory(p->texture,8,0))return 0;p->textureVT=wsVisibilityFastPointer(p->texture,0);
+ static const uint32_t first[]={0xf65a50u,0xf65ba8u,0xf65d00u,0xf65e58u},second[]={0xf65fc8u,0xf66138u};
+ int group=0;for(size_t n=0;n<sizeof first/sizeof first[0];n++)if(p->textureVT==d+first[n])group=1;for(size_t n=0;n<sizeof second/sizeof second[0];n++)if(p->textureVT==d+second[n])group=2;
+ if(!group||!wsCertMemory(p->texture,group==1?0x20u:0x28u,0)||wsChartVTGet(c,p->textureVT,0xc0)!=d+(group==1?0x3b200u:0x185a0u))return 0;
+ int haus=p->textureVT==d+0xf65d00u||p->textureVT==d+0xf65e58u;
+ p->formatOffset=group==2?0xcu:0xau;p->formatBytes=haus?1u:2u;p->formatGetter=d+(group==2?0x5f580u:(haus?0x5fc80u:0x5f620u));
+ if(wsChartVTGet(c,p->textureVT,0xe0)!=p->formatGetter)return 0;p->format=0;memcpy(&p->format,(unsigned char*)p->texture+p->formatOffset,p->formatBytes);
+ p->textureOffset=group==1?0x18u:0x20u;p->palette=wsVisibilityFastPointer(p->texture,p->textureOffset);if(!p->palette||!wsCertMemory(p->palette,8,0))return 0;p->paletteVT=wsVisibilityFastPointer(p->palette,0);
+ static const uint32_t tables[]={0xf5f648u,0xf5f750u,0xf5f860u,0xf5f968u,0xf5fa70u,0xf5fb78u,0xf5fc80u,0xf5fd88u,0xf5fe90u};
+ static const uint32_t getters[]={0x17540u,0x244c0u,0x244c0u,0x24ef0u,0x24ef0u,0x25a30u,0x25a30u,0x25a30u,0x25a30u};
+ static const uint32_t selectors[]={0,3,3,27,27,9,9,9,9},shifts[]={8,8,8,8,8,3,3,4,4},banks[]={0,3,3,27,27,96,96,144,144};
+ for(size_t n=0;n<sizeof tables/sizeof tables[0];n++)if(p->paletteVT==d+tables[n]){
+  p->colorGetter=d+getters[n];p->colorSelector=selectors[n];p->paletteShift=shifts[n];p->paletteBanks=banks[n];p->dataGetter=d+(n?0x24d60u:0x24420u);p->shiftGetter=d+(shifts[n]==8u?0x243f0u:(shifts[n]==3u?0x244c0u:0x260a0u));
+  if(wsChartVTGet(c,p->paletteVT,0xf8)!=p->colorGetter||wsChartVTGet(c,p->paletteVT,0xd0)!=p->dataGetter||wsChartVTGet(c,p->paletteVT,0xe8)!=p->shiftGetter)return 0;
   return p->format==23u||(p->paletteBanks&&wsCertMemory(p->palette,0x410u+(size_t)p->paletteBanks*1024u,0));
  }
  return 0;
@@ -132,7 +168,7 @@ static int wsChartAssetCurrent(const WSVisibilityDrawContext*c,const WSChartAsse
   }
  }return 1;
 }
-static inline int wsChartAssetGuard(const WSVisibilityDrawContext*c,uint16_t id,int full){
+static inline int wsChartAssetGuardSlow(const WSVisibilityDrawContext*c,uint16_t id,int full){
  if(!c->fast||!c->fast->catalogueReady||id>=4000u)return 0;WSVisibilityFastDraw*f=c->fast;unsigned char*g=f->game,*d=f->display;
  WSChartAssetProof*p=(WSChartAssetProof*)f->chartAssets[id];if(p&&p->level>=(full?2:1))return wsChartAssetCurrent(c,p,id,full);
  if(p&&!wsChartAssetCurrent(c,p,id,0))return 0;
@@ -153,10 +189,40 @@ static inline int wsChartAssetGuard(const WSVisibilityDrawContext*c,uint16_t id,
  if(full&&p->level<2){
   /* Native Game57A0 accepts C8==0 while5950 skips it. Period0 therefore
    * submits only ordinary C0|base0/1 flags; C53/raw visual6 needs period>=2. */
-  for(uint32_t n=0;n<4;n++)if(p->frames[n].frame&&p->frames[n].period){WSChartFrameProof*r=p->frames+n;if(r->period<2u||wsCertPointer(r->vtable,0xd8)!=d+0x33880u||wsCertPointer(r->vtable,0xf8)!=d+0x324f0u||!wsChartColorChain(c,r))return 0;}
+  for(uint32_t n=0;n<4;n++)if(p->frames[n].frame&&p->frames[n].period){WSChartFrameProof*r=p->frames+n;if(r->period<2u||wsCertPointer(r->vtable,0xd8)!=d+0x33880u||wsCertPointer(r->vtable,0xf8)!=d+0x324f0u||!wsChartColorChainSlow(c,r))return 0;}
   p->level=2;
  }return wsChartAssetCurrent(c,p,id,full);
  failed:free(p);return 0;
+}
+static inline int wsChartAssetGuardFast(const WSVisibilityDrawContext*c,uint16_t id,int full){
+ if(!c->fast||!c->fast->catalogueReady||id>=4000u)return 0;WSVisibilityFastDraw*f=c->fast;unsigned char*g=f->game,*d=f->display;
+ WSChartAssetProof*p=(WSChartAssetProof*)f->chartAssets[id];if(p&&p->level>=(full?2:1))return wsChartAssetCurrent(c,p,id,full);
+ if(p&&!wsChartAssetCurrent(c,p,id,0))return 0;
+ if(!p){
+  p=(WSChartAssetProof*)calloc(1,sizeof(*p));if(!p)return 0;p->id=id;p->definition=f->definitions[id];if(!p->definition||!wsCertMemory(p->definition,8,0))goto failed;p->vtable=wsVisibilityFastPointer(p->definition,0);
+  if(!p->definition||(p->vtable!=g+0x1f888u&&p->vtable!=g+0x1fac8u&&p->vtable!=g+0x1fcf8u)||!wsCertMemory(p->definition,p->vtable==g+0x1f888u?0x20fu:0x2c8u,0)||wsChartVTGet(c,p->vtable,0x108)!=g+0x1120u||wsChartVTGet(c,p->vtable,0x148)!=(p->vtable==g+0x1f888u?g+0x41d0u:g+0x57a0u)||wsChartVTGet(c,p->vtable,0x150)!=(p->vtable==g+0x1f888u?g+0x41d0u:g+0x5950u))goto failed;
+  if(p->vtable!=g+0x1f888u){
+   p->width=((unsigned char*)p->definition)[0xa];p->height=((unsigned char*)p->definition)[0xb];
+   if(!p->width||!p->height||p->width>32u||p->height>32u||wsChartVTGet(c,p->vtable,0x108)!=g+0x1120u||wsChartVTGet(c,p->vtable,0x148)!=g+0x57a0u)goto failed;
+   for(uint32_t n=0;n<4;n++){
+    WSChartFrameProof*r=p->frames+n;r->frame=wsVisibilityFastPointer(p->definition,0x268u+n*24u);if(!r->frame)continue;if(!wsCertMemory(r->frame,8,0))goto failed;r->vtable=wsVisibilityFastPointer(r->frame,0);r->c8=wsChartVTGet(c,r->vtable,0xc8);
+    if(!wsChartDisplayVTWithin(c,r->vtable,0x100u)||(r->c8!=d+0x17540u&&r->c8!=d+0x277a0u)||!wsCertMemory(r->frame,r->c8==d+0x277a0u?0x48u:0x40u,0))goto failed;
+    memcpy(&r->frames,(unsigned char*)r->frame+0x38,2);if(!r->frames&&(r->vtable!=d+0xf609d0u||r->c8!=d+0x17540u||wsChartVTGet(c,r->vtable,0xe0)!=d+0x17540u))goto failed;if(r->c8==d+0x277a0u)memcpy(&r->period,(unsigned char*)r->frame+0x40,2);
+   }
+  }
+  p->next=(WSChartAssetProof*)f->chartAssetList;f->chartAssetList=p;f->chartAssets[id]=p;p->level=1;
+ }
+ if(full&&p->level<2){
+  /* Native Game57A0 accepts C8==0 while5950 skips it. Period0 therefore
+   * submits only ordinary C0|base0/1 flags; C53/raw visual6 needs period>=2. */
+  for(uint32_t n=0;n<4;n++)if(p->frames[n].frame&&p->frames[n].period){WSChartFrameProof*r=p->frames+n;if(r->period<2u||wsChartVTGet(c,r->vtable,0xd8)!=d+0x33880u||wsChartVTGet(c,r->vtable,0xf8)!=d+0x324f0u||!wsChartColorChainFast(c,r))return 0;}
+  p->level=2;
+ }return wsChartAssetCurrent(c,p,id,full);
+ failed:free(p);return 0;
+}
+static inline int wsChartAssetGuard(const WSVisibilityDrawContext*c,uint16_t id,int full){
+ if(!c->fast||!c->fast->chartGameVTSpanReady||!c->fast->chartDisplayVTSpanReady)return wsChartAssetGuardSlow(c,id,full);
+ return wsChartAssetGuardFast(c,id,full);
 }
 static void wsVisibilityChartReleaseAssets(WSVisibilityFastDraw*f){
  WSChartAssetProof*p=f?(WSChartAssetProof*)f->chartAssetList:0;while(p){WSChartAssetProof*next=p->next;free(p);p=next;}
@@ -217,19 +283,23 @@ static int wsChartProducerGuard(const WSVisibilityDrawContext*c,const WSVisibili
  uint32_t shape[2];void*nodes=0;
  if(!c||!p||p->id>=WS_VISIBILITY_ISLAND_LIMIT||x>c->view.width-8u||z>c->view.height-8u||x<p->x||z<p->y||x+8u>p->x+p->width||z+8u>p->y+p->height||
     wsVisibilityFastPointer(c->view.world,0x6640u+p->id*8u)!=p->object||!wsCertMemory(p->object,0x148u,0)||wsVisibilityFastPointer(p->object,0x38)!=c->view.world||
-    !c->fast||!c->fast->islands[p->id].ready||wsVisibilityFastPointer(p->object,0x10)!=c->fast->islands[p->id].tiles||
-    !wsCertRead(p->object+0x110,shape,8)||shape[0]!=p->width/8u||shape[1]!=p->height/8u||
-    !(nodes=wsCertPointer(p->object,0x118))||!wsCertMemory(nodes,(size_t)shape[0]*shape[1]*24u,0)||
-    !wsCertMemory(p->object+0x138,16,0))return 0;
+    !c->fast||!c->fast->islands[p->id].ready||wsVisibilityFastPointer(p->object,0x10)!=c->fast->islands[p->id].tiles)return 0;
+ /* Each fresh field lies inside the immediately preflighted island span. */
+ memcpy(shape,p->object+0x110,8);nodes=wsVisibilityFastPointer(p->object,0x118);
+ if(shape[0]!=p->width/8u||shape[1]!=p->height/8u||!nodes||!wsCertMemory(nodes,(size_t)shape[0]*shape[1]*24u,0))return 0;
  uint32_t qx=(x-p->x)>>3,qz=(z-p->y)>>3;unsigned char*node=(unsigned char*)nodes+((size_t)qz*shape[0]+qx)*24u;
- unsigned char header[24];if(!wsCertRead(node,header,sizeof header)||header[0]!=qx||header[1]!=qz)return 0;
+ unsigned char header[24];memcpy(header,node,sizeof header);if(header[0]!=qx||header[1]!=qz)return 0;
  void*chunk=0;
- if(header[8]&0x20u){void*at=0;memcpy(&at,header+0x10,8);void*seen[256];uint32_t count=0;
- while(at){
-  if(count==256u||!wsCertMemory(at,0x238,0)||wsCertPointer(at,0)!=c->view.module+0xf33b8u||wsCertPointer(c->view.module+0xf33b8u,8)!=c->view.module+0x35210u)return 0;
-  for(uint32_t n=0;n<count;n++)if(seen[n]==at)return 0;seen[count++]=at;
-  unsigned char kind=0;if(!wsCertRead((unsigned char*)at+0x230,&kind,1))return 0;if(kind==5u){chunk=at;break;}at=wsCertPointer(at,8);
- }}
+ if(header[8]&0x20u){
+  /* The one exact native getter span is checked before raw current reads. */
+  if(!wsCertMemory(c->view.module+0xf33b8u,16u,0))return 0;
+  void*at=0;memcpy(&at,header+0x10,8);void*seen[256];uint32_t count=0;
+  while(at){
+   if(count==256u||!wsCertMemory(at,0x238u,0)||wsVisibilityFastPointer(at,0)!=c->view.module+0xf33b8u||wsVisibilityFastPointer(c->view.module+0xf33b8u,8)!=c->view.module+0x35210u)return 0;
+   for(uint32_t n=0;n<count;n++)if(seen[n]==at)return 0;seen[count++]=at;
+   unsigned char kind=((unsigned char*)at)[0x230];if(kind==5u){chunk=at;break;}at=wsVisibilityFastPointer(at,8);
+  }
+ }
  if(!c->fast||!c->fast->islands[p->id].ready)return 0;
  for(uint32_t dz=0;dz<8;dz++)for(uint32_t dx=0;dx<8;dx++){
   uint32_t words[2];const unsigned char*source=chunk?(unsigned char*)chunk+0x14u+(dz*8u+dx)*8u:
@@ -245,8 +315,9 @@ static WSChartObservedQuad*wsChartObserved(WSChartObservation*o,uint32_t x,uint3
  if(!c->fast||!c->fast->catalogueReady||!wsChartProducerGuard(c,c->islands+island,x&~7u,z&~7u)||
     !wsChartGrow((void**)&o->quads,&o->quadCapacity,o->quadCount,sizeof(*o->quads),(c->view.width>>3)*(c->view.height>>3)))return 0;
  WSChartObservedQuad*q=o->quads+o->quadCount;memset(q,0,sizeof(*q));q->index=index;memcpy(q->bytes,&c->fast->catalogue,8);
- void*viewFlags=wsCertPointer(c->view.world,0x238);uint32_t baseFlags=0;
- if(!viewFlags||!wsCertMemory(viewFlags,12,0)||wsCertPointer(viewFlags,0)!=c->view.module+0xfa148u||!wsCertRead((unsigned char*)viewFlags+8,&baseFlags,4))return 0;
+ void*viewFlags=wsVisibilityFastPointer(c->view.world,0x238);uint32_t baseFlags=0;
+ if(!viewFlags||!wsCertMemory(viewFlags,12,0)||wsVisibilityFastPointer(viewFlags,0)!=c->view.module+0xfa148u)return 0;
+ memcpy(&baseFlags,(unsigned char*)viewFlags+8,4);
  unsigned char row[88]={0};uint16_t xy[2]={(uint16_t)(x&~15u),(uint16_t)(z&~15u)};memcpy(row,xy,4);memset(row+0x38,255,4);uint32_t quadrant=((x>>3)&1u)|(((z>>3)&1u)<<1);row[0x38+quadrant]=(unsigned char)island;row[0x4d]=(unsigned char)(1u<<quadrant);
  WS_CHART_NATIVE_PRODUCER(c->view.module)(c->view.world,row,quadrant,0,q->bytes);
  /* C8E10's remaining bits are transient selection/territory overlays, not

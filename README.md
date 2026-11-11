@@ -11,7 +11,7 @@ also restores the files it manages to their verified original-game baseline.
 
 | Feature | Priority | Status |
 | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.5 performance candidate; ownership/scout checks passed in-game, but camera lag needs new game acceptance |
+| World Settings | Priority | Experimental 0.6.0-dev.6 performance candidate; ownership/scout checks passed in-game, but camera lag needs new game acceptance |
 | Food overhaul | Priority | Imported experimental 0.5.0; economy and AI work remain unfinished |
 | Local-host multiplayer | Priority | Research; host/join, synchronization and capacity need verification |
 | Smarter / better AI | Planned | Behaviour improvements and a target of eight ordinary AI opponents |
@@ -68,12 +68,22 @@ The seven earlier menu additions are recorded in
 starting-position and resource controls have a separate
 [fairness validation record](docs/WORLD_FAIRNESS_VALIDATION.md). Experimental
 0.6 visibility work has a separate [development validation record](docs/WORLD_VISIBILITY_VALIDATION.md).
-Development **0.6.0-dev.5** adds an island lookup index for each draw and exact
+Development **0.6.0-dev.6** reduces repeated memory-protection queries while
+keeping fresh object, ownership and asset checks. All 160 visibility tests,
+six matching builds, and World-only installation/restoration passed. The updated
+shortcut is being checked in a fresh game. Live camera acceptance is pending.
+Observation timestamps and recorded building state are unchanged.
+
+The preceding **0.6.0-dev.5** adds an island lookup index for each draw and exact
 uniform fog spans, plus passive coarse-stage timings for the actual game.
 Independent source/fixture checks, all six matching profile builds and the full
 suite passed: 371 tests passed and five Windows link-privilege tests were skipped.
-Installation checks and live camera acceptance remain pending. Food gameplay is not
-being repeated. See the development validation record for the bounded evidence.
+Installation/restoration checks passed, ending with World Settings on and Food
+off; the desktop shortcut was updated. Fresh automatic startup and `wc5` loading
+passed. The user confirmed correct remembered towns/fog, but camera movement
+remains unchanged or worse. Live elapsed timings identify chart observation as
+the larger remaining cost; the performance repair is incomplete. Food gameplay
+is not being repeated. See the development validation record for bounded evidence.
 
 The preceding **0.6.0-dev.4** grouped remembered
 sprites within each draw, preserving exact recorded appearance and animation

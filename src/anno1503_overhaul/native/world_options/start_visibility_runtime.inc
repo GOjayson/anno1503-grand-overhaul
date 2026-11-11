@@ -63,6 +63,7 @@ typedef struct WSVisibilityFastIsland {
 struct WSVisibilityFastDraw {
  unsigned char*game,*display;void*renderer,*catalogue,*catalogueVT;int targetsReady,catalogueReady;
  unsigned char*islandIndex;uint32_t islandIndexWidth,islandIndexHeight;
+ int chartGameVTSpanReady,chartDisplayVTSpanReady;
  int actorInterfacesReady;uintptr_t stackBegin,stackEnd;
  void*original180,*original188,*definitions[4000];
  WSVisibilityFastDefinition metadata[4000];WSVisibilityFastIsland islands[WS_VISIBILITY_ISLAND_LIMIT];
@@ -588,7 +589,7 @@ static int wsVisibilityFastPrepare(WSVisibilityDrawContext*c,void*renderer){
  if((f->catalogueVT==f->game+0x20300||f->catalogueVT==f->game+0x20738||f->catalogueVT==f->game+0x20a78||f->catalogueVT==f->game+0x20c90)&&
     wsCertPointer(f->catalogueVT,0xe8)==f->game+0xb4d0&&
     wsCertMemory(f->catalogue,0x218u+sizeof f->definitions,0)&&
-    wsVisibilityWithinModule(f->game,f->game+0x1f888,0x7e0)&&
+    (f->chartGameVTSpanReady=wsVisibilityWithinModule(f->game,f->game+0x1f888,0x7e0))&&
     wsVisibilityWithinModule(f->display,f->display+0xf609d0,0xba0)){
   memcpy(f->definitions,(unsigned char*)f->catalogue+0x218,sizeof f->definitions);f->catalogueReady=1;
   for(uint32_t id=0;id<WS_VISIBILITY_ISLAND_LIMIT;id++)if(c->present[id]){
@@ -609,6 +610,7 @@ static int wsVisibilityFastPrepare(WSVisibilityDrawContext*c,void*renderer){
   }
  }
  wsVisibilityIslandIndexPrepare(c,f);
+ f->chartDisplayVTSpanReady=wsVisibilityWithinModule(f->display,f->display+0xf5f648u,0x6bf0u);
  c->fast=f;return 1;
  invalid:free(f);InterlockedExchange(&wsVisibilityLastError,8);return 0;
 }

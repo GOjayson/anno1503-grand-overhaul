@@ -22,10 +22,10 @@ from .world_options_visibility_calls import CALLS, DISPLAY_SHA256, verify_visibi
 
 
 PINNED_RUNTIMES = {
-    'world-only': 'b0a23db82e4175228fd23ba4e60566b0c3157ae48babf31205032e5aa353ca14',
-    'food-world': '4dde63b428fdd622b31c107508e5b61ba724ad0526e02df88df8808fd7e43d10',
+    'world-only': '379c61f5593b3ce4726d77f0403fbcdf2baf74e72e115d7a5ba61a1c867f6991',
+    'food-world': '25b7f22d321c3d401d289174e0ccc5fee6b2c93ac5243c9beb2e5b697132ab30',
 }
-PINNED_GENERATOR = 'ws6-c5e7c30ace24a8b41442ebb7ec8c1271e6638574bad3f5035feb659080b3e538'
+PINNED_GENERATOR = 'ws6-c911f60f714bf54a1965ae0d71707950ae2f66884464024bbd43df6be440fadb'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
     'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',

@@ -10,7 +10,7 @@ It does not support arbitrary combinations of future native modifications.
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Experimental 0.6.0-dev.5 performance candidate; ownership/scout checks passed in-game, but camera lag needs new game acceptance | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
+| World Settings | Priority | Experimental 0.6.0-dev.6 performance candidate; ownership/scout checks passed in-game, but camera lag needs new game acceptance | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
 | Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
 | Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
@@ -27,12 +27,20 @@ The UI should explain their status and the validator must enforce it too.
 
 ## Expanded in-game World Settings
 
-The 0.6.0-dev.5 candidate adds a scalar island lookup index for each draw, exact
+The 0.6.0-dev.6 candidate removes repeated protection queries within immediately
+verified spans, preserving fresh asset/ownership checks and every observation.
+Its 160 visibility methods, six matching builds and World-only installation/
+restoration passed. Fresh startup and actual camera acceptance are being
+checked. The settings/save ABI is unchanged.
+
+The preceding 0.6.0-dev.5 candidate adds a scalar island lookup index for each draw, exact
 uniform fog spans and passive coarse-stage timing diagnostics. It preserves
 the settings/save ABI and existing ownership, visibility and scout rules.
 Independent source/fixture checks, all six builds and the full suite passed
-(371 passed, five Windows link-privilege skips). Installation checks and actual
-camera-performance acceptance remain pending.
+(371 passed, five Windows link-privilege skips). Installation/restoration passed,
+ending with World Settings on and Food off. The updated shortcut's automatic
+startup and `wc5` load passed, with correct remembered buildings/fog confirmed
+by the user. Camera movement remains unchanged or worse; the repair is incomplete.
 
 The preceding 0.6.0-dev.4 candidate groups remembered-sprite capture within each draw
 to reduce CPU work. It keeps the chart format, save ABI, exact remembered
