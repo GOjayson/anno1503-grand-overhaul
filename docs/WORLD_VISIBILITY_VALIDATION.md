@@ -8,7 +8,8 @@ already verified object or constant-module span. Every field value, class,
 getter, ownership and catalogue binding is still read and checked freshly.
 Optional broad constant-span failure keeps the original slow proof path.
 There is no page cache, cross-draw pointer cache, observation skipping or
-timestamp quantization. **Live performance acceptance is pending.**
+timestamp quantization. The user reports improved camera movement, but lag
+remains; this is not a completed performance repair.
 
 | Identity | Reviewed dev.6 candidate |
 | --- | --- |
@@ -55,16 +56,40 @@ current autosave was archived exclusively and never restored to older bytes.
 This focused cycle checks protected state at its start/end and guards each
 mutation's exact journal, payload, package and helper identities. It does not
 claim continuous atomic preservation or rerun V6's whole private-fixture archive
-scan. The updated desktop shortcut preserves its preceding version. A fresh
-automatic startup and actual `wc5` reload are being checked. Food remains an
-independent selection and its gameplay is not being repeated.
+scan. The updated desktop shortcut preserves its preceding version. Fresh
+automatic startup and actual `wc5` loading passed with all 173 engine edits
+and 26 visibility components active and empty factory, hook, AI-loader and
+chart-memory error fields. An independent read-only observer matched all 24
+islands, the certified checkpoint and the deployed human scout; Food is disabled.
+
+A 20-second passive interval recorded 834 chart observations averaging 5.123 ms
+and 834 copy-preparation calls averaging 0.573 ms, compared with 11.055 ms and
+2.291 ms in the preceding V6 interval. Native drawing averaged 5.298 ms across
+1,665 calls in this interval. Camera motion, zoom, scene coverage and scheduling
+were not controlled identically, so these are elapsed-stage observations, not
+an FPS comparison or accepted smoothness result. No recording failures occurred.
+The interval used only two bounded 360-byte getter snapshots, with no chart
+hashing during the camera check. The user confirmed that remembered buildings
+and unexplored fog still look correct, but camera movement is better and still
+laggy. The new `wc6` checkpoint was saved through Anno's native UI, and Anno
+closed normally afterward. Its exclusive archive and independent native/chart
+inspection passed. All 24 island rectangles, climates, 13 crop bits and positive
+mineral masks match; all preceding 2,338 chart bits, 8,560 known minimap pixels
+and 5,416 observed cells are retained. The new counts are 2,473, 9,155 and 6,425.
+All 178 island-0 and 113 island-7 remembered anchors retain their exact 20-byte
+records, including timestamps. Island-8 changes can include visible
+re-observation and development; this comparison does not establish that every
+building stayed outside sight. `wc5` remains byte-exact. These disk checks do
+not prove live GPU behavior or long-session performance.
+Food remains an independent selection and its gameplay is not being repeated.
 
 ## 0.6.0-dev.5 camera-performance candidate
 
 V5 retained correct remembered towns and save history, but the user still
 reported lag while moving the camera. V6 reduces two independently measured
 CPU costs and adds passive coarse-stage timings so that the actual game can
-identify any remaining bottleneck. **Live performance acceptance is pending.**
+identify any remaining bottleneck. The subsequent live check retained correct
+visuals, but camera movement remained unchanged or worse.
 
 | Identity | Reviewed dev.5 candidate |
 | --- | --- |
