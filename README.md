@@ -52,6 +52,7 @@ Saves made with custom worlds can require the mod even after restoration, partic
 
 This is a beta, not a claim that every map combination or long campaign has been tested. Automated checks, observed game runs and untested behaviour are recorded separately.
 
+- [Join the Anno 1503 Grand Overhaul Discord](https://discord.gg/hbvms52jkR)
 - [Installation details and troubleshooting](docs/INSTALLER.md)
 - [Changelog](docs/CHANGELOG.md)
 - [World options and validation](docs/WORLD_ENVIRONMENT_OPTIONS.md)
