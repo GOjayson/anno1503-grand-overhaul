@@ -1,0 +1,75 @@
+name: Announce releases in Discord
+
+on:
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Post release announcement
+        env:
+          DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          from pathlib import Path
+          from urllib.error import HTTPError, URLError
+          from urllib.request import Request, urlopen
+
+          event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
+          release = event.get("release")
+          if (
+              event.get("action") != "published"
+              or not isinstance(release, dict)
+              or release.get("draft") is not False
+              or not isinstance(release.get("prerelease"), bool)
+          ):
+              raise SystemExit("Expected a published GitHub release.")
+
+          tag = release.get("tag_name")
+          title = release.get("name") or tag
+          url = release.get("html_url")
+          if not all(isinstance(value, str) and value.strip() for value in (tag, title, url)):
+              raise SystemExit("The release must have a title, tag, and URL.")
+          release_prefix = f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/releases/tag/"
+          if not url.startswith(release_prefix) or url == release_prefix:
+              raise SystemExit("Expected a GitHub release URL for this repository.")
+
+          webhook_url = os.environ.get("DISCORD_RELEASE_WEBHOOK_URL", "").strip()
+          if not re.fullmatch(r"https://discord\.com/api/(?:v[0-9]+/)?webhooks/[0-9]+/[A-Za-z0-9_-]+", webhook_url):
+              raise SystemExit("Configure the DISCORD_RELEASE_WEBHOOK_URL repository secret.")
+
+          release_type = "Pre-release" if release["prerelease"] else "Release"
+          message = {
+              "allowed_mentions": {"parse": []},
+              "embeds": [
+                  {
+                      "author": {"name": f"Anno 1503 Grand Overhaul · {release_type}"},
+                      "title": title[:256],
+                      "url": url,
+                      "fields": [{"name": "Version", "value": tag[:1024]}],
+                  }
+              ],
+          }
+          request = Request(
+              f"{webhook_url}?wait=true",
+              data=json.dumps(message).encode("utf-8"),
+              headers={"Content-Type": "application/json"},
+              method="POST",
+          )
+          try:
+              with urlopen(request, timeout=20) as response:
+                  if response.status != 200:
+                      raise SystemExit(f"Discord returned HTTP {response.status} instead of a message.")
+          except HTTPError as error:
+              raise SystemExit(f"Discord rejected the announcement (HTTP {error.code}).") from None
+          except (URLError, OSError):
+              raise SystemExit("Could not deliver the release announcement to Discord.") from None
+          PY
