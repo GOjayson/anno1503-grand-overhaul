@@ -4,7 +4,7 @@
 
 > **[Join the Grand Overhaul Discord](https://discord.gg/hbvms52jkR)** for installation help, release announcements, playtesting, and world seed sharing.
 
-**[Download the Windows beta](https://github.com/GOjayson/anno1503-grand-overhaul/releases)** · [Quick install](#install-the-windows-beta) · [Changelog](docs/CHANGELOG.md)
+**[Download the Windows beta](https://github.com/GOjayson/anno1503-grand-overhaul/releases)** · [Quick install](#install-the-windows-beta) · [Screenshots](#screenshots) · [Changelog](docs/CHANGELOG.md)
 
 ## Install the Windows beta
 
@@ -53,6 +53,21 @@ campaigns, and scenarios follow their usual start flow.
 [world options and validation guide](docs/WORLD_ENVIRONMENT_OPTIONS.md) covers
 observed game runs, automated checks, and what still needs testing. See the
 [island catalogue audit](docs/WORLD_ISLAND_CATALOGUE.md) for island coverage.
+
+### Screenshots
+
+**World Settings and map preview.** The **Grouped archipelagos** layout in an
+experimental **Huge (2048 × 2048)** world configured for 60 islands.
+
+![World Settings Map tab with four groups of islands in the generated preview](docs/screenshots/map-grouped-archipelagos.png)
+
+**Terra incognita in-game.** A starting ship reveals the water around it as
+the rest of the world waits to be explored.
+
+![Starting ship in a patch of charted water surrounded by unexplored darkness](docs/screenshots/terra-incognita-in-game.png)
+
+[Browse all 15 screenshots](docs/SCREENSHOTS.md) to see more World Settings
+options and the Food overhaul from the source development build.
 
 ## Optional Food overhaul and Bug Fixes
 
