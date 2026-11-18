@@ -23,11 +23,11 @@ def main() -> int:
     selection.add_argument("--food06-world", action="store_true", help="Prepare the separate Food 0.6 + World Settings development profile for NEW worlds")
     selection.add_argument("--world-only", action="store_true", help="Prepare World Settings with stock food and native host modules")
     selection.add_argument("--bug-fixes-only", action="store_true", help="Prepare the standalone localized Bug Fixes module")
-    parser.add_argument("--bug-fixes", action="store_true", help="Include Bug Fixes with --food06-world or --world-only")
+    parser.add_argument("--bug-fixes", action="store_true", help="Include Bug Fixes with --food06, --food06-world, or --world-only")
     parser.add_argument("--compiler", type=Path, help="Reviewed Food 0.6 compiler (with --food06 or --food06-world)")
     args = parser.parse_args()
-    if args.bug_fixes and not (args.food06_world or args.world_only):
-        parser.error('--bug-fixes requires --food06-world or --world-only; use --bug-fixes-only for the standalone module')
+    if args.bug_fixes and not (args.food06 or args.food06_world or args.world_only):
+        parser.error('--bug-fixes requires --food06, --food06-world, or --world-only; use --bug-fixes-only for the standalone module')
     if args.compiler is not None and not (args.food06 or args.food06_world):
         parser.error('--compiler is currently a Food 0.6 preparation option; use --food06')
     try:
@@ -41,7 +41,8 @@ def main() -> int:
         elif args.food06:
             from anno1503_overhaul.food06_package import prepare_food06_package
             root = prepare_food06_package(args.output, args.source_game, args.copy_game,
-                                           compiler_path=args.compiler)
+                                           compiler_path=args.compiler,
+                                           **({'city_statistics_guard': True} if args.bug_fixes else {}))
         elif args.bug_fixes_only:
             if args.copy_game is None:
                 parser.error('Bug Fixes requires --copy-game')
@@ -59,7 +60,7 @@ def main() -> int:
         print(json.dumps({"package": str(root), "verified_files": len(result["files"]),
                           "kind": result["kind"], "runtime_sha256": result.get("runtime_sha256"),
                           "new_world_required": result.get("new_world_required"),
-                          "bug_fixes_enabled": result.get("bug_fixes_enabled", args.bug_fixes_only),
+                          "bug_fixes_enabled": result.get("bug_fixes_enabled", args.bug_fixes or args.bug_fixes_only),
                           "game_executed": False}, indent=2))
     except (ValueError, RuntimeError, OSError) as exc:
         print("Cannot prepare installer package: " + str(exc), file=sys.stderr)

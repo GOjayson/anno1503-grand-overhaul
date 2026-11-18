@@ -36,14 +36,19 @@ def _view_policy() -> str:
     return FOOD06_VIEW_SHA256
 
 
-def _welt_policy() -> str:
+def _welt_policy(*, city_statistics_guard: bool = False) -> str:
+    if type(city_statistics_guard) is not bool:
+        raise common.PackageError("Invalid Food 0.6 city statistics selection.")
     try:
-        from .food_supply import FOOD06_WELT_SHA256
+        if city_statistics_guard:
+            from .city_statistics import FOOD06_GUARDED_WELT_SHA256 as digest
+        else:
+            from .food_supply import FOOD06_WELT_SHA256 as digest
     except ImportError as exc:
         raise common.PackageError("The reviewed Food 0.6 household supply guards are not ready.") from exc
-    if not isinstance(FOOD06_WELT_SHA256, str) or not re.fullmatch(r"[0-9a-f]{64}", FOOD06_WELT_SHA256):
+    if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
         raise common.PackageError("The Food 0.6 World derivative has not passed its build review.")
-    return FOOD06_WELT_SHA256
+    return digest
 
 
 def _scope() -> dict:
@@ -133,8 +138,9 @@ def build_edits(root, spec, progress=print):
     return source.encode("utf-8")
 
 
-def _recipe(source: str, copy: str | None, view: bytes, welt: bytes) -> dict[str, bytes]:
-    view_pin, welt_pin = _view_policy(), _welt_policy()
+def _recipe(source: str, copy: str | None, view: bytes, welt: bytes, *,
+            city_statistics_guard: bool = False) -> dict[str, bytes]:
+    view_pin, welt_pin = _view_policy(), _welt_policy(city_statistics_guard=city_statistics_guard)
     for name, value, pin in (("View", view, view_pin), ("World", welt, welt_pin)):
         if not isinstance(value, bytes):
             raise common.PackageError("The Food 0.6 " + name + " derivative must be immutable bytes.")
@@ -151,14 +157,18 @@ def _recipe(source: str, copy: str | None, view: bytes, welt: bytes) -> dict[str
     return files
 
 
-def _manifest(source: str, copy: str | None, files: dict[str, bytes]) -> dict:
-    return dict(schema_version=1, kind=KIND, version=VERSION, profile=PROFILE,
-                source_root=source, copy_root=copy,
-                feature_versions={"food_overhaul": VERSION},
-                base_food_spec_sha256=common.FOOD_SPEC_SHA256,
-                view_sha256=_view_policy(), welt_sha256=_welt_policy(), scope=_scope(),
-                files={name: common._sha(value) for name, value in sorted(files.items())},
-                actual_game_test_performed=False)
+def _manifest(source: str, copy: str | None, files: dict[str, bytes], *,
+              city_statistics_guard: bool = False) -> dict:
+    result = dict(schema_version=1, kind=KIND, version=VERSION, profile=PROFILE,
+                  source_root=source, copy_root=copy,
+                  feature_versions={"food_overhaul": VERSION},
+                  base_food_spec_sha256=common.FOOD_SPEC_SHA256,
+                  view_sha256=_view_policy(), welt_sha256=_welt_policy(city_statistics_guard=city_statistics_guard),
+                  scope=_scope(), files={name: common._sha(value) for name, value in sorted(files.items())},
+                  actual_game_test_performed=False)
+    if city_statistics_guard:
+        result["city_statistics_guard"] = True
+    return result
 
 
 def _paths(source_value, copy_value):
@@ -179,12 +189,17 @@ def validate_food06_package(path, source_game=None):
     manifest = common._json(common._read(root, "manifest.json"), "Food 0.6 package manifest")
     if manifest.get("kind") != KIND:
         raise common.PackageError("Unknown Food 0.6 package kind.")
+    city_statistics_guard = manifest.get("city_statistics_guard", False)
+    if type(city_statistics_guard) is not bool:
+        raise common.PackageError("Invalid Food 0.6 city statistics selection.")
     source, copy = _paths(manifest.get("source_root"), manifest.get("copy_root"))
     if source_game is not None and common._checked_path(Path(source_game)) != source:
         raise common.PackageError("This Food 0.6 package belongs to another original game.")
     files = _recipe(str(source), None if copy is None else str(copy),
-                    common._read(root, VIEW_PAYLOAD), common._read(root, WELT_PAYLOAD))
-    expected = _manifest(str(source), None if copy is None else str(copy), files)
+                    common._read(root, VIEW_PAYLOAD), common._read(root, WELT_PAYLOAD),
+                    city_statistics_guard=city_statistics_guard)
+    expected = _manifest(str(source), None if copy is None else str(copy), files,
+                         city_statistics_guard=city_statistics_guard)
     if common._encoded(manifest) != common._encoded(expected):
         raise common.PackageError("The Food 0.6 manifest differs from its reviewed recipe.")
     for name, value in files.items():
@@ -254,7 +269,17 @@ def _build_view_from_source(source: Path, compiler: Path) -> tuple[bytes, dict]:
     return build_view(food05, compiler)
 
 
-def _build_welt_from_source(source: Path) -> tuple[bytes, dict]:
+def _guard_welt(welt: bytes) -> bytes:
+    from .city_statistics import bound_supply_statistics
+
+    common._require_sha(welt, _welt_policy(), "Food 0.6 city statistics base")
+    return common._require_sha(
+        bound_supply_statistics(welt), _welt_policy(city_statistics_guard=True),
+        "Food 0.6 guarded city statistics derivative",
+    )
+
+
+def _build_welt_from_source(source: Path, *, city_statistics_guard: bool = False) -> tuple[bytes, dict]:
     raw_spec = common._require_sha(common._read(common.ROOT, "legacy/food_overhaul/food_patch.json"),
                                    common.FOOD_SPEC_SHA256, "preserved Food specification")
     spec = common._json(raw_spec, "preserved Food specification")
@@ -262,12 +287,18 @@ def _build_welt_from_source(source: Path) -> tuple[bytes, dict]:
                         "supported History Edition executable")
     food05 = _food05_native(common._read(source, "AnnoWelt.dll"), spec, "AnnoWelt.dll")
     from .food_supply import build_welt
-    return build_welt(food05)
+
+    welt, proof = build_welt(food05)
+    if city_statistics_guard:
+        welt = _guard_welt(welt)
+        proof = dict(proof, city_statistics_guard_sha256=common._sha(welt))
+    return welt, proof
 
 
-def prepare_food06_package(output_dir, source_game, copy_game=None, *, compiler_path=None):
+def prepare_food06_package(output_dir, source_game, copy_game=None, *,
+                           compiler_path=None, city_statistics_guard: bool = False):
     """Build reviewed Food-only inputs in a fresh folder, never in the game."""
-    view_pin, welt_pin = _view_policy(), _welt_policy()
+    view_pin, welt_pin = _view_policy(), _welt_policy(city_statistics_guard=city_statistics_guard)
     source, copy = _paths(str(common._checked_path(Path(source_game))),
                           None if copy_game is None else str(common._checked_path(Path(copy_game), exists=False)))
     output = common._package_output(output_dir, source, copy)
@@ -284,7 +315,12 @@ def prepare_food06_package(output_dir, source_game, copy_game=None, *, compiler_
     welt, supply_proof = _build_welt_from_source(source)
     if not isinstance(supply_proof, dict):
         raise common.PackageError("The Food household supply build returned no review proof.")
+    if city_statistics_guard:
+        welt = _guard_welt(welt)
     common._require_sha(welt, welt_pin, "reviewed Food 0.6 household supply guards")
-    files = _recipe(str(source), None if copy is None else str(copy), view, welt)
-    files["manifest.json"] = common._encoded(_manifest(str(source), None if copy is None else str(copy), files))
+    files = _recipe(str(source), None if copy is None else str(copy), view, welt,
+                    city_statistics_guard=city_statistics_guard)
+    files["manifest.json"] = common._encoded(_manifest(
+        str(source), None if copy is None else str(copy), files, city_statistics_guard=city_statistics_guard,
+    ))
     return common._publish(files, output, source)

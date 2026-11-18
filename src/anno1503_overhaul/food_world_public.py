@@ -43,7 +43,7 @@ def _private_ai(stock_native):
     return result, proof
 
 
-def _native_host(stock_native, view, welt):
+def _native_host(stock_native, view, welt, *, city_statistics_guard=False):
     raw = common._require_sha(common._read(common.ROOT, 'legacy/food_overhaul/food_patch.json'),
                               common.FOOD_SPEC_SHA256, 'preserved Food construction specification')
     spec = common._json(raw, 'preserved Food construction specification')
@@ -51,26 +51,32 @@ def _native_host(stock_native, view, welt):
     images = {name: food._food05_native(value, spec, name) if name in changed else value
               for name, value in stock_native.items()}
     images.update({'View.dll':view, 'AnnoWelt.dll':welt})
-    if set(images) != set(native.HOST_SHA256):
+    host = native.expected_native_hashes(city_statistics_guard=True) if city_statistics_guard else native.HOST_SHA256
+    if set(images) != set(host):
         raise common.PackageError('The public Food06 native host inventory differs.')
-    for name, digest in native.HOST_SHA256.items():
+    for name, digest in host.items():
         common._require_sha(images[name], digest, 'public Food06 host/'+name)
         common._amd64(images[name], 'public Food06 host/'+name)
     return images
 
 
-def _recipe(source, copy, runtime, view, welt, *, bug_fixes_enabled=False):
+def _recipe(source, copy, runtime, view, welt, *, bug_fixes_enabled=False, city_statistics_guard=False):
     stock._bug_fix_manifest(bug_fixes_enabled)
-    combined._policy()
+    if type(city_statistics_guard) is not bool or (city_statistics_guard and not bug_fixes_enabled):
+        raise common.PackageError('City statistics protection requires the selected Bug Fixes option.')
+    combined._policy(city_statistics_guard=city_statistics_guard)
+    host = native.expected_native_hashes(city_statistics_guard=True) if city_statistics_guard else native.HOST_SHA256
+    runtime_pin = native.runtime_hash(city_statistics_guard)
+    engine_pin = native.engine_plan_hash(city_statistics_guard)
     originals, source_proof = _originals(source)
     # Reconstruct the complete native host even during validation. This proves
     # the Food outputs belong to the reviewed coherent source, independently of
     # manifest hashes and without opening historical patched DLLs.
-    _native_host(originals, view, welt)
-    common._require_sha(runtime, native.RUNTIME_SHA256, 'public Food06 World runtime')
+    _native_host(originals, view, welt, city_statistics_guard=city_statistics_guard)
+    common._require_sha(runtime, runtime_pin, 'public Food06 World runtime')
     common._amd64(runtime, 'public Food06 World runtime')
     files = common._source_recipe(str(copy))
-    food_inputs = food._recipe(str(source), str(copy), view, welt)
+    food_inputs = food._recipe(str(source), str(copy), view, welt, city_statistics_guard=city_statistics_guard)
     files.update(food_inputs)
     files.update({'world/'+name.removeprefix('food/'):value for name,value in food_inputs.items()})
     files['world/world_mod.py'] = stock._source('food_world_backend.py')
@@ -95,13 +101,13 @@ def _recipe(source, copy, runtime, view, welt, *, bug_fixes_enabled=False):
     files.update({'world/'+name:value for name,value in payloads.items()})
     engine_name = 'world/developer/huge_world/runtime_engine_edits.json'
     files[engine_name] = native.derive_engine_plan(welt, files[engine_name])
-    common._require_sha(files[engine_name], native.ENGINE_PLAN_SHA256, 'public combined engine plan')
+    common._require_sha(files[engine_name], engine_pin, 'public combined engine plan')
     spec = dict(profile=PROFILE, version=WORLD_VERSION, food_version=VERSION, status='BETA',
                 food_enabled=True, host_root=str(copy), input_source_root=str(source), original_game_root=str(copy),
-                exe_sha256=native.HOST_SHA256['Anno1503.exe'], native_sha256=native.HOST_SHA256,
+                exe_sha256=host['Anno1503.exe'], native_sha256=host,
                 food_files=food_files(), new_world_required=True, old_save_migration_supported=False,
                 introduced_files=introduced, payloads={name:common._sha(value) for name,value in sorted(payloads.items())},
-                expanded_engine_patch_count=173, expanded_engine_plan_sha256=native.ENGINE_PLAN_SHA256,
+                expanded_engine_patch_count=173, expanded_engine_plan_sha256=engine_pin,
                 public_beta_source=True, historical_private_inputs_used=False, **source_proof,
                 world_options=dict(version=WORLD_VERSION, generator_id=generator_id(),
                                    settings_size=SETTINGS_SIZE, preview_size=PREVIEW_SIZE, food_enabled=True),
@@ -113,7 +119,7 @@ def _recipe(source, copy, runtime, view, welt, *, bug_fixes_enabled=False):
     files['launcher/launcher_config.json'] = common._encoded(dict(
         version='1.0.0', profile=PROFILE, food_version=VERSION, food_enabled=True,
         package_relative='../world', package_spec_sha256=common._sha(files['world/world_patch.json']),
-        runtime_sha256=native.RUNTIME_SHA256, engine_patch_count=173, timeout_seconds=300,
+        runtime_sha256=runtime_pin, engine_patch_count=173, timeout_seconds=300,
         copy_root=str(copy), input_source_root=str(source), world_options_version=WORLD_VERSION,
         generator_id=generator_id(), modular_adapter_version='1.0', public_beta_source=True))
     stock._launcher_recipe(files, str(source), str(copy))
@@ -134,8 +140,9 @@ def _recipe(source, copy, runtime, view, welt, *, bug_fixes_enabled=False):
     return files
 
 
-def _manifest(source, copy, files, *, bug_fixes_enabled=False):
-    result = combined._manifest(str(source), str(copy), files, bug_fixes_enabled=bug_fixes_enabled)
+def _manifest(source, copy, files, *, bug_fixes_enabled=False, city_statistics_guard=False):
+    result = combined._manifest(str(source), str(copy), files, bug_fixes_enabled=bug_fixes_enabled,
+                                city_statistics_guard=city_statistics_guard)
     result.pop('frozen_world_spec_sha256')
     spec = common._json(files['world/world_patch.json'], 'public combined specification')
     return dict(result, kind=KIND, public_beta_source=True, historical_private_inputs_used=False,
@@ -152,10 +159,12 @@ def validate_public_food_world_package(path, source_game=None):
     if source_game is not None and common._checked_path(Path(source_game)) != source:
         raise common.PackageError('The public combined package belongs to another original game.')
     enabled = manifest.get('bug_fixes_enabled', False)
+    city_statistics_guard = manifest.get('city_statistics_guard', False)
     files = _recipe(source, copy, common._read(root, 'world/native/AnnoWorldSettings.dll'),
                     common._read(root, food.VIEW_PAYLOAD), common._read(root, food.WELT_PAYLOAD),
-                    bug_fixes_enabled=enabled)
-    expected = _manifest(source, copy, files, bug_fixes_enabled=enabled)
+                    bug_fixes_enabled=enabled, city_statistics_guard=city_statistics_guard)
+    expected = _manifest(source, copy, files, bug_fixes_enabled=enabled,
+                         city_statistics_guard=city_statistics_guard)
     if common._encoded(manifest) != common._encoded(expected):
         raise common.PackageError('Public combined metadata differs from its exact public-source recipe.')
     for name, value in files.items():
@@ -183,15 +192,15 @@ def prepare_public_food_world_package(output_dir, source_game, copy_game, *, com
                                       bug_fixes_enabled=False):
     """Build one fresh closed package without reading any private input store."""
     stock._bug_fix_manifest(bug_fixes_enabled)
-    combined._policy()
+    combined._policy(city_statistics_guard=bug_fixes_enabled)
     source, copy = stock._paths(str(common._checked_path(Path(source_game))),
                                str(common._checked_path(Path(copy_game), exists=False)))
     output = common._package_output(output_dir, source, copy, None)
     compiler = common._checked_path(Path(compiler_path))
     originals, source_proof = _originals(source)
     view, unused = food._build_view_from_source(source, compiler)
-    welt, unused = food._build_welt_from_source(source)
-    host = _native_host(originals, view, welt)
+    welt, unused = food._build_welt_from_source(source, city_statistics_guard=bug_fixes_enabled)
+    host = _native_host(originals, view, welt, city_statistics_guard=bug_fixes_enabled)
     ai, ai_proof = _private_ai(originals)
     assets, unused = beta_inputs.derive_beta_assets(source)
     workspace = common._package_output(output.parent/('build-food-world-'+uuid.uuid4().hex[:16]), source, copy, None)
@@ -204,9 +213,11 @@ def prepare_public_food_world_package(output_dir, source_game, copy_game, *, com
                 stream.write(value)
     report = native.build_public_food_world_runtime(workspace/'native-host', source, workspace/'assets', compiler,
         (ai, ai_proof), output=workspace/'runtime', source_proof={name:source_proof[name]
-            for name in ('source_native_profile','source_native_sha256')})
+            for name in ('source_native_profile','source_native_sha256')},
+        city_statistics_guard=bug_fixes_enabled)
     runtime_file = common._checked_path(Path(report['runtime_path']))
     files = _recipe(source, copy, common._read(runtime_file.parent, runtime_file.name), view, welt,
-                    bug_fixes_enabled=bug_fixes_enabled)
-    files['manifest.json'] = common._encoded(_manifest(source, copy, files, bug_fixes_enabled=bug_fixes_enabled))
+                    bug_fixes_enabled=bug_fixes_enabled, city_statistics_guard=bug_fixes_enabled)
+    files['manifest.json'] = common._encoded(_manifest(source, copy, files, bug_fixes_enabled=bug_fixes_enabled,
+                                                     city_statistics_guard=bug_fixes_enabled))
     return common._publish(files, output, source)

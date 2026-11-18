@@ -18,21 +18,22 @@ from .food_diet import VERSION
 from .world_options import VERSION as WORLD_VERSION, generator_id, SETTINGS_SIZE, PREVIEW_SIZE
 
 
-def _policy():
+def _policy(*, city_statistics_guard=False):
     from . import food_world_runtime as native
     from .world_options_build import PINNED_GENERATOR
-    if (not isinstance(native.RUNTIME_SHA256, str)
-            or re.fullmatch(r'[0-9a-f]{64}', native.RUNTIME_SHA256) is None
-            or re.fullmatch(r'[0-9a-f]{64}', native.ENGINE_PLAN_SHA256) is None):
+    if any(not isinstance(pin, str) or re.fullmatch(r'[0-9a-f]{64}', pin) is None
+           for pin in (native.runtime_hash(city_statistics_guard),
+                       native.engine_plan_hash(city_statistics_guard))):
         raise common.PackageError('The combined Food06 native runtime has not passed build review.')
     if generator_id() != PINNED_GENERATOR:
         raise common.PackageError('World generator source changed after runtime review.')
     return native
 
 
-def _runtime_path():
-    native = _policy()
-    return common.ROOT / '.local/runtime-profiles' / ('options-' + PROFILE + '-' + native.RUNTIME_SHA256[:16]) / 'AnnoWorldSettings.dll'
+def _runtime_path(*, city_statistics_guard=False):
+    native = _policy(city_statistics_guard=city_statistics_guard)
+    pin = native.runtime_hash(city_statistics_guard)
+    return common.ROOT / '.local/runtime-profiles' / ('options-' + PROFILE + '-' + pin[:16]) / 'AnnoWorldSettings.dll'
 
 
 def _private_ai(corpus):
@@ -107,18 +108,23 @@ def _bug_fix_support():
     return files
 
 
-def _recipe(raw, corpus, runtime, view, welt, source, copy, baselines=None, *, bug_fixes_enabled=False):
-    if type(bug_fixes_enabled) is not bool:
+def _recipe(raw, corpus, runtime, view, welt, source, copy, baselines=None, *, bug_fixes_enabled=False,
+            city_statistics_guard=False):
+    if (type(bug_fixes_enabled) is not bool or type(city_statistics_guard) is not bool
+            or city_statistics_guard and not bug_fixes_enabled):
         raise common.PackageError('Choose an explicit Bug Fixes selection for this combined package.')
-    native = _policy()
+    native = _policy(city_statistics_guard=city_statistics_guard)
+    runtime_pin = native.runtime_hash(city_statistics_guard)
+    engine_pin = native.engine_plan_hash(city_statistics_guard)
+    host = native.expected_native_hashes(city_statistics_guard=True) if city_statistics_guard else native.HOST_SHA256
     frozen, files = common._recipe(raw, source, copy, baselines)
     if set(corpus) != set(frozen['payloads']):
         raise common.PackageError('The combined frozen World inventory differs.')
     for name, digest in frozen['payloads'].items():
         common._require_sha(corpus[name], digest, 'combined frozen/' + name)
-    common._require_sha(runtime, native.RUNTIME_SHA256, 'combined Food06 World runtime')
+    common._require_sha(runtime, runtime_pin, 'combined Food06 World runtime')
     common._amd64(runtime, 'combined Food06 World runtime')
-    food_inputs = food._recipe(source, copy, view, welt)
+    food_inputs = food._recipe(source, copy, view, welt, city_statistics_guard=city_statistics_guard)
     files.update(food_inputs)
     files.update({'world/' + name.removeprefix('food/'): value for name, value in food_inputs.items()})
     files.update({'world/frozen-inputs/' + name: value for name, value in corpus.items()})
@@ -135,7 +141,7 @@ def _recipe(raw, corpus, runtime, view, welt, source, copy, baselines=None, *, b
     files['world/activation/preview_snapshot.py'] = common._read(common.ROOT, 'src/anno1503_overhaul/world_options_snapshot.py')
     engine_name = 'world/developer/huge_world/runtime_engine_edits.json'
     engine = native.derive_engine_plan(welt, files[engine_name])
-    common._require_sha(engine, native.ENGINE_PLAN_SHA256, 'combined Food06 active engine plan')
+    common._require_sha(engine, engine_pin, 'combined Food06 active engine plan')
     files[engine_name] = engine
     introduced = {'AnnoWorldSettings.dll': 'native/AnnoWorldSettings.dll',
                   'WorldSettingsAI/CompLogic.dll': 'native/CompLogic.food06.dll',
@@ -150,11 +156,11 @@ def _recipe(raw, corpus, runtime, view, welt, source, copy, baselines=None, *, b
     files.update({'world/' + name: value for name, value in payloads.items()})
     spec = dict(profile=PROFILE, version=WORLD_VERSION, food_version=VERSION, status='DEVELOPMENT',
                 food_enabled=True, host_root=copy, input_source_root=source, original_game_root=copy,
-                exe_sha256=frozen['exe_sha256'], native_sha256=native.HOST_SHA256,
+                exe_sha256=frozen['exe_sha256'], native_sha256=host,
                 food_files=food_files(), new_world_required=True, old_save_migration_supported=False,
                 introduced_files=introduced,
                 payloads={name: common._sha(value) for name, value in sorted(payloads.items())},
-                expanded_engine_patch_count=173, expanded_engine_plan_sha256=native.ENGINE_PLAN_SHA256,
+                expanded_engine_patch_count=173, expanded_engine_plan_sha256=engine_pin,
                 frozen_world_spec_sha256=common.FROZEN_WORLD_SPEC_SHA256,
                 world_options=dict(version=WORLD_VERSION, generator_id=generator_id(),
                                    settings_size=SETTINGS_SIZE, preview_size=PREVIEW_SIZE, food_enabled=True),
@@ -164,7 +170,7 @@ def _recipe(raw, corpus, runtime, view, welt, source, copy, baselines=None, *, b
     files['world/world_patch.json'] = common._encoded(spec)
     config = dict(version='1.0.0', profile=PROFILE, food_version=VERSION, food_enabled=True,
                   package_relative='../world', package_spec_sha256=common._sha(files['world/world_patch.json']),
-                  runtime_sha256=native.RUNTIME_SHA256, engine_patch_count=173, timeout_seconds=300,
+                  runtime_sha256=runtime_pin, engine_patch_count=173, timeout_seconds=300,
                   copy_root=copy, input_source_root=source, world_options_version=WORLD_VERSION,
                   generator_id=generator_id(), modular_adapter_version='1.0')
     files['launcher/launcher_config.json'] = common._encoded(config)
@@ -182,8 +188,8 @@ def _recipe(raw, corpus, runtime, view, welt, source, copy, baselines=None, *, b
     return files
 
 
-def _manifest(source, copy, files, *, bug_fixes_enabled=False):
-    native = _policy()
+def _manifest(source, copy, files, *, bug_fixes_enabled=False, city_statistics_guard=False):
+    native = _policy(city_statistics_guard=city_statistics_guard)
     versions = {'food_overhaul': VERSION, 'world_settings': WORLD_VERSION}
     if bug_fixes_enabled:
         from .food_world_bug_fixes import VERSION as BUG_FIXES_VERSION
@@ -191,14 +197,18 @@ def _manifest(source, copy, files, *, bug_fixes_enabled=False):
     result = dict(schema_version=1, kind=KIND, profile=PROFILE, version=VERSION,
                 source_root=source, copy_root=copy, food_enabled=True,
                 feature_versions=versions,
-                runtime_sha256=native.RUNTIME_SHA256, engine_plan_sha256=native.ENGINE_PLAN_SHA256,
-                view_sha256=food._view_policy(), welt_sha256=food._welt_policy(), generator_id=generator_id(),
+                runtime_sha256=native.runtime_hash(city_statistics_guard),
+                engine_plan_sha256=native.engine_plan_hash(city_statistics_guard),
+                view_sha256=food._view_policy(), welt_sha256=food._welt_policy(city_statistics_guard=city_statistics_guard),
+                generator_id=generator_id(),
                 world_settings_supported=True, new_world_required=True, old_save_migration_supported=False,
                 frozen_world_spec_sha256=common.FROZEN_WORLD_SPEC_SHA256,
                 files={name: common._sha(value) for name, value in sorted(files.items())},
                 actual_game_test_performed=False)
     if bug_fixes_enabled:
         result['bug_fixes_enabled'] = True
+    if city_statistics_guard:
+        result['city_statistics_guard'] = True
     return result
 
 
@@ -214,12 +224,14 @@ def validate_food_world_package(path, source_game=None):
     frozen, _ = common._world_spec(raw, str(source), str(copy))
     corpus = {name: common._read(root, 'world/frozen-inputs/' + common._name(name)) for name in frozen['payloads']}
     bug_fixes_enabled = manifest.get('bug_fixes_enabled', False)
+    city_statistics_guard = manifest.get('city_statistics_guard', False)
     if type(bug_fixes_enabled) is not bool:
         raise common.PackageError('The combined package has no explicit Bug Fixes selection.')
     files = _recipe(raw, corpus, common._read(root, 'world/native/AnnoWorldSettings.dll'),
                     common._read(root, food.VIEW_PAYLOAD), common._read(root, food.WELT_PAYLOAD), str(source), str(copy),
-                    bug_fixes_enabled=bug_fixes_enabled)
-    expected = _manifest(str(source), str(copy), files, bug_fixes_enabled=bug_fixes_enabled)
+                    bug_fixes_enabled=bug_fixes_enabled, city_statistics_guard=city_statistics_guard)
+    expected = _manifest(str(source), str(copy), files, bug_fixes_enabled=bug_fixes_enabled,
+                         city_statistics_guard=city_statistics_guard)
     if common._encoded(manifest) != common._encoded(expected):
         raise common.PackageError('The combined Food06 manifest differs from its reviewed recipe.')
     for name, value in files.items():
@@ -249,7 +261,7 @@ def prepare_food_world_package(baselines_dir, output_dir, source_game, copy_game
     """Prepare a new combined package; never write to either game directory."""
     if type(bug_fixes_enabled) is not bool:
         raise common.PackageError('Choose an explicit Bug Fixes selection for this combined package.')
-    _policy()
+    _policy(city_statistics_guard=bug_fixes_enabled)
     baselines = common._checked_path(Path(baselines_dir) if baselines_dir is not None else common.ROOT / '.local/baselines')
     source, copy = stock._paths(str(common._checked_path(Path(source_game))),
                                 str(common._checked_path(Path(copy_game), exists=False)))
@@ -259,15 +271,17 @@ def prepare_food_world_package(baselines_dir, output_dir, source_game, copy_game
         compiler_path = find_compiler()
     compiler = common._checked_path(Path(compiler_path))
     view, _ = food._build_view_from_source(source, compiler)
-    welt, _ = food._build_welt_from_source(source)
-    runtime = common._checked_path(Path(runtime_path) if runtime_path is not None else _runtime_path())
+    welt, _ = food._build_welt_from_source(source, city_statistics_guard=bug_fixes_enabled)
+    runtime = common._checked_path(Path(runtime_path) if runtime_path is not None
+                                   else _runtime_path(city_statistics_guard=bug_fixes_enabled))
     if not runtime.is_file() or runtime.stat().st_size > common._MAX_FILE:
         raise common.PackageError('The reviewed combined Food06 runtime is missing or too large.')
     raw = common._read(baselines / 'world_settings', 'world_patch.json')
     frozen, _ = common._world_spec(raw, str(source), str(copy))
     corpus = {name: common._read(baselines / 'world_settings', common._name(name)) for name in frozen['payloads']}
     files = _recipe(raw, corpus, runtime.read_bytes(), view, welt, str(source), str(copy), baselines,
-                    bug_fixes_enabled=bug_fixes_enabled)
+                    bug_fixes_enabled=bug_fixes_enabled, city_statistics_guard=bug_fixes_enabled)
     files['manifest.json'] = common._encoded(_manifest(str(source), str(copy), files,
-                                                     bug_fixes_enabled=bug_fixes_enabled))
+                                                     bug_fixes_enabled=bug_fixes_enabled,
+                                                     city_statistics_guard=bug_fixes_enabled))
     return common._publish(files, output, source)

@@ -376,10 +376,13 @@ class Food06CLITests(unittest.TestCase):
         arguments = ["prepare_installer_package.py","--food06","--source-game","original", "--copy-game","managed",
                      "--output","prepared","--compiler","reviewed-zig"]
         result = dict(files={"fixture": "hash"}, kind=food06_package.KIND, new_world_required=True)
-        with (patch.object(sys,"argv",arguments), patch.object(food06_package,"prepare_food06_package",return_value=Path("prepared")) as build,
-              patch.object(tool,"validate_package",return_value=result), redirect_stdout(io.StringIO())):
-            self.assertEqual(tool.main(),0)
-        build.assert_called_once_with(Path("prepared"),Path("original"),Path("managed"),compiler_path=Path("reviewed-zig"))
+        for flag, options in (([], {}), (["--bug-fixes"], {"city_statistics_guard": True})):
+            with (self.subTest(flag=flag), patch.object(sys,"argv",arguments + flag),
+                  patch.object(food06_package,"prepare_food06_package",return_value=Path("prepared")) as build,
+                  patch.object(tool,"validate_package",return_value=result), redirect_stdout(io.StringIO())):
+                self.assertEqual(tool.main(),0)
+                build.assert_called_once_with(Path("prepared"),Path("original"),Path("managed"),
+                                              compiler_path=Path("reviewed-zig"), **options)
 
     def test_preparation_tool_binds_all_three_features_in_the_combined_package(self):
         spec = importlib.util.spec_from_file_location("_all_mods_preparation_tool", ROOT / "tools/prepare_installer_package.py")
@@ -405,7 +408,7 @@ class Food06CLITests(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("_all_mods_preparation_tool_error", ROOT / "tools/prepare_installer_package.py")
         tool = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(tool)
-        for chosen in ('--food-only', '--food06', '--bug-fixes-only'):
+        for chosen in ('--food-only', '--bug-fixes-only'):
             with (self.subTest(chosen=chosen),
                   patch.object(sys, 'argv', ['prepare_installer_package.py', chosen, '--bug-fixes',
                                '--source-game', 'original', '--copy-game', 'managed', '--output', 'prepared']),

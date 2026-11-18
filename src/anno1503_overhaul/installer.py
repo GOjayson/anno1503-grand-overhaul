@@ -251,7 +251,8 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
         elif requested_food_version == FOOD06_VERSION:
             from .food06_package import prepare_food06_package
             progress('Building Food 0.6 for a NEW Food-only world. Food 0.5 saves are not migrated…')
-            package = prepare_food06_package(output, source, copy_game=target)
+            food_options = {'city_statistics_guard': True} if features['bug_fixes'] else {}
+            package = prepare_food06_package(output, source, copy_game=target, **food_options)
         elif bug_fixes_only:
             package = prepare_bug_fixes_package(output, source, target)
         else:
@@ -279,6 +280,10 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
     is_food06 = metadata['kind'] == FOOD06_PACKAGE_KIND or is_combined06
     if metadata['kind'] == FOOD06_PACKAGE_KIND and (features['world_settings'] or not features['food_overhaul']):
         raise InstallerError('This Food 0.6 package is for Food-only installations. It cannot be used by World Settings or the preserved Food 0.5 combined profile.')
+    city_statistics_guard = metadata.get('city_statistics_guard', False)
+    if (is_food06
+            and (type(city_statistics_guard) is not bool or city_statistics_guard != features['bug_fixes'])):
+        raise InstallerError('The prepared Food 0.6 package has a different Bug Fixes selection. Prepare it again for the selected features.')
     if is_combined06 and not (features['world_settings'] and features['food_overhaul']):
         raise InstallerError('This Food 0.6 + World Settings package requires both features. Prepare the separate Food-only or World-only package for that selection.')
     if features['world_settings']:
@@ -322,6 +327,8 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
         result.update(new_world_required=metadata['new_world_required'],
                       old_save_migration_supported=metadata['old_save_migration_supported'],
                       world_settings_supported=metadata['world_settings_supported'])
+    if city_statistics_guard is True:
+        result['city_statistics_guard'] = True
     return result
 
 
@@ -404,6 +411,8 @@ def install(source_game: Path, copy_game: Path, profile: dict, *,
                       package_manifest_sha256=plan['package_manifest_sha256'], prepared_at=_now())
         if plan.get('food_version') is not None:
             record['food_version'] = plan['food_version']
+        if plan.get('city_statistics_guard') is True:
+            record['city_statistics_guard'] = True
         if features['bug_fixes']:
             record.update(bug_fixes_version=plan['bug_fixes_version'], bug_fix_quests=plan['bug_fix_quests'],
                           bug_fix_sounds=plan['bug_fix_sounds'])

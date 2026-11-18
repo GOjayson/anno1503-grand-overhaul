@@ -38,7 +38,7 @@ _MODULAR_SOURCES = frozenset('src/anno1503_overhaul/' + name + '.py' for name in
     'food06_package', 'food_artwork', 'food_diet', 'food_household', 'food_supply',
     'food_world_ai', 'food_world_backend', 'food_world_bug_fixes', 'food_world_package',
     'food_world_policy', 'food_world_runtime', 'food_world_public', 'food_world_public_ai',
-    'food_launch', 'ambient_sound',
+    'food_launch', 'ambient_sound', 'city_statistics',
     'ambient_sound_baselines', 'bug_fixes', 'bug_fixes_launch',
 ))
 _REQUIRED_SOURCES = _MODULAR_SOURCES | {

@@ -111,9 +111,12 @@ class PublicFoodWorldTests(unittest.TestCase):
         self.prepare(True)
         checked=common.validate_package(self.output,self.source)
         self.assertTrue(checked['bug_fixes_enabled']);self.assertTrue(checked['food_enabled'])
+        self.assertTrue(checked['city_statistics_guard'])
+        self.assertEqual((self.output/public.food.WELT_PAYLOAD).read_bytes(), self.guarded_welt)
         self.assertEqual(checked['feature_versions']['bug_fixes'],'1.2')
         spec=json.loads((self.output/'world/world_patch.json').read_bytes())
         self.assertEqual(spec['bug_fixes'],recipe)
+        self.assertEqual(spec['native_sha256'],self.guarded_host)
         for item in (self.output/'world/support').glob('_combined_*.py'):
             ast.parse(item.read_bytes())
         changed=self.output/'world/support/_combined_bugfix_recipe.py'

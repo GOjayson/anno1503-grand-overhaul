@@ -209,15 +209,19 @@ def build_public_options_runtime(input_root, *, output, require_reviewed=True):
 
 
 def _build_options_runtime(profile, game, tools=None, *, output=None, publish=False, _public_inputs=None,
-                           _food06_profile=False, _food06_asset_source=None, _food06_asset_root=None):
-    if type(_food06_profile) is not bool:
+                           _food06_profile=False, _food06_asset_source=None, _food06_asset_root=None,
+                           city_statistics_guard=False):
+    if type(_food06_profile) is not bool or type(city_statistics_guard) is not bool:
         raise old.RuntimeBuildError('Choose an explicit native runtime profile.')
     if _food06_profile:
-        from .food_world_runtime import PROFILE, derive_sources as food06_sources, RUNTIME_SHA256
+        from .food_world_runtime import PROFILE, derive_sources as food06_sources, runtime_hash
         if profile != PROFILE or publish:
             raise old.RuntimeBuildError('Food 0.6 uses its separate candidate build and review route.')
+        expected_runtime = runtime_hash(city_statistics_guard)
     elif _food06_asset_source is not None or _food06_asset_root is not None:
         raise old.RuntimeBuildError('Food 0.6 asset inputs belong only to its separate native profile.')
+    elif city_statistics_guard:
+        raise old.RuntimeBuildError('The city statistics guard belongs only to the Food 0.6 native profile.')
     if os.name != 'nt':
         raise old.RuntimeBuildError('Native compilation requires 64-bit Windows and the reviewed Zig toolchain.')
     repo, game = checked_path(old.ROOT), checked_path(game)
@@ -238,7 +242,8 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
     generation = generator_id()
     if _public_inputs is None:
         files, proof = (food06_sources(original, game, asset_source=_food06_asset_source,
-                                       asset_root=_food06_asset_root) if _food06_profile
+                                       asset_root=_food06_asset_root,
+                                       city_statistics_guard=city_statistics_guard) if _food06_profile
                         else derive_sources(profile, original, game))
         tools = checked_path(tools if tools is not None else repo / '.local/toolchain')
         zig = checked_path(tools / 'ziglang/zig.exe')
@@ -250,7 +255,7 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
         if _food06_profile:
             files, proof = food06_sources(original, game,
                 asset_source=verified['source_data_root'], asset_root=verified['assets_root'],
-                activity_inputs=_public_inputs['activity_inputs'])
+                activity_inputs=_public_inputs['activity_inputs'], city_statistics_guard=city_statistics_guard)
         else:
             files, proof = _derive_sources_exact(profile, original, game,
                 asset_source=verified['source_data_root'], asset_root=verified['assets_root'],
@@ -328,7 +333,7 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
     exports = parser.exports(normalized, REQUIRED_EXPORTS)
     report.update(built=True, runtime_path=str(runtime), runtime_sha256=_sha(normalized),
                   normalized_metadata=metadata, exports=exports,
-                  matches_reviewed_runtime=_sha(normalized) == (RUNTIME_SHA256 if _food06_profile
+                  matches_reviewed_runtime=_sha(normalized) == (expected_runtime if _food06_profile
                                                                else PINNED_RUNTIMES[profile]))
     (output / 'BUILD_RESULT.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     if publish:

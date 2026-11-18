@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 import struct
 
+from . import city_statistics
 from . import world_options_build as options
 from . import world_runtime_build as base
 from .filesystem import checked_path
@@ -23,6 +24,8 @@ PROFILE = "food06-world"
 # Filled only after independent candidate builds and native proof review.
 RUNTIME_SHA256 = "6bf858328c35610dc81135094e56258bd8e5b505d16af34cd04c171a4513f6e5"
 ENGINE_PLAN_SHA256 = "e2375529553996e6e02c74814a97be1dddd45c9be6649ea048087e12299bb07c"
+GUARDED_RUNTIME_SHA256 = "a56a462414ceacbcf8a306c4dadb2739382ef579aa6bc8d6f8db923045e65f9b"
+GUARDED_ENGINE_PLAN_SHA256 = "7a31792b6518c6986da3efad7fca80265fde21cf829d70ae22fd497a00c26eda"
 UNWIND_EDITS = (
     (0x14BE8C, (0x68024, 0x6804D, 0x115800), 4,
      "4d800600", "59800600", 0x157B18),
@@ -35,7 +38,15 @@ def _sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def expected_native_hashes() -> dict[str, str]:
+def runtime_hash(city_statistics_guard: bool = False) -> str:
+    return GUARDED_RUNTIME_SHA256 if city_statistics_guard else RUNTIME_SHA256
+
+
+def engine_plan_hash(city_statistics_guard: bool = False) -> str:
+    return GUARDED_ENGINE_PLAN_SHA256 if city_statistics_guard else ENGINE_PLAN_SHA256
+
+
+def expected_native_hashes(*, city_statistics_guard: bool = False) -> dict[str, str]:
     """One exact host, never an alternative list accepted by older profiles."""
     from .packages import FOOD_SPEC_SHA256
     raw = (base.ROOT / "legacy/food_overhaul/food_patch.json").read_bytes()
@@ -45,7 +56,9 @@ def expected_native_hashes() -> dict[str, str]:
     return {**base.STOCK_SHA256,
             **{item["name"]: item["sources"]["combined-0.5.0"]
                for item in food["native_modules"]},
-            "AnnoWelt.dll": FOOD06_WELT_SHA256, "View.dll": FOOD06_VIEW_SHA256,
+            "AnnoWelt.dll": (city_statistics.FOOD06_GUARDED_WELT_SHA256
+                             if city_statistics_guard else FOOD06_WELT_SHA256),
+            "View.dll": FOOD06_VIEW_SHA256,
             "AnnoDisplay.dll": options.DISPLAY_SHA256}
 
 
@@ -79,20 +92,24 @@ def _active_unwind_edits(pe: base.PE, plan: dict) -> list[dict]:
 
 
 def derive_engine_plan(welt: bytes, frozen: bytes) -> bytes:
-    if _sha(welt) != FOOD06_WELT_SHA256 or _sha(frozen) != base.ENGINE_PLAN_SHA256:
+    welt_hash = _sha(welt)
+    guarded = welt_hash == city_statistics.FOOD06_GUARDED_WELT_SHA256
+    if (not guarded and welt_hash != FOOD06_WELT_SHA256) or _sha(frozen) != base.ENGINE_PLAN_SHA256:
         raise base.RuntimeBuildError("The Food 0.6 World image or frozen engine plan differs.")
     pe, plan = base.PE(welt), json.loads(frozen)
     relocations = _active_unwind_edits(pe, plan)
     plan["profile"] += "-food06-world-v1"
+    if guarded:
+        plan["profile"] += "-city-statistics"
     plan["food06_derivative"] = dict(
         frozen_engine_plan_sha256=base.ENGINE_PLAN_SHA256,
-        food06_welt_sha256=FOOD06_WELT_SHA256,
+        food06_welt_sha256=welt_hash,
         active_exception_directory_rva=pe.directory(3)[0],
         active_exception_directory_size=pe.directory(3)[1],
         native_disk_hash_metadata="Inherited artifact hashes describe the frozen Food 0.5 World overlay, not this Food 0.6 disk host.",
         unwind_table_relocations=relocations)
     result = (json.dumps(plan, indent=2) + "\n").encode("utf-8")
-    if ENGINE_PLAN_SHA256 and _sha(result) != ENGINE_PLAN_SHA256:
+    if _sha(result) != engine_plan_hash(guarded):
         raise base.RuntimeBuildError("The Food 0.6 World engine plan differs from its reviewed pin.")
     return result
 
@@ -140,7 +157,8 @@ def derive_activity_ai_inputs(game: Path) -> tuple[dict[str, bytes], dict]:
                      "food06_demand_guards": guards}
 
 
-def _coexistence_proof(images: dict[str, bytes], header: bytes, plan: bytes) -> dict:
+def _coexistence_proof(images: dict[str, bytes], header: bytes, plan: bytes, *,
+                       city_statistics_guard=False) -> dict:
     """Every World write is disjoint from the Food 0.6 native changes."""
     from .world_options_visibility_hooks import HOOKS, RENDER_HOOKS, CONTROL_HOOKS, IMPORT_HOOKS
     from .world_options_visibility_calls import CALLS
@@ -157,6 +175,8 @@ def _coexistence_proof(images: dict[str, bytes], header: bytes, plan: bytes) -> 
     world.extend((row[0], row[1], 8) for row in IMPORT_HOOKS)
     food = [("AnnoWelt.dll", HOUSE_VTABLE + g["slot"], 8) for g in GETTERS.values()]
     food.append(("AnnoWelt.dll", PROMOTION["patch"], len(PROMOTION["preimage"])))
+    if city_statistics_guard:
+        food.extend(("AnnoWelt.dll", rva, size) for rva, size in city_statistics.edited_spans())
     food.extend(("View.dll", VIEW_HOUSE_VTABLE + slot, 8) for slot in VIEW_HOOKS)
     for module, start, size in food:
         if any(module == other and max(start, at) < min(start + size, at + length)
@@ -175,7 +195,7 @@ def _coexistence_proof(images: dict[str, bytes], header: bytes, plan: bytes) -> 
 
 
 def derive_sources(files: dict[str, bytes], game: Path, *, asset_source=None, asset_root=None,
-                   activity_inputs=None) -> tuple[dict[str, bytes], dict]:
+                   activity_inputs=None, city_statistics_guard=False) -> tuple[dict[str, bytes], dict]:
     """Derive and preflight only the new exact profile, without writing inputs."""
     from .world_options import PRIVATE, apply_options, replace
     from .world_options_visibility_hooks import (verify_visibility_preimages,
@@ -190,7 +210,7 @@ def derive_sources(files: dict[str, bytes], game: Path, *, asset_source=None, as
     game, staged = checked_path(game), dict(files)
     asset_source = None if asset_source is None else checked_path(asset_source)
     asset_root = None if asset_root is None else checked_path(asset_root)
-    expected = dict(HOST_SHA256)
+    expected = expected_native_hashes(city_statistics_guard=True) if city_statistics_guard else HOST_SHA256
     images = {name: checked_path(game / name).read_bytes() for name in expected}
     for name, pin in expected.items():
         if _sha(images[name]) != pin:
@@ -199,11 +219,12 @@ def derive_sources(files: dict[str, bytes], game: Path, *, asset_source=None, as
     staged[base.ENGINE_PLAN] = plan
     staged[base.ENGINE_HEADER] = derive_engine_header(staged[base.ENGINE_HEADER])
     staged[base.BLOBS] = base._replace(staged[base.BLOBS], base._c_digest(base.FOOD_SHA256["AnnoWelt.dll"]),
-        base._c_digest(FOOD06_WELT_SHA256), 2, "Food 0.6 Welt native blob identity")
+        base._c_digest(expected["AnnoWelt.dll"]), 2, "Food 0.6 Welt native blob identity")
     staged[base.AI_LOADER], staged[base.WORLD_SETTINGS] = _managed_host_sources(
         staged[base.AI_LOADER], staged[base.WORLD_SETTINGS])
     proof = base.verify_native_preimages(game, staged[base.BLOBS], plan, expected_hashes=expected)
-    proof["food06_coexistence"] = _coexistence_proof(images, staged[base.BLOBS], plan)
+    proof["food06_coexistence"] = _coexistence_proof(images, staged[base.BLOBS], plan,
+                                                   city_statistics_guard=city_statistics_guard)
     proof["visibility_dispatch"] = verify_visibility_preimages(images["AnnoWelt.dll"], expected["AnnoWelt.dll"])
     proof["visibility_renderer_dispatch"] = verify_renderer_visibility_preimages(images["AnnoDisplay.dll"], expected["AnnoDisplay.dll"])
     proof["visibility_control_dispatch"] = verify_control_visibility_preimages(images["AnnoFrame.dll"], expected["AnnoFrame.dll"])
@@ -255,17 +276,18 @@ def derive_sources(files: dict[str, bytes], game: Path, *, asset_source=None, as
 
 
 def build_food_world_runtime(game, tools=None, *, output=None, publish=False,
-                             asset_source=None, asset_root=None):
+                             asset_source=None, asset_root=None, city_statistics_guard=False):
     """Build a candidate; publishing additionally requires the reviewed pin."""
     if type(publish) is not bool or publish:
         raise base.RuntimeBuildError("Combined Food 0.6 runtime publication requires separate candidate review.")
     return options._build_options_runtime(PROFILE, game, tools, output=output,
         publish=False, _food06_profile=True,
-        _food06_asset_source=asset_source, _food06_asset_root=asset_root)
+        _food06_asset_source=asset_source, _food06_asset_root=asset_root,
+        city_statistics_guard=city_statistics_guard)
 
 
 def build_public_food_world_runtime(game, source_game, assets_root, compiler_path,
-                                   activity_inputs, *, output, source_proof):
+                                   activity_inputs, *, output, source_proof, city_statistics_guard=False):
     """Compile the reviewed combined host from explicit public-source inputs.
 
     The host, island assets and AI are freshly reconstructed by the public
@@ -301,18 +323,20 @@ def build_public_food_world_runtime(game, source_game, assets_root, compiler_pat
     ai, proof = activity_inputs
     if set(ai) != set(OUTPUT_SHA256) or {name: _sha(value) for name, value in ai.items()} != OUTPUT_SHA256:
         raise base.RuntimeBuildError('The public combined AI derivatives differ.')
-    if {item.name for item in game.iterdir()} != set(HOST_SHA256):
+    expected = expected_native_hashes(city_statistics_guard=True) if city_statistics_guard else HOST_SHA256
+    if {item.name for item in game.iterdir()} != set(expected):
         raise base.RuntimeBuildError('The public combined compiler host inventory differs.')
     verified = dict(root=game, source_game=source, source_data_root=source,
         assets_root=assets, compiler_path=compiler,
         manifest=dict(profile=PROFILE, historical_private_inputs_used=False,
                       source_proof=source_proof, assets=asset_proof,
-                      native_sha256=HOST_SHA256, private_ai_sha256=OUTPUT_SHA256))
+                      native_sha256=expected, private_ai_sha256=OUTPUT_SHA256))
     if generator_id() != options.PINNED_GENERATOR:
         raise base.RuntimeBuildError('The public combined generator changed after runtime review.')
     report = options._build_options_runtime(PROFILE, game, output=output,
         _food06_profile=True, _public_inputs=dict(profile=PROFILE, verified=verified,
-                                                 activity_inputs=(ai, proof)))
+                                                 activity_inputs=(ai, proof)),
+        city_statistics_guard=city_statistics_guard)
     if not report['matches_reviewed_runtime']:
         raise base.RuntimeBuildError('The public combined build differs from its reviewed runtime.')
     return report

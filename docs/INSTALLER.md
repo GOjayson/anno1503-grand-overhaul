@@ -62,6 +62,11 @@ including livestock, market chatter and combat sounds. The installer applies
 the gains from Taludas's v1.0 sound fix to the game's own WAVs. It preserves
 localized voices and each variant's original timing. [Taludas's sound fix](https://github.com/Taludas/Anno-1503-HE-Sound-Fix/releases/tag/v1.0)
 
+With Food 0.6, Bug Fixes also prevents game meat and other added foods from
+overwriting city state and causing recurring population announcements. The
+engine fix applies to all languages and also works when World Settings is
+selected. It is applied when preparing and installing a new package.
+
 Select Bug Fixes on its own or alongside a compatible Food or World Settings
 profile. For standalone installations with other languages, the installer
 verifies the shared stock files and copies the language text and UI files

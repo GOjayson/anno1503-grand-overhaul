@@ -19,7 +19,9 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from anno1503_overhaul import food06_package as package
+from anno1503_overhaul import ambient_sound, bug_fixes, city_statistics, frozen_runner, installer, vanilla
 from anno1503_overhaul import packages as common
+from anno1503_overhaul.profile import default_profile
 
 REAL_VIEW_POLICY = package._view_policy
 REAL_WELT_POLICY = package._welt_policy
@@ -72,9 +74,9 @@ class Food06PackageTests(unittest.TestCase):
         self.welt_builder = welt_builder.start()
         self.addCleanup(welt_builder.stop)
 
-    def prepare(self):
+    def prepare(self, **options):
         return package.prepare_food06_package(self.output, self.source, self.copy,
-                                              compiler_path=self.compiler)
+                                              compiler_path=self.compiler, **options)
 
     def manifest(self):
         return json.loads((self.output / "manifest.json").read_bytes())
@@ -93,6 +95,7 @@ class Food06PackageTests(unittest.TestCase):
         self.assertIsNone(result["world_path"])
         self.assertIsNone(result["launcher_path"])
         self.assertFalse(result["actual_game_test_performed"])
+        self.assertNotIn("city_statistics_guard", result)
         self.assertEqual(result["welt_sha256"], self.welt_pin)
         self.assertEqual((self.output / package.WELT_PAYLOAD).read_bytes(), self.welt)
         self.assertEqual((self.output / "food/food_patch.json").read_bytes(),
@@ -114,6 +117,80 @@ class Food06PackageTests(unittest.TestCase):
                          (ROOT / "legacy/food_overhaul/food_mod.py").read_bytes())
         self.builder.assert_not_called()
         self.welt_builder.assert_not_called()
+
+    def test_optional_city_statistics_guard_is_bound_to_exact_food_welt_and_closed_package(self):
+        guarded = self.welt + b" reviewed synthetic city bounds"
+        guarded_pin = common._sha(guarded)
+        self.welt_policy.side_effect = (
+            lambda *, city_statistics_guard=False: guarded_pin if city_statistics_guard else self.welt_pin
+        )
+        with patch.object(city_statistics, "bound_supply_statistics", return_value=guarded) as guard:
+            self.prepare(city_statistics_guard=True)
+        guard.assert_called_once_with(self.welt)
+        self.welt_builder.assert_called_once_with(self.source)
+        result = common.validate_package(self.output, self.source)
+        self.assertIs(result["city_statistics_guard"], True)
+        self.assertEqual(result["welt_sha256"], guarded_pin)
+        self.assertEqual((self.output / package.WELT_PAYLOAD).read_bytes(), guarded)
+        manifest_path = self.output / "manifest.json"
+        self.assertIs(frozen_runner.validate_package_closure(
+            self.output, common._sha(manifest_path.read_bytes()), copy_root=self.copy,
+        )["city_statistics_guard"], True)
+
+        original = self.manifest()
+        for invalid in (0, 1, None, False):
+            with self.subTest(invalid=invalid):
+                self.rewrite_manifest(dict(original, city_statistics_guard=invalid))
+                with self.assertRaises(common.PackageError):
+                    common.validate_package(self.output)
+        original.pop("city_statistics_guard")
+        self.rewrite_manifest(original)
+        with self.assertRaises(common.PackageError):
+            common.validate_package(self.output)
+
+    def test_legacy_food_welt_cannot_be_relabelled_as_guarded(self):
+        self.welt_policy.side_effect = (
+            lambda *, city_statistics_guard=False: "f" * 64 if city_statistics_guard else self.welt_pin
+        )
+        self.prepare()
+        manifest = self.manifest()
+        self.assertNotIn("city_statistics_guard", manifest)
+        self.rewrite_manifest(dict(manifest, city_statistics_guard=True))
+        with self.assertRaises(common.PackageError):
+            common.validate_package(self.output)
+
+    def test_new_install_requires_guarded_welt_only_when_bug_fixes_is_selected(self):
+        guarded = self.welt + b" reviewed synthetic city bounds"
+        self.welt_policy.side_effect = (
+            lambda *, city_statistics_guard=False: common._sha(guarded) if city_statistics_guard else self.welt_pin
+        )
+        self.prepare()
+        plain = self.output
+        self.output = self.root / "prepared with Bug Fixes"
+        with patch.object(city_statistics, "bound_supply_statistics", return_value=guarded):
+            self.prepare(city_statistics_guard=True)
+
+        profile = default_profile()
+        profile["features"].update(food_overhaul=True, world_settings=False, bug_fixes=False)
+        quest = bug_fixes.KingOfOreEdit("Nl", "quest.htm", "scene.sze", "0" * 64, b"prior", b"revised")
+        with (
+            patch.object(bug_fixes, "king_of_ore_assets", return_value=(quest,)),
+            patch.object(ambient_sound, "ambient_sound_assets", return_value=()),
+            patch.object(vanilla, "plan_vanilla_recovery", return_value=[]),
+            patch.object(installer, "game_inventory", return_value=[]),
+        ):
+            def check(folder):
+                return installer.check_install(self.source, self.copy, profile, package=folder,
+                                               food_version=installer.FOOD06_VERSION)
+
+            self.assertNotIn("city_statistics_guard", check(plain))
+            with self.assertRaisesRegex(installer.InstallerError, "different Bug Fixes selection"):
+                check(self.output)
+            profile["features"]["bug_fixes"] = True
+            self.assertIs(check(self.output)["city_statistics_guard"], True)
+            with self.assertRaisesRegex(installer.InstallerError, "different Bug Fixes selection"):
+                check(plain)
+        self.assertFalse(self.copy.exists())
 
     def test_unreviewed_world_pin_fails_before_build_or_output(self):
         dummy = ModuleType("anno1503_overhaul.food_supply")

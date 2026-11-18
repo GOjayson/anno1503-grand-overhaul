@@ -31,6 +31,7 @@ class FoodWorldPackageTests(unittest.TestCase):
         fixtures.WorldOnlyPackageTests.setUp(self)
         self.view = fixtures.native() + b'fixture-food06-view'
         self.welt = fixtures.native() + b'fixture-food06-world'
+        self.guarded_welt = self.welt + b'-city-statistics-guard'
         self.compiler = self.root / 'fixture-compiler'
         self.compiler.write_bytes(b'Test marker, not a compiler.')
         self.runtime_pin = common._sha(self.runtime.read_bytes())
@@ -40,12 +41,20 @@ class FoodWorldPackageTests(unittest.TestCase):
                      'AnnoFrame.dll': '046b5ad6f351dfe867ed38ce29fb50a594485b43a32ee90adadc48e850466baf',
                      'AnnoWelt.dll': common._sha(self.welt), 'View.dll': common._sha(self.view)}
         self.stack.enter_context(patch.object(native, 'HOST_SHA256', self.host))
+        self.guarded_host = dict(self.host, **{'AnnoWelt.dll': common._sha(self.guarded_welt)})
+        self.stack.enter_context(patch.object(native, 'expected_native_hashes', return_value=self.guarded_host))
+        self.stack.enter_context(patch.object(native, 'GUARDED_RUNTIME_SHA256', self.runtime_pin))
+        self.stack.enter_context(patch.object(native, 'GUARDED_ENGINE_PLAN_SHA256', common._sha(self.engine)))
         self.engine_builder = self.stack.enter_context(patch.object(native, 'derive_engine_plan', return_value=self.engine))
         self.stack.enter_context(patch.object(options, 'PINNED_GENERATOR', combined.generator_id()))
         self.stack.enter_context(patch.object(food, '_view_policy', return_value=common._sha(self.view)))
-        self.stack.enter_context(patch.object(food, '_welt_policy', return_value=common._sha(self.welt)))
+        self.stack.enter_context(patch.object(food, '_welt_policy',
+            side_effect=lambda *, city_statistics_guard=False: common._sha(
+                self.guarded_welt if city_statistics_guard else self.welt)))
         self.view_builder = self.stack.enter_context(patch.object(food, '_build_view_from_source', return_value=(self.view, {'fixture': True})))
-        self.welt_builder = self.stack.enter_context(patch.object(food, '_build_welt_from_source', return_value=(self.welt, {'fixture': True})))
+        self.welt_builder = self.stack.enter_context(patch.object(food, '_build_welt_from_source',
+            side_effect=lambda source, *, city_statistics_guard=False: (
+                self.guarded_welt if city_statistics_guard else self.welt, {'fixture': True})))
         self.ai = {name: fixtures.native() + b'fixture-food06-ai-' + name.encode()
                    for name in ('CompLogic.dll', 'CompLogicClassic.dll')}
         self.stack.enter_context(patch.object(combined, '_private_ai', return_value=self.ai))
@@ -206,8 +215,11 @@ class FoodWorldPackageTests(unittest.TestCase):
             self.prepare(bug_fixes_enabled=True)
             metadata = common.validate_package(self.output, self.source)
             self.assertTrue(metadata['bug_fixes_enabled'])
+            self.assertTrue(metadata['city_statistics_guard'])
+            self.assertEqual((self.output / food.WELT_PAYLOAD).read_bytes(), self.guarded_welt)
             self.assertEqual(metadata['feature_versions']['bug_fixes'], '1.2')
             spec = json.loads((self.output / 'world/world_patch.json').read_bytes())
+            self.assertEqual(spec['native_sha256'], self.guarded_host)
             self.assertEqual(spec['bug_fixes'], recipe)
             support = self.output / 'world/support'
             self.assertTrue((support / '_combined_bugfix_recipe.py').is_file())

@@ -73,6 +73,10 @@ def verify_food06_installation(copy_game) -> dict:
     metadata = validate_food06_package(package, source)
     if metadata["kind"] != KIND or Path(metadata.get("copy_root") or "").resolve() != root:
         raise FoodLaunchError("The Food package belongs to another selected-feature copy.")
+    city_statistics_guard = metadata.get("city_statistics_guard", False)
+    if (city_statistics_guard is not record.get("city_statistics_guard", False)
+            or city_statistics_guard and features.get("bug_fixes") is not True):
+        raise FoodLaunchError("The Food package and installation have different city statistics guard selections.")
     journal = installer._verify_journal(root)
     installer._verify_food06_bug_fixes(root, record, journal)
 

@@ -381,7 +381,7 @@ class BugFixesInstallerTests(unittest.TestCase):
             '    ]\n', encoding='utf-8',
         )
         metadata = dict(kind=installer.PUBLIC_FOOD_WORLD06_PACKAGE_KIND, copy_root=str(self.copy),
-                        food_enabled=True, bug_fixes_enabled=True, verified=True,
+                        food_enabled=True, bug_fixes_enabled=True, city_statistics_guard=True, verified=True,
                         new_world_required=True, old_save_migration_supported=False,
                         world_settings_supported=True)
         stack.enter_context(patch.object(packages, 'validate_package', return_value=metadata))
