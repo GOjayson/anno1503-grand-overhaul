@@ -21,6 +21,10 @@ import uuid
 RELEASE_KIND = 'anno1503-public-beta-release-files'
 RUNTIME_KIND = 'anno1503-retained-beta-worker'
 PACKAGE_KIND = 'anno1503-public-beta-world-package'
+FOOD06_PACKAGE_KIND = 'anno1503-food06-installer-package'
+FOOD_WORLD_PACKAGE_KIND = 'anno1503-public-food-world06-package'
+_PACKAGE_KINDS = {PACKAGE_KIND, FOOD06_PACKAGE_KIND, FOOD_WORLD_PACKAGE_KIND}
+_WORLD_PACKAGE_KINDS = {PACKAGE_KIND, FOOD_WORLD_PACKAGE_KIND}
 WORKER = 'OverhaulWorker.exe'
 LAUNCHER = 'Anno1503OverhaulSetup.exe'
 _trusted_release_sha256 = None
@@ -276,7 +280,7 @@ def validate_package_closure(package_root, expected_manifest_sha256, *, copy_roo
     if _hash(root / 'manifest.json') != expected_manifest_sha256:
         raise RunnerError('The installed beta package manifest changed.')
     value = _json(root / 'manifest.json', expected=expected_manifest_sha256)
-    if type(value.get('schema_version')) is not int or value['schema_version'] != 1 or value.get('kind') != PACKAGE_KIND:
+    if type(value.get('schema_version')) is not int or value['schema_version'] != 1 or value.get('kind') not in _PACKAGE_KINDS:
         raise RunnerError('Unknown installed beta package kind.')
     if copy_root is not None:
         bound_copy = value.get('copy_root')
@@ -301,14 +305,19 @@ def _script(script, root):
         raise RunnerError('This script is outside the beta helper entry points.')
     package = script.parent.parent
     manifest = _json(package / 'manifest.json')
-    if manifest.get('kind') != PACKAGE_KIND:
+    kind = manifest.get('kind')
+    if kind not in _WORLD_PACKAGE_KINDS:
         raise RunnerError('Only the public beta package can use the standalone worker.')
     _release(root)
     # Import only after the external public tree has matched the executable's
     # embedded release digest. This is the retained version's exact validator.
-    from .beta_package import validate_beta_package
-    checked = validate_beta_package(package)
-    if checked.get('verified') is not True or checked.get('kind') != PACKAGE_KIND:
+    if kind == PACKAGE_KIND:
+        from .beta_package import validate_beta_package
+        checked = validate_beta_package(package)
+    else:
+        from .food_world_public import validate_public_food_world_package
+        checked = validate_public_food_world_package(package)
+    if checked.get('verified') is not True or checked.get('kind') != kind:
         raise RunnerError('The beta package recipe was not verified.')
     files = _files(checked.get('files'))
     relative = script.relative_to(package).as_posix()
@@ -498,6 +507,22 @@ def main(arguments=None, *, trusted_release_sha256=None, expected_worker_sha256=
     try:
         configure_worker(trusted_release_sha256=trusted_release_sha256, expected_worker_sha256=expected_worker_sha256)
         arguments = list(sys.argv[1:] if arguments is None else arguments)
+        if arguments[:1] == ['--launch-food06']:
+            if len(arguments) != 3 or arguments[1] != '--copy':
+                raise RunnerError('Food startup requires exactly --launch-food06 --copy and its installed game folder.')
+            # Unlike script dispatch, this entry imports only this executable's
+            # own sealed module. The launch verifier also binds this running
+            # worker to the installed copy's retained runtime before observing
+            # or launching any game process.
+            from .food_launch import launch_food06
+            try:
+                child = launch_food06(arguments[2])
+            except (ValueError, RuntimeError, OSError) as exc:
+                raise RunnerError(str(exc)) from exc
+            if sys.stdout is not None:
+                print(json.dumps(dict(food06_started=True, pid=child.pid,
+                    world_settings_activated=False, new_world_required=True)), flush=True)
+            return 0
         if arguments[:1] == ['--import-preflight']:
             if len(arguments) != 2:
                 raise RunnerError('Import preflight needs one certified helper script.')

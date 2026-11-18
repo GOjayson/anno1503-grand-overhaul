@@ -1,7 +1,7 @@
 # Food overhaul
 
-**Food 0.6.0-dev.1 has separate Food-only and Food + World Settings development
-profiles. Start a new endless world.** Bounded Food-only and combined live
+**Food 0.6.0-dev.1 is included in the 0.10.0-beta.1 Windows release, with separate
+Food-only and Food + World Settings profiles. Start a new endless world.** Bounded Food-only and combined live
 checks passed, including both save-loading routes. Complete tier progression
 and long-session economy balance remain unverified.
 See the separate [Food-only validation](FOOD_06_VALIDATION.md) and
@@ -81,7 +81,7 @@ preparation time; it is not added to this public repository.
 
 ## Installation and saves
 
-Use the Windows source installer on a separate managed game copy. Select
+Use the Windows release installer on a separate managed game copy. Select
 **Food overhaul** and explicitly choose **Food 0.6**, then choose the profile:
 
 - **Food only:** leave **World Settings** unchecked. This uses the Food-only
@@ -96,21 +96,22 @@ Use the Windows source installer on a separate managed game copy. Select
 
 Run **Check installation** before **Install selected features**, then use
 **Start installed game** to launch the installed profile through the normal
-Ubisoft client. Food 0.6 preparation requires the reviewed offline compiler.
-The combined profile also requires the preserved local development inputs and
-its separately reviewed, version-matched World runtime. Keep the preserved
-inputs in the local baseline store or select their folder under **Advanced**.
-The reviewed runtime must be available in its separate local runtime-profile
-store. Missing or changed inputs are refused.
+Ubisoft client. The Windows ZIP includes Python and the reviewed offline
+compiler. Food-only and Food + World preparation reconstruct the reviewed
+outputs from supported original game files and the mod source. Neither needs
+the private development baseline store. Source contributors must supply the
+reviewed compiler; Advanced also retains the earlier development recipes.
+Missing or changed inputs are refused.
 
 When Food is enabled, the starting cargo option labelled **Fish (tons)** loads
 Fish. It does not load a combined Food good or a mixture of the five foods.
 The nearby-resource guarantee retains its existing scope; it does not guarantee
 the complete five-food diet.
 
-The published World Settings beta ZIP, stock World-only route and preserved
-Food 0.5 recipes remain unchanged. These Food 0.6 source profiles have their own
-native fingerprints and validation; the public beta ZIP does not install them.
+The earlier World Settings-only ZIP and preserved Food 0.5 recipes remain
+available. The 0.10.0-beta.1 ZIP adds Food 0.6 with its separate exact native
+fingerprints and validation. World Settings with Food unchecked retains the
+stock food economy.
 
 **Start a new world.** Food 0.6 removes zero-share needs, which changes the
 ordering of per-house need buffers. It does not migrate vanilla or Food 0.5

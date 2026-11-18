@@ -21,7 +21,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 from anno1503_overhaul import __main__ as cli, beta_paths, food06_package, food_launch
-from anno1503_overhaul import installer, packages, selector, vanilla, world_options_package
+from anno1503_overhaul import installer, packages, selector, vanilla, world_options_package, frozen_runner
 from anno1503_overhaul.profile import default_profile
 
 
@@ -119,6 +119,13 @@ def resolve_copy(spec, root, package=None):
         module_patch.start()
         self.addCleanup(module_patch.stop)
         self.constructor_world06 = combined_module.prepare_food_world_package
+        public_module = ModuleType('anno1503_overhaul.food_world_public')
+        public_module.prepare_public_food_world_package = unittest.mock.Mock(return_value=self.prepared)
+        public_patch = patch.dict(sys.modules, {public_module.__name__: public_module})
+        public_patch.start()
+        self.addCleanup(public_patch.stop)
+        self.constructor_public_world06 = public_module.prepare_public_food_world_package
+        self.compiler = self.mock(beta_paths, 'compiler_path', return_value=self.root / 'compiler')
         self.metadata = dict(kind=installer.FOOD06_PACKAGE_KIND, verified=True, copy_root=str(self.copy),
                              feature_versions={"food_overhaul":installer.FOOD06_VERSION},
                              new_world_required=True, old_save_migration_supported=False, world_settings_supported=False)
@@ -157,12 +164,13 @@ def resolve_copy(spec, root, package=None):
         self.assertEqual(result["food_version"], installer.FOOD05_VERSION)
 
     def test_explicit_food06_combined_selection_uses_its_new_package_and_independent_host(self):
-        self.metadata.update(kind=installer.FOOD_WORLD06_PACKAGE_KIND, food_enabled=True, world_settings_supported=True)
+        self.metadata.update(kind=installer.PUBLIC_FOOD_WORLD06_PACKAGE_KIND, food_enabled=True, world_settings_supported=True)
         with patch.object(installer.adapter, "prepare_edits") as legacy_source_check:
             plan = installer.check_install(self.source, self.copy, profile(world=True), food_version=installer.FOOD06_VERSION)
-        self.constructor_world06.assert_called_once()
-        self.assertEqual(self.constructor_world06.call_args.args[0], None)
-        self.assertEqual(self.constructor_world06.call_args.args[2:], (self.source, self.copy))
+        self.constructor_public_world06.assert_called_once()
+        self.assertEqual(self.constructor_public_world06.call_args.args[1:], (self.source, self.copy))
+        self.assertEqual(self.constructor_public_world06.call_args.kwargs, {'compiler_path': self.root / 'compiler'})
+        self.constructor_world06.assert_not_called()
         self.constructor06.assert_not_called()
         self.constructor05.assert_not_called()
         self.constructor_world.assert_not_called()
@@ -179,6 +187,32 @@ def resolve_copy(spec, root, package=None):
         installer.check_install(self.source, self.copy, profile(world=True), baseline_dir=provider,
                                 food_version=installer.FOOD06_VERSION)
         self.assertEqual(self.constructor_world06.call_args.args[0], provider)
+
+    def test_frozen_combined_uses_public_original_game_recipe_and_explicit_optional_bug_fixes(self):
+        selected = profile(world=True)
+        self.metadata.update(kind=installer.PUBLIC_FOOD_WORLD06_PACKAGE_KIND, food_enabled=True,
+                             world_settings_supported=True)
+        with patch.object(sys, 'frozen', True, create=True):
+            installer.check_install(self.source, self.copy, selected, food_version=installer.FOOD06_VERSION)
+        self.constructor_public_world06.assert_called_once()
+        self.assertEqual(self.constructor_public_world06.call_args.kwargs, {'compiler_path':self.root / 'compiler'})
+        self.constructor_world06.assert_not_called()
+        self.assertFalse(self.copy.exists())
+
+    def test_frozen_food05_and_private_combined_profiles_refuse_without_changing_the_copy(self):
+        with patch.object(sys, 'frozen', True, create=True):
+            with self.assertRaisesRegex(installer.InstallerError, 'preserved source'):
+                installer.check_install(self.source, self.copy, profile(), food_version=installer.FOOD05_VERSION)
+            self.metadata.update(kind=installer.FOOD_WORLD06_PACKAGE_KIND, food_enabled=True)
+            with self.assertRaisesRegex(installer.InstallerError, 'public World Settings'):
+                installer.check_install(self.source, self.copy, profile(world=True), package=self.prepared,
+                                        food_version=installer.FOOD06_VERSION)
+            with self.assertRaisesRegex(installer.InstallerError, 'Clear Advanced'):
+                installer.check_install(self.source, self.copy, profile(world=True),
+                    baseline_dir=self.root / 'preserved', food_version=installer.FOOD06_VERSION)
+        self.constructor_world06.assert_not_called()
+        self.constructor_public_world06.assert_not_called()
+        self.assertFalse(self.copy.exists())
 
     def test_combined06_package_cannot_silently_enable_bug_fixes(self):
         self.metadata.update(kind=installer.FOOD_WORLD06_PACKAGE_KIND, food_enabled=True,
@@ -274,6 +308,31 @@ def resolve_copy(spec, root, package=None):
         self.assertEqual((self.copy / "Sample.dat").read_bytes(), b"original fixture")
         self.assertEqual((self.source / "Sample.dat").read_bytes(), b"original fixture")
         self.assertEqual((self.copy / "preserved-save.txt").read_text(), "player progress")
+
+    def test_frozen_food_only_install_retains_its_sealed_launcher_and_restores_without_removing_it(self):
+        runtime = self.root / 'runtime'
+        runtime.mkdir()
+        (runtime / frozen_runner.WORKER).write_bytes(b'retained worker fixture')
+        (runtime / frozen_runner.LAUNCHER).write_bytes(b'retained GUI fixture')
+        retained = dict(kind=frozen_runner.RUNTIME_KIND, runtime_root=str(self.root / 'runtime'),
+                        worker_path=str(self.root / 'runtime' / frozen_runner.WORKER),
+                        launcher_path=str(self.root / 'runtime' / frozen_runner.LAUNCHER))
+        with (patch.object(sys, 'frozen', True, create=True),
+              patch.object(frozen_runner, 'application_root', return_value=self.root / 'release'),
+              patch.object(frozen_runner, 'retain_worker', return_value=retained) as retain,
+              patch.object(frozen_runner, 'source_script', return_value=ROOT / 'src/anno1503_overhaul/legacy_worker.py'),
+              patch.object(beta_paths, 'application_data', return_value=self.root / 'appdata')):
+            record = installer.install(self.source, self.copy, profile(), package=self.prepared,
+                                       food_version=installer.FOOD06_VERSION)
+            self.assertEqual(record['launcher_runtime'], retained)
+            retain.assert_called_once_with(self.root / 'release', self.root / 'appdata/Launchers')
+            (self.copy / 'preserved-save.txt').write_text('player progress')
+            installer.restore(self.copy)
+        self.assertEqual((self.copy / 'Sample.dat').read_bytes(), b'original fixture')
+        self.assertEqual((self.copy / 'preserved-save.txt').read_text(), 'player progress')
+        self.assertEqual((self.source / 'Sample.dat').read_bytes(), b'original fixture')
+        self.assertEqual((runtime / frozen_runner.WORKER).read_bytes(), b'retained worker fixture')
+        self.assertEqual((runtime / frozen_runner.LAUNCHER).read_bytes(), b'retained GUI fixture')
 
 
 class Food06CLITests(unittest.TestCase):
@@ -408,6 +467,48 @@ class InstalledStartupDispatchTests(unittest.TestCase):
         self.journal.assert_called_once_with(self.copy)
         self.food.assert_called_once_with(self.copy, progress=progress)
         self.world.assert_not_called()
+
+    def test_retained_or_frozen_food_dispatches_through_its_version_owned_launcher(self):
+        for frozen, retained in ((False, {'kind':'retained fixture'}), (True, None)):
+            self.record['launcher_runtime'] = retained
+            with (self.subTest(frozen=frozen), patch.object(sys, 'frozen', frozen, create=True),
+                  patch.object(installer, 'launch_retained_food06', return_value=SimpleNamespace(pid=56)) as launch):
+                self.assertEqual(installer.launch_installed_game(self.copy).pid, 56)
+                launch.assert_called_once_with(self.copy)
+        self.food.assert_not_called();self.world.assert_not_called()
+
+    def test_retained_food_launch_checks_worker_and_package_before_windowless_spawn(self):
+        retained = {'launcher_path':str(self.copy / frozen_runner.LAUNCHER)}
+        Path(retained['launcher_path']).write_bytes(b'GUI fixture')
+        worker = self.copy / frozen_runner.WORKER
+        worker.write_bytes(b'worker fixture')
+        self.record.update(launcher_runtime=retained, package_root=str(self.copy), package_manifest_sha256='a'*64)
+        with (patch.object(installer, 'require_game_closed'),
+              patch.object(frozen_runner, 'verify_retained_worker', return_value=worker) as verify,
+              patch.object(frozen_runner, 'validate_package_closure', return_value={'kind':installer.FOOD06_PACKAGE_KIND}) as closure,
+              patch.object(installer.subprocess, 'Popen', return_value=SimpleNamespace(pid=56)) as spawn):
+            self.assertEqual(installer.launch_retained_food06(self.copy).pid, 56)
+            verify.assert_called_once_with(retained)
+            closure.assert_called_once_with(self.copy, 'a'*64, copy_root=self.copy)
+            spawn.assert_called_once_with([retained['launcher_path'], '--launch-food06', '--copy', str(self.copy)],
+                cwd=worker.parent, creationflags=getattr(installer.subprocess,'CREATE_NO_WINDOW',0))
+            closure.return_value = {'kind':installer.PUBLIC_FOOD_WORLD06_PACKAGE_KIND}
+            spawn.reset_mock()
+            with self.assertRaisesRegex(installer.InstallerError, 'Food-only'):
+                installer.launch_retained_food06(self.copy)
+            spawn.assert_not_called()
+            verify.side_effect = frozen_runner.RunnerError('changed retained runtime')
+            with self.assertRaisesRegex(frozen_runner.RunnerError, 'changed retained'):
+                installer.launch_retained_food06(self.copy)
+            spawn.assert_not_called()
+
+    def test_frozen_food_without_retained_launcher_refuses_before_spawning(self):
+        with (patch.object(installer, 'require_game_closed'),
+              patch.object(frozen_runner, 'verify_retained_worker') as verify,
+              patch.object(installer.subprocess, 'Popen') as spawn):
+            with self.assertRaisesRegex(installer.InstallerError, 'no retained Windows launcher'):
+                installer.launch_retained_food06(self.copy)
+        verify.assert_not_called();spawn.assert_not_called()
 
     def test_world_and_preserved_combined_installations_keep_the_existing_route(self):
         for with_food in (False, True):

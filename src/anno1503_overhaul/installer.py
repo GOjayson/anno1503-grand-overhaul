@@ -27,6 +27,8 @@ FOOD05_VERSION = '0.5.0'
 FOOD06_VERSION = '0.6.0-dev.1'
 FOOD06_PACKAGE_KIND = 'anno1503-food06-installer-package'
 FOOD_WORLD06_PACKAGE_KIND = 'anno1503-food-world06-installer-package'
+PUBLIC_FOOD_WORLD06_PACKAGE_KIND = 'anno1503-public-food-world06-package'
+FOOD_WORLD06_PACKAGE_KINDS = {FOOD_WORLD06_PACKAGE_KIND, PUBLIC_FOOD_WORLD06_PACKAGE_KIND}
 _MAX_INSTALL_RECORD = 1024 * 1024
 
 
@@ -186,6 +188,8 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
     if food_version is not None and not profile['features']['food_overhaul']:
         raise InstallerError('Select Food overhaul before choosing its version.')
     requested_food_version = (food_version or FOOD05_VERSION) if features['food_overhaul'] else None
+    if getattr(sys, 'frozen', False) and requested_food_version == FOOD05_VERSION:
+        raise InstallerError('Food 0.5 remains a preserved source development profile. Choose Food 0.6 in this Windows installer.')
     if requested_food_version == FOOD05_VERSION and features['world_settings'] and features['bug_fixes']:
         raise InstallerError('Preserved Food 0.5 + World Settings does not support Bug Fixes. Choose Food 0.6 or leave Food unchecked.')
     source, target = validate_roots(source_game, copy_game, REPO)
@@ -216,12 +220,21 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
         else:
             output = _workspace() / ('package-' + uuid.uuid4().hex)
         if profile['features']['world_settings']:
+            if baseline_dir is not None and getattr(sys, 'frozen', False):
+                raise InstallerError('This Windows installer prepares World Settings from your original game. Clear Advanced development files; preserved development profiles use the source installer.')
             if requested_food_version == FOOD06_VERSION:
-                from .food_world_package import prepare_food_world_package
                 progress('Building Food 0.6 with World Settings for a NEW world…')
                 combined_options = {'bug_fixes_enabled': True} if features['bug_fixes'] else {}
-                package = prepare_food_world_package(baseline_dir, output, source, target,
-                                                     **combined_options)
+                if baseline_dir is None:
+                    from .food_world_public import prepare_public_food_world_package
+                    from .beta_paths import compiler_path
+                    package = prepare_public_food_world_package(output, source, target,
+                                                                 compiler_path=compiler_path(),
+                                                                 **combined_options)
+                else:
+                    from .food_world_package import prepare_food_world_package
+                    package = prepare_food_world_package(baseline_dir, output, source, target,
+                                                         **combined_options)
             elif baseline_dir is None:
                 if profile['features']['food_overhaul']:
                     raise InstallerError('The combined Food + World development build needs its preserved development files. Choose World Settings alone for the public beta, or select the matching files under Advanced. Food is never enabled automatically.')
@@ -245,6 +258,9 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
             package = prepare_food_package(output, source, copy_game=target)
     package = checked_path(package)
     metadata = validate_package(package, source_game=source)
+    if (getattr(sys, 'frozen', False) and features['world_settings']
+            and metadata['kind'] not in {'anno1503-public-beta-world-package', PUBLIC_FOOD_WORLD06_PACKAGE_KIND}):
+        raise InstallerError('This Windows installer needs a public World Settings recipe. Prepare it without Advanced development files.')
     if (metadata['kind'] == BUG_FIXES_PACKAGE_KIND) != bug_fixes_only:
         raise InstallerError('The prepared package does not match the standalone Bug Fixes selection.')
     if features['bug_fixes']:
@@ -259,8 +275,8 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
             sounds = ambient_sound_fingerprints(ambient_sound_assets(source, locales))
         if sounds and target.exists() and ambient_sound_fingerprints(ambient_sound_assets(target, locales)) != sounds:
             raise InstallerError('The copy and source have different sound effects.')
-    is_combined06 = metadata['kind'] == FOOD_WORLD06_PACKAGE_KIND
-    is_food06 = metadata['kind'] in (FOOD06_PACKAGE_KIND, FOOD_WORLD06_PACKAGE_KIND)
+    is_combined06 = metadata['kind'] in FOOD_WORLD06_PACKAGE_KINDS
+    is_food06 = metadata['kind'] == FOOD06_PACKAGE_KIND or is_combined06
     if metadata['kind'] == FOOD06_PACKAGE_KIND and (features['world_settings'] or not features['food_overhaul']):
         raise InstallerError('This Food 0.6 package is for Food-only installations. It cannot be used by World Settings or the preserved Food 0.5 combined profile.')
     if is_combined06 and not (features['world_settings'] and features['food_overhaul']):
@@ -275,7 +291,7 @@ def check_install(source_game: Path, copy_game: Path, profile: dict,
     if Path(metadata.get('copy_root') or '').resolve() != target:
         raise InstallerError('These prepared mod files belong to another modded copy. Prepare a package for this copy.')
     if profile['features']['world_settings']:
-        expected_food = (metadata['food_enabled'] if metadata['kind'] in {'anno1503-world-options-installer-package', 'anno1503-public-beta-world-package', FOOD_WORLD06_PACKAGE_KIND}
+        expected_food = (metadata['food_enabled'] if metadata['kind'] in {'anno1503-world-options-installer-package', 'anno1503-public-beta-world-package', *FOOD_WORLD06_PACKAGE_KINDS}
                          else metadata['kind'] != 'anno1503-world-only-installer-package')
         if expected_food != profile['features']['food_overhaul']:
             raise InstallerError('The prepared package has a different Food selection. Check the selected features again.')
@@ -320,7 +336,8 @@ def install(source_game: Path, copy_game: Path, profile: dict, *,
                          food_version=food_version)
     source, root, package = (Path(plan[key]) for key in ('source_root', 'copy_root', 'package_root'))
     launcher_runtime = None
-    if getattr(sys, 'frozen', False) and plan['profile']['features']['world_settings']:
+    if (getattr(sys, 'frozen', False) and (plan['profile']['features']['world_settings']
+                                         or plan.get('food_version') == FOOD06_VERSION)):
         from .beta_paths import application_data
         from .frozen_runner import application_root, retain_worker
         progress('Keeping a version-matched launcher for this installation…')
@@ -484,8 +501,34 @@ def launch_installed_game(copy_game: Path, *, progress=None):
     if route == 'bug_fixes':
         from .bug_fixes_launch import launch_bug_fixes
         return launch_bug_fixes(root, progress=progress)
+    if record.get('launcher_runtime') is not None or getattr(sys, 'frozen', False):
+        return launch_retained_food06(root)
     from .food_launch import launch_food06
     return launch_food06(root, progress=progress)
+
+
+def launch_retained_food06(copy_game: Path):
+    """Start Food-only through its sealed, version-owned Windows launcher."""
+    from .frozen_runner import validate_package_closure, verify_retained_worker
+    require_game_closed()
+    root = checked_path(copy_game)
+    marker = read_copy_marker(root)
+    record = _read_install(root)
+    if marker['phase'] != 'installed' or installed_launch_kind(record) != 'food06':
+        raise InstallerError('Install the Food 0.6 Food-only profile before starting its retained launcher.')
+    journal = _verify_journal(root)
+    _verify_food06_bug_fixes(root, record, journal)
+    retained = record.get('launcher_runtime')
+    if not isinstance(retained, dict) or not isinstance(retained.get('launcher_path'), str):
+        raise InstallerError('This Food installation has no retained Windows launcher. Restore and reinstall it with the current installer.')
+    worker = verify_retained_worker(retained)
+    package = checked_path(Path(record['package_root']))
+    metadata = validate_package_closure(package, record['package_manifest_sha256'], copy_root=root)
+    if metadata.get('kind') != FOOD06_PACKAGE_KIND:
+        raise InstallerError('The retained Food launcher requires its exact Food-only package.')
+    executable = checked_path(Path(retained['launcher_path']))
+    return subprocess.Popen([str(executable), '--launch-food06', '--copy', str(root)],
+                            cwd=worker.parent, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
 
 
 def launch_world_settings(copy_game: Path):

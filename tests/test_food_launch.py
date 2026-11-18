@@ -13,7 +13,7 @@ from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
-from anno1503_overhaul import client_context, food_launch as launch, installer
+from anno1503_overhaul import client_context, food_launch as launch, installer, frozen_runner
 from anno1503_overhaul import packages as common
 from anno1503_overhaul.food_diet import FOOD06_BGRUPPEN_SHA256
 from anno1503_overhaul.profile import default_profile
@@ -198,6 +198,51 @@ class FoodDiskProfileTests(unittest.TestCase):
         self.hashes[self.copy / "Data/BGruppen.dat"] = "0" * 64
         with self.assertRaisesRegex(launch.FoodLaunchError, "tier diets"):
             launch.verify_food06_installation(self.copy)
+
+    def retained_worker(self):
+        runtime = self.root / 'retained-runtime'
+        runtime.mkdir(exist_ok=True)
+        worker = runtime / frozen_runner.WORKER
+        worker.write_bytes(b'sealed runtime fixture')
+        self.record['launcher_runtime'] = dict(runtime_root=str(runtime), worker_path=str(worker))
+        return worker
+
+    def test_frozen_food_requires_its_own_retained_runtime_then_the_full_native_profile(self):
+        worker = self.retained_worker()
+        with (patch.object(sys, 'frozen', True, create=True),
+              patch.object(sys, 'executable', str(worker)),
+              patch.object(frozen_runner, 'application_root', return_value=worker.parent),
+              patch.object(frozen_runner, 'verify_retained_worker', return_value=worker) as retained,
+              patch.object(frozen_runner, 'validate_package_closure', return_value={'kind':launch.KIND}) as closure):
+            self.assertEqual(launch.verify_food06_installation(self.copy)['source_profile'], 'vanilla')
+            retained.assert_called_once_with(self.record['launcher_runtime'])
+            closure.assert_called_once_with(self.package, self.record['package_manifest_sha256'], copy_root=self.copy)
+            self.validate.assert_called_once_with(self.package, self.source)
+            self.hashes[self.copy / 'View.dll'] = '0' * 64
+            with self.assertRaisesRegex(launch.FoodLaunchError, 'native profile'):
+                launch.verify_food06_installation(self.copy)
+
+    def test_frozen_food_refuses_missing_changed_foreign_or_wrong_profile_runtime_before_native_probe(self):
+        with patch.object(sys, 'frozen', True, create=True):
+            with self.assertRaisesRegex(launch.FoodLaunchError, 'no retained'):
+                launch.verify_food06_installation(self.copy)
+            worker = self.retained_worker()
+            with patch.object(frozen_runner, 'verify_retained_worker', side_effect=frozen_runner.RunnerError('changed worker')):
+                with self.assertRaisesRegex(frozen_runner.RunnerError, 'changed worker'):
+                    launch.verify_food06_installation(self.copy)
+            with (patch.object(frozen_runner, 'verify_retained_worker', return_value=worker),
+                  patch.object(frozen_runner, 'application_root', return_value=self.source),
+                  patch.object(sys, 'executable', str(worker))):
+                with self.assertRaisesRegex(launch.FoodLaunchError, 'retained Windows launcher'):
+                    launch.verify_food06_installation(self.copy)
+            with (patch.object(frozen_runner, 'verify_retained_worker', return_value=worker),
+                  patch.object(frozen_runner, 'application_root', return_value=worker.parent),
+                  patch.object(sys, 'executable', str(worker)),
+                  patch.object(frozen_runner, 'validate_package_closure', return_value={'kind':frozen_runner.FOOD_WORLD_PACKAGE_KIND})):
+                with self.assertRaisesRegex(launch.FoodLaunchError, 'Food-only'):
+                    launch.verify_food06_installation(self.copy)
+        self.validate.assert_not_called()
+        self.journal.assert_not_called()
 
 
 class FoodHandoffTests(unittest.TestCase):

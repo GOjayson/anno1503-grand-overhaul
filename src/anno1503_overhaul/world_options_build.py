@@ -214,7 +214,7 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
         raise old.RuntimeBuildError('Choose an explicit native runtime profile.')
     if _food06_profile:
         from .food_world_runtime import PROFILE, derive_sources as food06_sources, RUNTIME_SHA256
-        if profile != PROFILE or _public_inputs is not None or publish:
+        if profile != PROFILE or publish:
             raise old.RuntimeBuildError('Food 0.6 uses its separate candidate build and review route.')
     elif _food06_asset_source is not None or _food06_asset_root is not None:
         raise old.RuntimeBuildError('Food 0.6 asset inputs belong only to its separate native profile.')
@@ -243,12 +243,18 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
         tools = checked_path(tools if tools is not None else repo / '.local/toolchain')
         zig = checked_path(tools / 'ziglang/zig.exe')
     else:
-        if profile != 'world-only' or publish:
-            raise old.RuntimeBuildError('Public beta inputs belong only to a separate World-only build.')
+        if (profile != ('food06-world' if _food06_profile else 'world-only') or publish
+                or _public_inputs.get('profile', 'world-only') != profile):
+            raise old.RuntimeBuildError('Public beta inputs belong only to their exact separate native profile.')
         verified = _public_inputs['verified']
-        files, proof = _derive_sources_exact(profile, original, game,
-            asset_source=verified['source_data_root'], asset_root=verified['assets_root'],
-            activity_inputs=_public_inputs['activity_inputs'])
+        if _food06_profile:
+            files, proof = food06_sources(original, game,
+                asset_source=verified['source_data_root'], asset_root=verified['assets_root'],
+                activity_inputs=_public_inputs['activity_inputs'])
+        else:
+            files, proof = _derive_sources_exact(profile, original, game,
+                asset_source=verified['source_data_root'], asset_root=verified['assets_root'],
+                activity_inputs=_public_inputs['activity_inputs'])
         proof['public_beta_inputs'] = verified['manifest']
         zig = checked_path(verified['compiler_path'])
     compiler_options = ({'creationflags':subprocess.CREATE_NO_WINDOW}

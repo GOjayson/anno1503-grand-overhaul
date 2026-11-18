@@ -21,6 +21,8 @@ def food_version_for_selection(features, choice):
     if choice == FOOD06_CHOICE:
         return FOOD06_VERSION
     if choice == FOOD05_CHOICE:
+        if getattr(sys, 'frozen', False):
+            raise InstallerError('Food 0.5 remains a preserved source development profile. Choose Food 0.6 in this Windows installer.')
         if features['world_settings'] and features.get('bug_fixes'):
             raise InstallerError('Preserved Food 0.5 + World Settings does not support Bug Fixes. Choose Food 0.6 or leave Food unchecked.')
         return FOOD05_VERSION
@@ -109,7 +111,7 @@ def main():
                 info = installer.inspect_copy(Path(target.get()))
                 record = info['installation']
                 route = installer.installed_launch_kind(record)
-                can_start = route in ('world', 'bug_fixes') or (route in ('food06', 'food06-world') and not getattr(sys, 'frozen', False))
+                can_start = route in ('world', 'bug_fixes', 'food06', 'food06-world')
             except Exception:
                 pass
         for key, button in buttons.items():
@@ -149,7 +151,7 @@ def main():
     food_row.pack(fill='x', padx=24, pady=(0, 4))
     ttk.Label(food_row, text='Food version', width=15).pack(side='left')
     food_combo = ttk.Combobox(food_row, textvariable=food_recipe, state='readonly',
-                               values=(FOOD06_CHOICE, FOOD05_CHOICE))
+                               values=(FOOD06_CHOICE,) if getattr(sys, 'frozen', False) else (FOOD06_CHOICE, FOOD05_CHOICE))
     food_combo.pack(side='left', fill='x', expand=True)
     mutable.append(food_combo)
     ttk.Label(group, textvariable=food_note, foreground='#555555', wraplength=790).pack(anchor='w', padx=24, pady=(0, 6))
@@ -330,7 +332,7 @@ def main():
                         if operation == 'install':
                             if result.get('food_version') == installer.FOOD06_VERSION:
                                 mode = 'Food 0.6 + World Settings' if result['profile']['features']['world_settings'] else 'Food 0.6'
-                                launch_note = 'Use Start installed game for this ' + mode + ' copy. This startup path currently uses the source installer.'
+                                launch_note = 'Use Start installed game for this ' + mode + ' copy.'
                             elif result['profile']['features']['world_settings']:
                                 launch_note = 'Use Start installed game. World options remain inside Anno.'
                             elif result['profile']['features']['food_overhaul']:

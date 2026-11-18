@@ -380,21 +380,21 @@ class BugFixesInstallerTests(unittest.TestCase):
             '                        file_size=None, offset=None),\n'
             '    ]\n', encoding='utf-8',
         )
-        metadata = dict(kind=installer.FOOD_WORLD06_PACKAGE_KIND, copy_root=str(self.copy),
+        metadata = dict(kind=installer.PUBLIC_FOOD_WORLD06_PACKAGE_KIND, copy_root=str(self.copy),
                         food_enabled=True, bug_fixes_enabled=True, verified=True,
                         new_world_required=True, old_save_migration_supported=False,
                         world_settings_supported=True)
         stack.enter_context(patch.object(packages, 'validate_package', return_value=metadata))
-        builder = ModuleType('anno1503_overhaul.food_world_package')
-        builder.prepare_food_world_package = Mock(return_value=self.package)
+        builder = ModuleType('anno1503_overhaul.food_world_public')
+        builder.prepare_public_food_world_package = Mock(return_value=self.package)
         stack.enter_context(patch.dict(sys.modules, {builder.__name__: builder}))
         selected = dict(schema_version=1, name='All three features', features={
             'food_overhaul': True, 'world_settings': True, 'bug_fixes': True,
         })
         plan = installer.check_install(self.source, self.copy, selected,
                                        food_version=installer.FOOD06_VERSION)
-        builder.prepare_food_world_package.assert_called_once()
-        self.assertIs(builder.prepare_food_world_package.call_args.kwargs['bug_fixes_enabled'], True)
+        builder.prepare_public_food_world_package.assert_called_once()
+        self.assertIs(builder.prepare_public_food_world_package.call_args.kwargs['bug_fixes_enabled'], True)
         self.assertFalse(self.copy.exists())
         record = installer.install(self.source, self.copy, selected, package=self.package,
                                    food_version=installer.FOOD06_VERSION)

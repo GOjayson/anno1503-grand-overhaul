@@ -229,7 +229,10 @@ def derive_sources(files: dict[str, bytes], game: Path, *, asset_source=None, as
         b'label(d,"Food (tons)"', b'label(d,"Fish (tons)"',
         "Food 0.6 starting cargo names the actual staple good")
     ai, ai_proof = derive_activity_ai_inputs(game) if activity_inputs is None else activity_inputs
-    if set(ai) != {"CompLogic.dll", "CompLogicClassic.dll"}:
+    from .food_world_ai import OUTPUT_SHA256
+    if (set(ai) != set(OUTPUT_SHA256)
+            or any(not isinstance(value, bytes) or _sha(value) != OUTPUT_SHA256[name]
+                   for name, value in ai.items())):
         raise base.RuntimeBuildError("The combined private AI inventory differs.")
     for name, value in ai.items():
         result[base.AI_LOADER] = replace(result[base.AI_LOADER],
@@ -259,3 +262,57 @@ def build_food_world_runtime(game, tools=None, *, output=None, publish=False,
     return options._build_options_runtime(PROFILE, game, tools, output=output,
         publish=False, _food06_profile=True,
         _food06_asset_source=asset_source, _food06_asset_root=asset_root)
+
+
+def build_public_food_world_runtime(game, source_game, assets_root, compiler_path,
+                                   activity_inputs, *, output, source_proof):
+    """Compile the reviewed combined host from explicit public-source inputs.
+
+    The host, island assets and AI are freshly reconstructed by the public
+    package recipe. There is no historical baseline or runtime-profile lookup.
+    All native host and AI fingerprints are rechecked by derive_sources.
+    """
+    from .beta_inputs import verify_beta_source, derive_beta_assets
+    from .food_household import _compiler
+    from .food_world_ai import OUTPUT_SHA256
+    from .filesystem import safe_child
+    from .world_options import generator_id
+    game, source, assets = map(checked_path, (Path(game), Path(source_game), Path(assets_root)))
+    if game == source or game.is_relative_to(source) or source.is_relative_to(game):
+        raise base.RuntimeBuildError('The public combined compiler host must be independent of the game.')
+    compiler, unused = _compiler(compiler_path)
+    if source_proof != verify_beta_source(source):
+        raise base.RuntimeBuildError('The public combined source profile changed.')
+    expected_assets, asset_proof = derive_beta_assets(source)
+    expected_names = {name.removeprefix('assets/') for name in expected_assets}
+    expected_dirs = {parent.as_posix() for name in expected_names for parent in Path(name).parents if str(parent) != '.'}
+    actual_names = set()
+    for item in assets.rglob('*'):
+        checked_path(item)
+        if item.is_file():
+            actual_names.add(item.relative_to(assets).as_posix())
+        elif not item.is_dir() or item.relative_to(assets).as_posix() not in expected_dirs:
+            raise base.RuntimeBuildError('An unexpected public combined island input exists.')
+    if actual_names != expected_names:
+        raise base.RuntimeBuildError('The public combined island input inventory differs.')
+    for name, value in expected_assets.items():
+        if safe_child(assets, name.removeprefix('assets/'), exists=True).read_bytes() != value:
+            raise base.RuntimeBuildError('A public combined island derivative changed.')
+    ai, proof = activity_inputs
+    if set(ai) != set(OUTPUT_SHA256) or {name: _sha(value) for name, value in ai.items()} != OUTPUT_SHA256:
+        raise base.RuntimeBuildError('The public combined AI derivatives differ.')
+    if {item.name for item in game.iterdir()} != set(HOST_SHA256):
+        raise base.RuntimeBuildError('The public combined compiler host inventory differs.')
+    verified = dict(root=game, source_game=source, source_data_root=source,
+        assets_root=assets, compiler_path=compiler,
+        manifest=dict(profile=PROFILE, historical_private_inputs_used=False,
+                      source_proof=source_proof, assets=asset_proof,
+                      native_sha256=HOST_SHA256, private_ai_sha256=OUTPUT_SHA256))
+    if generator_id() != options.PINNED_GENERATOR:
+        raise base.RuntimeBuildError('The public combined generator changed after runtime review.')
+    report = options._build_options_runtime(PROFILE, game, output=output,
+        _food06_profile=True, _public_inputs=dict(profile=PROFILE, verified=verified,
+                                                 activity_inputs=(ai, proof)))
+    if not report['matches_reviewed_runtime']:
+        raise base.RuntimeBuildError('The public combined build differs from its reviewed runtime.')
+    return report

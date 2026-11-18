@@ -391,6 +391,9 @@ def validate_package(path: Path | str, source_game: Path | str | None = None) ->
     if kind == "anno1503-food-world06-installer-package":
         from .food_world_package import validate_food_world_package
         return validate_food_world_package(root, source_game)
+    if kind == "anno1503-public-food-world06-package":
+        from .food_world_public import validate_public_food_world_package
+        return validate_public_food_world_package(root, source_game)
     if kind == "anno1503-public-beta-world-package":
         from .beta_package import validate_beta_package
         return validate_beta_package(root, source_game)

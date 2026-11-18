@@ -11,6 +11,20 @@ The [official v2.1 source](https://github.com/EthicalSource/contributor_covenant
 and [upstream license](https://github.com/EthicalSource/contributor_covenant/blob/8a3be1350b07f38b53bbc7073f765a48c4c53ce1/LICENSE.md)
 are pinned to that release.
 
+## Mod artwork and sound preparation
+
+The Food foreground icons are authored artwork; their generation record is
+retained in `legacy/food_overhaul/assets/ARTWORK.txt`. The installer rebuilds
+their backgrounds and the informative Food icon from the player's verified
+game files. Original Anno textures and prepared game archives are not bundled.
+
+The optional sound adjustments follow the target names and measured gains in
+[Taludas's Anno 1503 HE Sound Fix v1.0](https://github.com/Taludas/Anno-1503-HE-Sound-Fix/releases/tag/v1.0).
+The implementation scales each installed language's own supported original
+samples. It does not bundle Taludas's sound files or Ubisoft's recordings.
+Published fingerprints identify supported originals; the recordings and
+generated quieter WAV files stay on the player's computer.
+
 ## Tools in the beta
 
 The standalone Windows beta includes its Python runtime, user-interface

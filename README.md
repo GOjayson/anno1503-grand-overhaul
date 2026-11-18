@@ -13,9 +13,9 @@
 
 1. Open [GitHub Releases](https://github.com/GOjayson/anno1503-grand-overhaul/releases) and download the **Windows beta ZIP** under **Assets**. Extract the whole archive outside your Anno installation.
 2. Close Anno and open **Anno1503OverhaulSetup.exe**.
-3. Confirm the **Original game folder** and choose a separate **Modded copy folder**. Keep **World Settings** selected and **Food** unchecked.
+3. Confirm the **Original game folder** and choose a separate **Modded copy folder**. Select **World Settings**, **Food overhaul (0.6)** and/or **Bug Fixes**. All three can be enabled together; leave Food unchecked for the original food economy.
 4. Click **Check installation**, then **Install selected features**.
-5. Launch from the new desktop shortcut or click **Start with World Settings**. Start a single-player endless game and choose **Custom world**.
+5. Launch from setup or the World Settings desktop shortcut. With World Settings enabled, start a single-player endless game and choose **Custom world**. With Food 0.6 enabled, start a **new world**; vanilla and Food 0.5 saves are not migrated.
 
 For setup errors and manual recovery, see the [full installation and troubleshooting guide](docs/INSTALLER.md).
 
@@ -56,7 +56,7 @@ observed game runs, automated checks, and what still needs testing. See the
 
 ## Optional Food overhaul and Bug Fixes
 
-The source installer, **[INSTALLER.cmd](INSTALLER.cmd)**, offers independent
+The Windows release and source installer, **[INSTALLER.cmd](INSTALLER.cmd)**, offer independent
 **World Settings**, **Food overhaul** and **Bug Fixes** checkboxes. The Food
 version remains an explicit choice. Select **Food 0.6** for new worlds with
 tier-specific diets, an informative household Food bar using the original
@@ -70,11 +70,12 @@ the quieter samples from your own original files. The Dutch quest was checked
 in-game; the other language replacements and sound reductions have separate
 automated and file checks. Read the [Bug Fixes scope](docs/BUGFIX_RESEARCH.md).
 
-Food 0.6 and the combined profile are **source development candidates**. They
-need Python, the reviewed compiler and the matching local preparation inputs
-described in the [installer guide](docs/INSTALLER.md). Start a new endless
-world; vanilla and Food 0.5 saves are not migrated. The published Windows beta
-ZIP remains the earlier World Settings-only release.
+The **0.10.0-beta.1 Windows release** includes Food 0.6 and Bug Fixes alongside
+World Settings. It prepares selected features from your own supported game
+files and includes Python and the compiler. No private development files or
+separate tool installation are needed. Start a new endless world for Food 0.6;
+vanilla and Food 0.5 saves are not migrated. Food balance and Huge worlds
+remain experimental. See the [installer guide](docs/INSTALLER.md).
 
 ## Restore or change features
 

@@ -1,4 +1,4 @@
-"""Source-only Food 0.6 startup through the normal Ubisoft client.
+"""Verified Food 0.6 startup through the normal Ubisoft client.
 
 The handoff is the existing owned-main-menu transaction. Food startup never
 activates World Settings. Its observer is derived from the preserved readiness
@@ -59,6 +59,17 @@ def verify_food06_installation(copy_game) -> dict:
     package = checked_path(Path(record["package_root"]))
     if file_sha(package / "manifest.json") != record.get("package_manifest_sha256"):
         raise FoodLaunchError("The installed Food package identity changed.")
+    if getattr(sys, "frozen", False):
+        from .frozen_runner import application_root, validate_package_closure, verify_retained_worker
+        retained = record.get("launcher_runtime")
+        if not isinstance(retained, dict):
+            raise FoodLaunchError("This Food copy has no retained Windows launcher. Restore and reinstall it with the current installer.")
+        worker = verify_retained_worker(retained)
+        if checked_path(application_root()) != worker.parent or checked_path(Path(sys.executable)) != worker:
+            raise FoodLaunchError("Start Food through this installation's retained Windows launcher.")
+        closure = validate_package_closure(package, record["package_manifest_sha256"], copy_root=root)
+        if closure.get("kind") != KIND:
+            raise FoodLaunchError("The retained Food launcher requires its exact Food-only package.")
     metadata = validate_food06_package(package, source)
     if metadata["kind"] != KIND or Path(metadata.get("copy_root") or "").resolve() != root:
         raise FoodLaunchError("The Food package belongs to another selected-feature copy.")
@@ -215,9 +226,7 @@ def find_registered_uri(source):
 
 def _require_source_host():
     if os.name != "nt" or C.sizeof(C.c_void_p) != 8:
-        raise FoodLaunchError("The source Food 0.6 launcher requires 64-bit Windows Python.")
-    if getattr(sys, "frozen", False):
-        raise FoodLaunchError("This Food 0.6 startup path currently belongs to the source installer.")
+        raise FoodLaunchError("The Food 0.6 launcher requires a 64-bit Windows host.")
 
 
 def launch_food06(copy_game, *, progress=None, event=None, timeout=300):

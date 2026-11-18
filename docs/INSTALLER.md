@@ -4,12 +4,15 @@
 
 Extract the complete beta ZIP outside the game folder, close Anno, then open
 **Anno1503OverhaulSetup.exe**. Check the detected original game folder and choose
-a separate modded-copy folder. Leave Food unchecked for the World Settings beta.
+a separate modded-copy folder. Choose **World Settings**, **Food overhaul (0.6)**
+and/or **Bug Fixes**. All three may be enabled together. Leave Food unchecked
+to keep the original food economy.
 Click **Check installation**, review the destination and copy size, then click
-**Install selected features**. Use **Start with World Settings** after setup.
+**Install selected features**, then launch from setup or the World Settings
+desktop shortcut. Start a **new endless world** when Food 0.6 is enabled.
 
 The bundle includes its Python runtime and compiler. Preparation reconstructs
-the World-only files from your own supported game and verifies the result; no
+the selected features from your own supported game and verifies the result; no
 private development baseline store is required. Game-derived data stays local.
 Prepared packages and version-matched launch support live in the user's local
 application-data cache, separate from the extracted download and original game.
@@ -25,10 +28,10 @@ The setup never changes the original Ubisoft installation. **Restore original
 game** returns its managed copy to the checked originals and keeps saves and
 backups. Huge/custom saves may still require the mod after restoration.
 
-Food is optional and off by default. Its preserved combined development build
-still needs matching development files and its existing native startup inputs;
-the beta does not silently prepare or enable that combination. Food-only
-preparation remains a separate experimental choice.
+Food and Bug Fixes are optional and off by default. The 0.10.0-beta.1 bundle
+prepares Food 0.6 alone or together with World Settings, with optional Bug Fixes.
+It needs no private development files. The preserved Food 0.5 combined profile
+remains a separate Advanced development choice.
 
 ## Source and preserved development installations
 
@@ -67,11 +70,11 @@ to launch the checked copy through Ubisoft Connect. For command-line installatio
 `--bug-fixes-only` selects it alone and `--bug-fixes` adds it to the selected
 profile. See [the issue list and audio experiment](BUGFIX_RESEARCH.md).
 
-For the latest Food development profile, select **Food overhaul**, choose
+For the latest Food profile, select **Food overhaul**, choose
 **Food 0.6**, and optionally select **World Settings** and **Bug Fixes** too.
-All three may be enabled together. Food 0.6 requires a new endless world and
-its reviewed preparation inputs; the existing Windows beta ZIP remains
-World-only. Follow the [Food installation and save rules](FOOD_OVERHAUL.md#installation-and-saves).
+All three may be enabled together in the 0.10.0-beta.1 Windows ZIP. Preparation
+uses your supported game files and the included tools. Food 0.6 requires a new
+endless world. Follow the [Food installation and save rules](FOOD_OVERHAUL.md#installation-and-saves).
 The all-three package verifies its additional Bug Fixes assets at installation
 and launch and includes them in the same restoration journal.
 World Settings with Bug Fixes also works with Food unchecked, retaining the
@@ -91,7 +94,7 @@ points to a local baseline store with complete `food_overhaul`,
 `world_settings` and `launcher` packages. The initial migration preserved that
 store under `.local/baselines/`. Food-only preparation uses reviewed public
 source and authored artwork and does not require the private World payloads.
-The expanded menu requires its separately built, pinned runtime profile under
+Historical expanded-menu builds require a separately built, pinned runtime profile under
 ignored `.local/runtime-profiles/options-world-only-<fingerprint>/` or
 `options-food-world-<fingerprint>/`, matching the Food selection. Historical
 runtime profiles remain preserved. Native build and local input requirements

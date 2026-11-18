@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.0-beta.1
+
+- Include optional Food 0.6 and Bug Fixes in the standalone Windows installer, alongside World Settings. All three can be selected together.
+- Reconstruct the exact combined Food/World runtime, AI modules and island assets from the player's supported game and public mod source, without private development files.
+- Add sealed packaged launch support for Food-only and Food + World installations; retain version-matched launch support after setup closes.
+- Bundle the necessary preparation tools and license notices. Preserve the original installation, previous releases, saves and restoration backups.
+
+Food 0.6 requires new endless worlds; vanilla and Food 0.5 saves are not
+migrated. World Settings remains 0.9.0-beta.1 and Bug Fixes remains 1.2; this
+release packages their supported combinations. See [release validation](BETA_010_VALIDATION.md).
+
 ## Source development update — 2026-11-18
 
 - Add Food 0.6 tier-specific diets, a read-only household Food summary using the original Food icon, and consistent food-icon backgrounds.

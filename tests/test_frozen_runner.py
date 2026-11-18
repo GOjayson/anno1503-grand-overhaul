@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 from types import SimpleNamespace
+from types import ModuleType
 import unittest
 import zipfile
 from unittest.mock import patch
@@ -196,6 +197,39 @@ class FrozenRunner(unittest.TestCase):
             with self.assertRaises(runner.RunnerError):
                 self.observed(script)
 
+    def test_public_combined_flat_launcher_uses_only_its_exact_public_validator(self):
+        root, script, data, unused = self.package(kind=runner.FOOD_WORLD_PACKAGE_KIND)
+        public = ModuleType('anno1503_overhaul.food_world_public')
+        public.validate_public_food_world_package = unittest.mock.Mock(return_value=dict(data, verified=True))
+        with patch.dict(sys.modules, {public.__name__: public}), \
+             patch('anno1503_overhaul.beta_package.validate_beta_package') as vanilla:
+            self.assertEqual(self.observed(script, args=('combined',))['args'], ['combined'])
+            public.validate_public_food_world_package.assert_called_once_with(root)
+            vanilla.assert_not_called()
+            write(script, b'raise AssertionError("changed helper must not run")\n')
+            with patch('runpy.run_path') as execute, self.assertRaises(runner.RunnerError):
+                self.observed(script)
+            execute.assert_not_called()
+
+    def test_food_only_and_public_combined_recorded_closures_preserve_the_exact_payload_binding(self):
+        for kind in (runner.FOOD06_PACKAGE_KIND, runner.FOOD_WORLD_PACKAGE_KIND):
+            with self.subTest(kind=kind):
+                root, script, data, digest = self.package(kind=kind)
+                checked = runner.validate_package_closure(root, digest, copy_root=self.base / 'game')
+                self.assertEqual(checked['kind'], kind)
+                write(script, b'changed payload')
+                with self.assertRaises(runner.RunnerError):
+                    runner.validate_package_closure(root, digest, copy_root=self.base / 'game')
+        root, unused, data, digest = self.package(kind='anno1503-food-world06-installer-package')
+        with self.assertRaises(runner.RunnerError):
+            runner.validate_package_closure(root, digest)
+
+    def test_food_only_cannot_use_arbitrary_flat_script_dispatch(self):
+        root, script, data, unused = self.package(kind=runner.FOOD06_PACKAGE_KIND)
+        with patch('runpy.run_path') as execute, self.assertRaises(runner.RunnerError):
+            self.observed(script)
+        execute.assert_not_called()
+
     def test_unknown_package_and_failed_recipe_never_reach_runpy(self):
         root, script, data, unused = self.package(kind='anno1503-local-installer-package')
         with patch('runpy.run_path') as execute:
@@ -340,6 +374,33 @@ class FrozenRunner(unittest.TestCase):
                     self.assertEqual(runner.main(['--installer-cli', *args]), 2)
         self.assertEqual((self.app / 'release-files.json').read_bytes(), before)
         gui.assert_not_called();generic.assert_not_called()
+
+    def test_purpose_built_food_command_calls_the_sealed_launch_module_once(self):
+        from anno1503_overhaul import food_launch
+        output = io.StringIO()
+        with patch.object(sys, 'frozen', True, create=True), \
+             patch.object(runner, 'application_root', return_value=self.app), \
+             patch.object(food_launch, 'launch_food06', return_value=SimpleNamespace(pid=4321)) as launch, \
+             patch.object(runner, 'dispatch') as generic, patch('anno1503_overhaul.selector.main') as gui, \
+             redirect_stdout(output):
+            self.assertEqual(runner.main(['--launch-food06', '--copy', str(self.base / 'game')]), 0)
+        launch.assert_called_once_with(str(self.base / 'game'))
+        self.assertEqual(json.loads(output.getvalue()), dict(food06_started=True, pid=4321,
+            world_settings_activated=False, new_world_required=True))
+        generic.assert_not_called();gui.assert_not_called()
+
+    def test_food_command_bad_arguments_or_uncertain_startup_never_retry(self):
+        from anno1503_overhaul import food_launch
+        with patch.object(sys, 'frozen', True, create=True), \
+             patch.object(runner, 'application_root', return_value=self.app), \
+             patch.object(food_launch, 'launch_food06', side_effect=RuntimeError('uncertain startup')) as launch, \
+             patch.object(runner, 'dispatch') as generic, redirect_stderr(io.StringIO()):
+            for args in ([], ['--copy'], ['--copy', 'game', 'extra'], ['--other', 'game']):
+                with self.subTest(args=args):
+                    self.assertEqual(runner.main(['--launch-food06', *args]), 2)
+            launch.assert_not_called()
+            self.assertEqual(runner.main(['--launch-food06', '--copy', 'game']), 2)
+        launch.assert_called_once_with('game');generic.assert_not_called()
 
 
 if __name__ == '__main__':

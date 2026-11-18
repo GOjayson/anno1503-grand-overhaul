@@ -6,6 +6,7 @@ and private evidence are never inputs to this distribution build.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import importlib.util
 import json
@@ -22,10 +23,33 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_ROOTS = {'src', 'legacy', 'provenance', 'docs', 'assets', 'tools'}
 PUBLIC_TOP = {'README.md', 'LICENSE', 'LICENSE.md', 'LICENSE.txt', 'NOTICE', 'NOTICE.md',
-              'pyproject.toml', 'INSTALLER.cmd', 'FEATURE_SELECTOR.cmd', 'AGENTS.md'}
+              'pyproject.toml', 'INSTALLER.cmd', 'FEATURE_SELECTOR.cmd', 'AGENTS.md',
+              'CODE_OF_CONDUCT.md', 'CONTRIBUTING.md', 'SECURITY.md', 'ACCESSIBILITY.md'}
 FORBIDDEN = {'.dll', '.exe', '.scp', '.sze', '.sav', '.dmp', '.dat', '.zip', '.7z', '.lnk',
-             '.pyc', '.pyo', '.pdb', '.obj', '.o', '.a', '.lib', '.key', '.pem', '.pfx'}
+             '.pyc', '.pyo', '.pdb', '.obj', '.o', '.a', '.lib', '.key', '.pem', '.pfx',
+             '.wav', '.ogg', '.mp3', '.flac', '.tex', '.gfx', '.addon', '.classic'}
 RELEASE_KIND = 'anno1503-public-beta-release-files'
+RELEASE_VERSION = '0.10.0-beta.1'
+FEATURE_VERSIONS = {'world_settings': '0.9.0-beta.1', 'food_overhaul': '0.6.0-dev.1',
+                    'bug_fixes': '1.2'}
+_MODULAR_SOURCES = frozenset('src/anno1503_overhaul/' + name + '.py' for name in (
+    'frozen_runner', 'legacy_worker', 'installer', 'selector', 'filesystem', 'packages',
+    'vanilla', 'beta_package', 'beta_inputs', 'world_runtime_build', 'world_options_build',
+    'food06_package', 'food_artwork', 'food_diet', 'food_household', 'food_supply',
+    'food_world_ai', 'food_world_backend', 'food_world_bug_fixes', 'food_world_package',
+    'food_world_policy', 'food_world_runtime', 'food_world_public', 'food_world_public_ai',
+    'food_launch', 'ambient_sound',
+    'ambient_sound_baselines', 'bug_fixes', 'bug_fixes_launch',
+))
+_REQUIRED_SOURCES = _MODULAR_SOURCES | {
+    'src/anno1503_overhaul/native/food_household.c',
+    'tools/beta_entry.py', 'provenance/legacy_import.json', 'README.md',
+    'LICENSE', 'CODE_OF_CONDUCT.md',
+    'docs/INSTALLER.md', 'docs/FOOD_OVERHAUL.md', 'docs/THIRD_PARTY_NOTICES.md',
+    'legacy/food_overhaul/food_patch.json', 'legacy/food_overhaul/assets/ARTWORK.txt',
+    *('legacy/food_overhaul/assets/' + name + '_icon.json'
+      for name in ('fish', 'game_meat', 'potatoes', 'bread', 'butcher_meat')),
+}
 
 
 def sha(path):
@@ -70,11 +94,70 @@ def public_inventory(root=ROOT):
         if signature == b'MZ':
             raise ValueError('Executable payload in the public source selection.')
         files[name] = sha(source)
-    required = {'src/anno1503_overhaul/frozen_runner.py', 'src/anno1503_overhaul/legacy_worker.py',
-                'tools/beta_entry.py', 'provenance/legacy_import.json', 'README.md'}
-    if not required <= files.keys():
-        raise ValueError('The public beta source selection is incomplete.')
+    validate_release_sources(root, files)
     return files
+
+
+def validate_release_sources(root, files):
+    """Require the complete public preparation inputs, never prepared game data."""
+    missing = _REQUIRED_SOURCES - files.keys()
+    if missing:
+        raise ValueError('The modular beta source selection is incomplete: ' + ', '.join(sorted(missing)))
+    provenance = json.loads((root / 'provenance/legacy_import.json').read_bytes())
+    compiled = provenance.get('compiled_source_sha256', {})
+    if (len(compiled) != 43 or any(not name.startswith('legacy/world_settings/')
+                                 or files.get(name) != digest for name, digest in compiled.items())):
+        raise ValueError('The beta is missing its reviewed 43-file World native source closure.')
+    # These indexed foregrounds are authored assets. The background and original
+    # Food summary icon are reconstructed from the player's checked game files.
+    location = root / 'src/anno1503_overhaul/food_artwork.py'
+    spec = importlib.util.spec_from_file_location('_beta_authored_food_artwork', location)
+    module = importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    for name, digest in module.ASSET_SHA256.items():
+        relative = 'legacy/food_overhaul/assets/' + name.replace('-', '_') + '_icon.json'
+        if files.get(relative) != digest:
+            raise ValueError('The beta is missing reviewed authored Food artwork: ' + relative)
+    # Public Food/World construction executes selected ranges from these exact
+    # imported generators. They are inputs in addition to the 43 C/runtime
+    # sources and must be present before an installable archive can be frozen.
+    source = root / 'src/anno1503_overhaul/food_world_public_ai.py'
+    constants = {}
+    for node in ast.parse(source.read_text(encoding='utf-8-sig')).body:
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id in {'PREFIX', 'SOURCES'}:
+                    constants[target.id] = ast.literal_eval(node.value)
+    prefix, recipes = constants.get('PREFIX'), constants.get('SOURCES')
+    if (prefix != 'legacy/world_settings/developer/source/engine_resume/ai_food/'
+            or not isinstance(recipes, dict) or len(recipes) != 6
+            or any(not isinstance(name, str) or PurePosixPath(name).name != name
+                   or not isinstance(digest, str) or re.fullmatch('[0-9a-f]{64}', digest) is None
+                   or files.get(prefix + name) != digest for name, digest in recipes.items())):
+        raise ValueError('The beta is missing the reviewed public Food AI construction source closure.')
+
+
+def release_index(public, *, version=RELEASE_VERSION):
+    if not isinstance(version, str) or re.fullmatch(r'\d+\.\d+\.\d+-beta\.[1-9]\d*', version) is None:
+        raise ValueError('Choose an explicit beta release version.')
+    return dict(schema_version=1, kind=RELEASE_KIND, version=version,
+                feature_versions=dict(FEATURE_VERSIONS), files=public,
+                game_files_distributed=False, food_requires_new_world=True)
+
+
+def verify_food_compiler(compiler, root=ROOT):
+    """Match the stricter Food household build before bundling a compiler."""
+    source = Path(root) / 'src/anno1503_overhaul/food_household.py'
+    tree = ast.parse(source.read_text(encoding='utf-8-sig'))
+    values = [node.value.value for node in tree.body
+              if isinstance(node, ast.Assign) and isinstance(node.value, ast.Constant)
+              and any(isinstance(target, ast.Name) and target.id == 'COMPILER_SHA256'
+                      for target in node.targets)]
+    if (len(values) != 1 or not isinstance(values[0], str)
+            or re.fullmatch('[0-9a-f]{64}', values[0]) is None):
+        raise RuntimeError('The reviewed Food compiler identity is missing from public source.')
+    if sha(plain(compiler)) != values[0]:
+        raise RuntimeError('Bundle the exact Zig compiler reviewed for Food 0.6, not merely the same version.')
+    return values[0]
 
 
 def encoded(value):
@@ -207,7 +290,8 @@ def _license_copy(bundle, dependency_root, *, python_root=None, compiler_root=No
     return dict(manifest_sha256=sha(record), components=components)
 
 
-def build(*, output=None, compiler=None, dependencies=None):
+def build(*, output=None, compiler=None, dependencies=None, release_version=RELEASE_VERSION):
+    release_index({}, version=release_version)
     if os.name != 'nt':
         raise RuntimeError('Standalone beta bundles must be built and checked on Windows.')
     import importlib.metadata
@@ -217,6 +301,7 @@ def build(*, output=None, compiler=None, dependencies=None):
     dependency_root = plain(dependencies or ROOT / '.local/toolchain/world-options-validation')
     for required in (compiler / 'zig.exe', compiler / 'LICENSE', dependency_root / 'capstone', dependency_root / 'pefile.py'):
         plain(required)
+    verify_food_compiler(compiler / 'zig.exe')
     version = subprocess.check_output([str(compiler / 'zig.exe'), 'version'], text=True).strip()
     if version != '0.16.0':
         raise RuntimeError('Use the reviewed Zig 0.16.0 compiler.')
@@ -233,7 +318,7 @@ def build(*, output=None, compiler=None, dependencies=None):
     output = parent / output.name;output.mkdir(exist_ok=False)
     public = public_inventory()
     imports = external_imports(ROOT, public)
-    index = encoded(dict(schema_version=1, kind=RELEASE_KIND, files=public))
+    index = encoded(release_index(public, version=release_version))
     index_sha = hashlib.sha256(index).hexdigest()
     entry = output / 'beta_entry.py'
     text = (ROOT / 'tools/beta_entry.py').read_text(encoding='utf-8')
@@ -273,7 +358,9 @@ def build(*, output=None, compiler=None, dependencies=None):
     with zipfile.ZipFile(archive, 'x', compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zipped:
         for name in sorted(inventory):
             zipped.write(bundle / name, 'Anno1503GrandOverhaul/' + name)
-    report = dict(passed=True, status='candidate', game_executed=False, original_game_assets_included=False, source_files=len(public),
+    report = dict(passed=True, status='candidate', version=release_version,
+        feature_versions=dict(FEATURE_VERSIONS), game_executed=False,
+        original_game_assets_included=False, source_files=len(public),
         external_import_source_files=len(imports['source_files']), external_import_modules=imports['modules'],
         release_files_sha256=index_sha, bundle_root=str(bundle), archive=str(archive), archive_sha256=sha(archive),
         compiler_version=version, compiler_sha256=sha(compiler / 'zig.exe'), bundle_files=len(inventory),
@@ -288,8 +375,10 @@ def main():
     parser.add_argument('--output', type=Path)
     parser.add_argument('--compiler', type=Path)
     parser.add_argument('--dependencies', type=Path)
+    parser.add_argument('--release-version', default=RELEASE_VERSION)
     args = parser.parse_args()
-    print(json.dumps(build(output=args.output, compiler=args.compiler, dependencies=args.dependencies), indent=2))
+    print(json.dumps(build(output=args.output, compiler=args.compiler, dependencies=args.dependencies,
+                           release_version=args.release_version), indent=2))
 
 
 if __name__ == '__main__':
