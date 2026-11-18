@@ -218,7 +218,7 @@ World fingerprints above are unchanged.
 
 **Automated checks passed.** The updated full repository suite completed 869
 tests in 372.636 seconds: 864 passed and five Windows symbolic-link privilege
-checks were skipped. The repository-content check passed all 717 public files,
+checks were skipped. The final repository-content check passed all 718 public files,
 including the immutable imported-source checks. A subsequent Food catalogue
 wording update passed the 34 profile and 11 CLI selection checks (one of the
 profile checks has the same symbolic-link privilege skip). Automated and native
