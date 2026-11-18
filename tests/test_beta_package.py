@@ -4,6 +4,7 @@ These fixtures exercise helper reconstruction, inventory/path checks and
 publication. They do not claim a native build or original-game compatibility.
 """
 from contextlib import ExitStack
+from copy import deepcopy
 from pathlib import Path
 from types import SimpleNamespace
 import json
@@ -17,6 +18,7 @@ sys.dont_write_bytecode=True
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from anno1503_overhaul import beta_package as beta, packages as common, world_native, beta_inputs
+from anno1503_overhaul import food_world_bug_fixes as fixes
 
 
 def pe(suffix):
@@ -52,10 +54,22 @@ class BetaPackageTests(unittest.TestCase):
         stack.enter_context(patch.object(beta,'derive_faction_ai',side_effect=lambda n,*_:(self.ai[n],{})))
         self.historical=stack.enter_context(patch.object(common,'_world_spec',side_effect=AssertionError('historical corpus opened')))
 
-    def publish(self):
-        files=beta._recipe(self.source,self.copy,self.natives,self.assets,self.ai,self.runtime)
-        files['manifest.json']=common._encoded(beta._manifest(self.source,self.copy,files))
+    def publish(self, *, bug_fixes_enabled=False):
+        files=beta._recipe(self.source,self.copy,self.natives,self.assets,self.ai,self.runtime,
+                           bug_fixes_enabled=bug_fixes_enabled)
+        files['manifest.json']=common._encoded(beta._manifest(self.source,self.copy,files,
+                                                              bug_fixes_enabled=bug_fixes_enabled))
         return common._publish(files,self.output,self.source)
+
+    def bug_fix_recipe_fixture(self):
+        # The supported-original transforms are exercised by their own tests;
+        # this package fixture substitutes only their resulting exact policy.
+        recipe = dict(version='1.2', quests=[dict(locale='Nl', path='Languages/Nl/quest.htm',
+            before_sha256='a'*64, after_sha256='b'*64, scene_path='Languages/Nl/scene.sze',
+            scene_sha256='c'*64)], sounds=[dict(path='Languages/Nl/Samples/fixture.wav',
+            before_sha256='d'*64, after_sha256='e'*64)], files=[])
+        self.stack.enter_context(patch.object(fixes, 'recipe', return_value=deepcopy(recipe)))
+        return recipe
 
     def bless(self,name):
         path=self.output/'manifest.json';value=json.loads(path.read_bytes())
@@ -79,6 +93,44 @@ class BetaPackageTests(unittest.TestCase):
         self.publish();name='launcher/client_context.py';(self.output/name).write_bytes(b'changed helper')
         self.bless(name)
         with self.assertRaises(common.PackageError):beta.validate_beta_package(self.output)
+
+    def test_world_and_bug_fixes_package_keeps_food_disabled_and_native_hosts_stock(self):
+        recipe = self.bug_fix_recipe_fixture()
+        self.publish(bug_fixes_enabled=True)
+        checked = beta.validate_beta_package(self.output, self.source)
+        self.assertTrue(checked['bug_fixes_enabled'])
+        self.assertFalse(checked['food_enabled'])
+        self.assertNotIn('food_overhaul', checked['feature_versions'])
+        self.assertEqual(checked['feature_versions']['bug_fixes'], '1.2')
+        spec = json.loads((self.output / 'world/world_patch.json').read_bytes())
+        self.assertEqual(spec['bug_fixes'], recipe)
+        self.assertEqual(spec['native_sha256'], {name: common._sha(value) for name, value in self.natives.items()})
+        self.assertEqual(len(spec['introduced_files']), 19)
+        for name, value in self.natives.items():
+            self.assertEqual((self.output / 'world/stock' / name).read_bytes(), value)
+        support = self.output / 'world/support'
+        for name in ('_combined_filesystem', '_combined_bug_fixes', '_combined_ambient_sound',
+                     '_combined_ambient_sound_baselines', '_combined_bugfix_recipe'):
+            self.assertTrue((support / (name + '.py')).is_file())
+        self.assertFalse(self.copy.exists())
+
+    def test_world_bug_fixes_helper_and_metadata_cannot_be_blessed_by_manifest(self):
+        self.bug_fix_recipe_fixture()
+        self.publish(bug_fixes_enabled=True)
+        helper = 'world/support/_combined_bugfix_recipe.py'
+        original = (self.output / helper).read_bytes()
+        (self.output / helper).write_bytes(original + b'\n# changed\n')
+        self.bless(helper)
+        with self.assertRaises(common.PackageError):
+            beta.validate_beta_package(self.output, self.source)
+        (self.output / helper).write_bytes(original)
+        self.bless(helper)
+        manifest_path = self.output / 'manifest.json'
+        manifest = json.loads(manifest_path.read_bytes())
+        manifest['bug_fixes_enabled'] = False
+        manifest_path.write_bytes(common._encoded(manifest))
+        with self.assertRaises(common.PackageError):
+            beta.validate_beta_package(self.output, self.source)
 
     def test_manifest_cannot_bless_modified_runtime(self):
         self.publish();name='world/native/AnnoWorldSettings.dll';(self.output/name).write_bytes(pe(b'changed runtime'))

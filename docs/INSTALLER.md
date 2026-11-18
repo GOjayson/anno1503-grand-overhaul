@@ -14,8 +14,9 @@ private development baseline store is required. Game-derived data stays local.
 Prepared packages and version-matched launch support live in the user's local
 application-data cache, separate from the extracted download and original game.
 
-This beta supports the inspected AMD64 History Edition build and Dutch scene/UI
-data. Other localizations are refused until their exact files are verified.
+This beta supports the inspected AMD64 History Edition build. Food and World
+Settings require their reviewed Dutch scene and UI inputs. Standalone Bug
+Fixes supports the six Ubisoft Connect languages listed below.
 Normal Ubisoft Connect authentication is still required. The original client
 session is hidden only after its fresh menu is verified, before the modded
 copy starts; the original session closes normally after the copy is ready.
@@ -40,11 +41,43 @@ History Edition game build.
 
 ## Choose features and folders
 
-Food and World Settings are independent checkboxes. Choose Food overhaul 0.5
-alone, World Settings alone, or both. Leaving Food unchecked selects the
-separate stock-game World-only profile; it does not silently keep Food's
-native or economy changes. Better AI, LAN multiplayer and Knowledge overhaul
-remain research modules and cannot be enabled by changing a saved profile.
+Food, World Settings and Bug Fixes are independent checkboxes. The installer
+follows the compatibility rules of the selected Food and World Settings
+profiles. Leaving Food unchecked when selecting World Settings uses the stock
+food economy. Better AI, LAN multiplayer and Knowledge overhaul remain research
+modules.
+
+**Bug Fixes** starts disabled. It corrects both King of Ore quest entries in
+each installed supported language: Dutch, English, French, German, Italian
+and Spanish. Each of the six starting cities must have at least 170 tons of
+iron ore in stock within the time limit. The installer checks the original
+quest and scenario files and updates the text in the managed copy. The quest
+correction can be used with existing saves.
+
+Bug Fixes also reduces the volume of 118 effects per installed language,
+including livestock, market chatter and combat sounds. The installer applies
+the gains from Taludas's v1.0 sound fix to the game's own WAVs. It preserves
+localized voices and each variant's original timing. [Taludas's sound fix](https://github.com/Taludas/Anno-1503-HE-Sound-Fix/releases/tag/v1.0)
+
+Select Bug Fixes on its own or alongside a compatible Food or World Settings
+profile. For standalone installations with other languages, the installer
+verifies the shared stock files and copies the language text and UI files
+from the source. In the standalone selection, use **Start installed game**
+to launch the checked copy through Ubisoft Connect. For command-line installations,
+`--bug-fixes-only` selects it alone and `--bug-fixes` adds it to the selected
+profile. See [the issue list and audio experiment](BUGFIX_RESEARCH.md).
+
+For the latest Food development profile, select **Food overhaul**, choose
+**Food 0.6**, and optionally select **World Settings** and **Bug Fixes** too.
+All three may be enabled together. Food 0.6 requires a new endless world and
+its reviewed preparation inputs; the existing Windows beta ZIP remains
+World-only. Follow the [Food installation and save rules](FOOD_OVERHAUL.md#installation-and-saves).
+The all-three package verifies its additional Bug Fixes assets at installation
+and launch and includes them in the same restoration journal.
+World Settings with Bug Fixes also works with Food unchecked, retaining the
+stock food economy and its separate native profile. The preserved Food 0.5 +
+World Settings profile does not support adding Bug Fixes; use Food 0.6 for
+that three-feature combination.
 
 Choose the installed game as **Original game folder**. Choose a new, separate
 **Modded copy folder** outside that installation. Inside this repository, game
@@ -86,10 +119,9 @@ If original bytes or supported fingerprints are unavailable, installation
 stops instead of treating a preceding mod version as vanilla.
 
 Installation uses one common restoration journal, `GrandOverhaul_Backup_v1`,
-for the selected combination. It owns the composed Food and World changes
-together; it does not stack unrelated patch installers onto the same native
-file. Old restoration generations are retained when a restored copy is
-installed again.
+for all selected features. It refuses conflicting edits to the same file.
+Old restoration generations are retained when a restored copy is installed
+again.
 
 ## Restore original game
 
@@ -118,7 +150,11 @@ The startup path depends on the selected native profile:
   and native host DLLs stay stock. Food is not required in that host. When the
   input installation has Food changes, the installer reads verified stock
   originals from its retained backups rather than carrying Food into the host.
-- **Food and World:** the expanded combined runtime keeps the existing exact
+- **Food 0.6 and World:** a separate combined runtime checks the Food 0.6
+  household interfaces, AI need bounds and engine exception-table locations.
+  It uses the independent managed executable and normal-client handoff. Bug
+  Fixes may be added as a separately verified asset recipe.
+- **Preserved Food 0.5 and World:** the expanded combined runtime keeps the existing exact
   Food 0.5 source-installation and combined-copy compatibility contract. Its
   working Food changes remain intact, and the historical runtime is preserved
   separately.
@@ -181,7 +217,7 @@ presets store all 43 choices and the map seed in the managed copy's
 `WorldSettingsPresets/` folder. Supported exact predecessor versions can load
 without rewriting their files; unknown generator identities are refused.
 Presets remain when restoring original game files. Installer feature profiles
-select Food and World Settings only; they do not configure individual worlds.
+select Food, World Settings and Bug Fixes; they do not configure individual worlds.
 
 The [environment options guide](WORLD_ENVIRONMENT_OPTIONS.md) describes island
 variety, rotation, climate counts and disasters, with their validation scope.

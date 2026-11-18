@@ -1,5 +1,6 @@
 """Public setup routing keeps private development inputs an explicit choice."""
 from pathlib import Path
+from types import SimpleNamespace
 import sys
 import tempfile
 import unittest
@@ -30,14 +31,21 @@ class BetaInstaller(unittest.TestCase):
         self.addCleanup(context.stop)
         return value
 
-    def prepared_boundaries(self, food=False):
+    def prepared_boundaries(self, food=False, bug_fixes=False):
         self.patch('anno1503_overhaul.installer.validate_roots', return_value=(self.source, self.target))
         self.patch('anno1503_overhaul.beta_paths.package_workspace', return_value=self.root)
         self.patch('anno1503_overhaul.beta_paths.compiler_path', return_value=self.root / 'zig.exe')
         self.patch('anno1503_overhaul.packages.validate_package', return_value={
-            'verified': True, 'kind': beta_package.KIND, 'copy_root': str(self.target), 'food_enabled': food})
+            'verified': True, 'kind': beta_package.KIND, 'copy_root': str(self.target), 'food_enabled': food,
+            **({'bug_fixes_enabled': True} if bug_fixes else {})})
         self.patch('anno1503_overhaul.vanilla.plan_vanilla_recovery', return_value=[])
         self.patch('anno1503_overhaul.installer.game_inventory', return_value=[])
+
+    def bug_fix_boundaries(self):
+        self.profile['features']['bug_fixes'] = True
+        self.patch('anno1503_overhaul.bug_fixes.king_of_ore_assets', return_value=(SimpleNamespace(locale='Nl'),))
+        self.patch('anno1503_overhaul.packages.king_of_ore_fingerprints', return_value=[dict(locale='Nl')])
+        self.patch('anno1503_overhaul.ambient_sound.ambient_sound_assets', return_value=())
 
     def test_default_world_only_prepares_public_inputs_without_private_baseline(self):
         self.prepared_boundaries()
@@ -61,6 +69,35 @@ class BetaInstaller(unittest.TestCase):
         self.assertEqual(legacy.call_args.args[0], provider)
         self.assertFalse(legacy.call_args.kwargs['food_enabled'])
         public.assert_not_called()
+
+    def test_world_and_bug_fixes_selects_the_bound_public_package_without_food(self):
+        self.prepared_boundaries(bug_fixes=True)
+        self.bug_fix_boundaries()
+        public = self.patch('anno1503_overhaul.beta_package.prepare_beta_package', return_value=self.package)
+        plan = installer.check_install(self.source, self.target, self.profile)
+        self.assertIs(public.call_args.kwargs['bug_fixes_enabled'], True)
+        self.assertFalse(plan['profile']['features']['food_overhaul'])
+        self.assertTrue(plan['profile']['features']['world_settings'])
+        self.assertTrue(plan['profile']['features']['bug_fixes'])
+        self.assertEqual(plan['bug_fixes_version'], '1.2')
+        self.assertFalse(self.target.exists())
+
+    def test_world_and_bug_fixes_forwards_the_flag_to_advanced_stock_options(self):
+        self.prepared_boundaries(bug_fixes=True)
+        self.bug_fix_boundaries()
+        legacy = self.patch('anno1503_overhaul.world_options_package.prepare_options_package', return_value=self.package)
+        self.patch('anno1503_overhaul.installer._workspace', return_value=self.root)
+        installer.check_install(self.source, self.target, self.profile, baseline_dir=self.root / 'provider')
+        self.assertFalse(legacy.call_args.kwargs['food_enabled'])
+        self.assertIs(legacy.call_args.kwargs['bug_fixes_enabled'], True)
+
+    def test_world_package_cannot_drop_the_selected_bug_fixes_recipe(self):
+        self.prepared_boundaries()
+        self.bug_fix_boundaries()
+        self.patch('anno1503_overhaul.beta_package.prepare_beta_package', return_value=self.package)
+        with self.assertRaisesRegex(installer.InstallerError, 'different Bug Fixes selection'):
+            installer.check_install(self.source, self.target, self.profile)
+        self.assertFalse(self.target.exists())
 
     def test_combined_choice_requires_explicit_development_inputs_without_changing_selection(self):
         self.prepared_boundaries()

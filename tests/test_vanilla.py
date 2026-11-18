@@ -99,6 +99,52 @@ class VanillaRecoveryTests(unittest.TestCase):
             self.assertEqual((self.target / name).read_bytes(), data)
         self.assertEqual(self.snapshots(self.source), original_source)
 
+    def test_localized_bug_fixes_recovers_shared_files_and_preserves_locale_assets(self):
+        preserved = {
+            "Texte.dat": b"source root translations",
+            "Languages/Texte.dat": b"source fallback translations",
+            "Languages/Fra/Texte.dat": b"source alternate translations",
+            "Languages/Fra/ToolGfx/fenster.inc": b"alternate UI index",
+            "Languages/Fra/ToolGfx/fenster.tex": b"alternate UI texture",
+            "ToolGfx/fenster.inc": self.modified["ToolGfx/fenster.inc"],
+            "ToolGfx/fenster.tex": self.modified["ToolGfx/fenster.tex"],
+        }
+        for root in (self.source, self.target):
+            for name, data in preserved.items():
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(data)
+        for name in ("Texte.dat", "Languages/Texte.dat", "Languages/Nl/Texte.dat"):
+            self.spec["files"][name] = dict(sources={"vanilla": sha(b"pinned Dutch-profile text")})
+        raw = json.dumps(self.spec).encode()
+        (self.package / "food_patch.json").write_bytes(raw)
+        self.stack.enter_context(patch.object(vanilla, "FOOD_SPEC_SHA256", sha(raw)))
+
+        source_before = self.snapshots(self.source)
+        with self.assertRaisesRegex(vanilla.VanillaError, "No reviewed stock fingerprint for UI file"):
+            vanilla.plan_vanilla_recovery(self.source, self.package)
+        plan = vanilla.plan_vanilla_recovery(self.source, self.package, localized_bug_fixes=True)
+        self.assertEqual({entry.name for entry in plan}, {"Example.dll", "Data/example.dat", "Anlagen.dat"})
+        result = vanilla.apply_vanilla_recovery(self.target, self.source, self.package, lambda _: None,
+                                               localized_bug_fixes=True)
+        self.assertEqual(set(result["recovered_files"]), {entry.name for entry in plan})
+        self.assertEqual(set(result["files"]), {"Anno1503.exe", "Example.dll", "Data/example.dat", "Anlagen.dat"})
+        for name, data in preserved.items():
+            self.assertEqual((self.target / name).read_bytes(), data)
+        self.assertFalse((self.target / "Languages/Nl/Texte.dat").exists())
+        self.assertEqual(self.snapshots(self.source), source_before)
+
+    def test_localized_bug_fixes_keeps_exact_shared_fingerprints(self):
+        vanilla.apply_vanilla_recovery(self.target, self.source, self.package, lambda _: None,
+                                      localized_bug_fixes=True)
+        for name in ("Anno1503.exe", "Example.dll", "Data/example.dat", "Anlagen.dat"):
+            with self.subTest(name=name):
+                path = self.target / name
+                path.write_bytes(b"changed outside the journal")
+                with self.assertRaises(vanilla.VanillaError):
+                    vanilla.verify_vanilla(self.target, self.package, localized_bug_fixes=True)
+                path.write_bytes(self.original[name])
+
     def test_wrong_whole_archive_hash_is_detected_before_any_file_publication(self):
         for root in (self.source, self.target):
             path = root / "Anlagen.dat"

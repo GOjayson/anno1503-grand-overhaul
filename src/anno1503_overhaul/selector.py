@@ -2,10 +2,29 @@
 from pathlib import Path
 import os
 import queue
+import sys
 import threading
 
 from .features import default_catalog
 from .profile import load_profile, save_profile, resolve_selection
+
+
+FOOD06_CHOICE = '0.6 — Tiered diets and household food bar (NEW worlds)'
+FOOD05_CHOICE = '0.5 — Preserved diet and legacy combined World profile'
+
+
+def food_version_for_selection(features, choice):
+    """Keep a visible Food version choice separate from legacy feature profiles."""
+    from .installer import FOOD05_VERSION, FOOD06_VERSION, InstallerError
+    if not features['food_overhaul']:
+        return None
+    if choice == FOOD06_CHOICE:
+        return FOOD06_VERSION
+    if choice == FOOD05_CHOICE:
+        if features['world_settings'] and features.get('bug_fixes'):
+            raise InstallerError('Preserved Food 0.5 + World Settings does not support Bug Fixes. Choose Food 0.6 or leave Food unchecked.')
+        return FOOD05_VERSION
+    raise InstallerError('Choose the Food version before checking the installation.')
 
 
 def _registered_game():
@@ -36,8 +55,8 @@ def main():
 
     root = tk.Tk()
     root.title('Anno 1503 Grand Overhaul — Beta Setup')
-    root.geometry('900x790')
-    root.minsize(820, 740)
+    root.geometry('900x880')
+    root.minsize(820, 830)
     panel = ttk.Frame(root, padding=22)
     panel.pack(fill='both', expand=True)
     ttk.Label(panel, text='Anno 1503 Grand Overhaul', font=('Segoe UI', 19, 'bold')).pack(anchor='w')
@@ -49,6 +68,8 @@ def main():
     target = tk.StringVar(value=str(default_game_copy()))
     provider = tk.StringVar(value='')
     name = tk.StringVar(value='Default')
+    food_recipe = tk.StringVar(value='')
+    food_note = tk.StringVar(value='Select Food overhaul to choose its version.')
     flags = {f.id: tk.BooleanVar(value=f.default_enabled) for f in catalog.features}
     desktop_shortcut = tk.BooleanVar(value=True)
     mutable, buttons = [], {}
@@ -87,28 +108,56 @@ def main():
             try:
                 info = installer.inspect_copy(Path(target.get()))
                 record = info['installation']
-                can_start = bool(record and record['status'] == 'installed'
-                                 and record['profile']['features']['world_settings'])
+                route = installer.installed_launch_kind(record)
+                can_start = route in ('world', 'bug_fixes') or (route in ('food06', 'food06-world') and not getattr(sys, 'frozen', False))
             except Exception:
                 pass
         for key, button in buttons.items():
             disabled = busy[0] or (key == 'install' and checked[0] is None) or (key == 'start' and not can_start)
             button.state(['disabled'] if disabled else ['!disabled'])
+        food_combo.state(['disabled'] if busy[0] or not flags['food_overhaul'].get() else ['!disabled'])
 
     def refresh(*_):
         checked[0] = None
+        if flags['food_overhaul'].get() and not food_recipe.get():
+            food_recipe.set(FOOD06_CHOICE)
         if not busy[0]:
-            status.set('Choose either feature or both, then check the installation.')
+            try:
+                selected_food = food_version_for_selection(selection()['features'], food_recipe.get())
+                if selected_food == installer.FOOD06_VERSION:
+                    mode = 'Food + World Settings' if flags['world_settings'].get() else 'Food only'
+                    food_note.set('Food 0.6 — ' + mode + ': start a NEW endless world. Food 0.5 saves are not migrated.')
+                elif selected_food == installer.FOOD05_VERSION:
+                    food_note.set('Food 0.5 keeps its preserved diet and separate legacy World Settings development profile.')
+                else:
+                    food_note.set('Select Food overhaul to choose its version.')
+                status.set('Choose features and the Food version, then check the installation.')
+            except installer.InstallerError as exc:
+                food_note.set(str(exc))
+                status.set('Choose a compatible Food version before checking the installation.')
             update_buttons()
 
     for key, description in (
         ('world_settings', 'Inspect islands, balance starts and resources, and choose your world options inside Anno.'),
-        ('food_overhaul', 'Optional Food 0.5 overhaul. Still experimental; leave unchecked for the standard food economy.'),
+        ('food_overhaul', 'Experimental food economy overhaul. Choose the version below; leave unchecked for the standard food economy.'),
     ):
         check = ttk.Checkbutton(group, text=catalog[key].name, variable=flags[key], command=refresh)
         check.pack(anchor='w', pady=(2, 0))
         mutable.append(check)
         ttk.Label(group, text=description, foreground='#555555', wraplength=790).pack(anchor='w', padx=24, pady=(3, 9))
+    food_row = ttk.Frame(group)
+    food_row.pack(fill='x', padx=24, pady=(0, 4))
+    ttk.Label(food_row, text='Food version', width=15).pack(side='left')
+    food_combo = ttk.Combobox(food_row, textvariable=food_recipe, state='readonly',
+                               values=(FOOD06_CHOICE, FOOD05_CHOICE))
+    food_combo.pack(side='left', fill='x', expand=True)
+    mutable.append(food_combo)
+    ttk.Label(group, textvariable=food_note, foreground='#555555', wraplength=790).pack(anchor='w', padx=24, pady=(0, 6))
+    bug_fixes = catalog['bug_fixes']
+    bug_check = ttk.Checkbutton(group, text=bug_fixes.name, variable=flags[bug_fixes.id], command=refresh)
+    bug_check.pack(anchor='w', pady=(2, 0))
+    mutable.append(bug_check)
+    ttk.Label(group, text=bug_fixes.description, foreground='#555555', wraplength=790).pack(anchor='w', padx=24, pady=(3, 2))
     ttk.Label(group, text='Features apply on a fresh launch. World options are chosen inside Anno.',
               wraplength=790).pack(anchor='w', pady=(1, 3))
     shortcut_choice = ttk.Checkbutton(panel, text='Create a desktop shortcut for World Settings', variable=desktop_shortcut)
@@ -123,10 +172,10 @@ def main():
         advanced_visible[0] = not advanced_visible[0]
         if advanced_visible[0]:
             advanced.pack(fill='x', pady=(0, 8), before=profile_row)
-            root.geometry('900x890')
+            root.geometry('900x980')
         else:
             advanced.pack_forget()
-            root.geometry('900x790')
+            root.geometry('900x880')
 
     ttk.Button(panel, text='Advanced: existing development files', command=toggle_advanced).pack(anchor='w', pady=(0, 6))
     ttk.Label(advanced, text='Only for preserved development/combined installations. Beta World Settings prepares its own files.',
@@ -155,6 +204,7 @@ def main():
                 for key, var in flags.items():
                     var.set(value['features'][key])
                 refresh()
+                status.set('Profile opened. Confirm the Food version separately before checking the installation.')
             except Exception as exc:
                 messagebox.showerror('Cannot open profile', str(exc), parent=root)
 
@@ -168,7 +218,7 @@ def main():
                                               filetypes=[('Feature profiles', '*.json')])
             if file:
                 save_profile(file, value, catalog, overwrite=Path(file).exists())
-                status.set('Feature profile saved.')
+                status.set('Feature choices saved. The Food version is chosen separately in Setup.')
         except Exception as exc:
             messagebox.showerror('Cannot save profile', str(exc), parent=root)
     for label, command in (('Open profile', open_profile), ('Save profile', save)):
@@ -198,6 +248,11 @@ def main():
             messagebox.showerror('Choose game folders', 'Choose the required game folders first.', parent=root)
             return
         values = (Path(source.get()), Path(target.get()), selection(), Path(provider.get()) if provider.get().strip() else None)
+        try:
+            requested_food = food_version_for_selection(values[2]['features'], food_recipe.get()) if kind in {'check', 'install'} else None
+        except installer.InstallerError as exc:
+            messagebox.showerror('Choose Food version', str(exc), parent=root)
+            return
         plan = checked[0]
         want_shortcut = desktop_shortcut.get()
         busy[0] = True
@@ -210,20 +265,22 @@ def main():
             progress = lambda message: events.put(('progress', str(message)))
             try:
                 if kind == 'check':
-                    result = installer.check_install(*values[:3], baseline_dir=values[3], progress=progress)
+                    result = installer.check_install(*values[:3], baseline_dir=values[3], progress=progress,
+                                                       food_version=requested_food)
                 elif kind == 'install':
                     if plan is None:
                         raise installer.InstallerError('Check the installation first.')
-                    result = installer.install(*values[:3], package=Path(plan['package_root']), progress=progress)
+                    result = installer.install(*values[:3], package=Path(plan['package_root']), progress=progress,
+                                                 food_version=requested_food)
                     if want_shortcut and result['profile']['features']['world_settings']:
                         try:
                             result['desktop_shortcut'] = installer.create_world_shortcut(values[1])
                         except Exception:
-                            result['shortcut_note'] = 'The game is installed. The desktop shortcut could not be created; use Start with World Settings here.'
+                            result['shortcut_note'] = 'The game is installed. The desktop shortcut could not be created; use Start installed game here.'
                 elif kind == 'restore':
                     result = installer.restore(values[1], progress=progress)
                 else:
-                    installer.launch_world_settings(values[1])
+                    installer.launch_installed_game(values[1], progress=progress)
                     result = {'launched': True}
                 events.put(('done', (kind, result)))
             except Exception as exc:
@@ -233,7 +290,7 @@ def main():
     row = ttk.Frame(panel)
     row.pack(fill='x')
     for key, label in (('check', 'Check installation'), ('install', 'Install selected features'),
-                       ('restore', 'Restore original game'), ('start', 'Start with World Settings')):
+                       ('restore', 'Restore original game'), ('start', 'Start installed game')):
         button = ttk.Button(row, text=label, command=lambda k=key: run(k))
         button.pack(side='left', padx=(0, 7))
         buttons[key] = button
@@ -262,17 +319,27 @@ def main():
                         action = (f"Create a separate copy ({result['copy_bytes'] / 1024**3:.2f} GB)." if result['creates_copy']
                                   else 'Use the restored original-game copy.')
                         show_summary(f"Ready to install: {features}\n{action}\nDestination: {result['copy_root']}\n"
-                                     'Restoration baseline: verified original game. Original installation unchanged.')
+                                     'Restoration baseline: verified original game. Original installation unchanged.' +
+                                     ('\nFood version: ' + result['food_version'] if result.get('food_version') else '') +
+                                     ('\nStart a NEW endless world. Food 0.5 saves are not migrated.' if result.get('new_world_required') else ''))
                         status.set('Checks passed. Ready to install selected features.')
                     else:
                         checked[0] = None
                         status.set({'install': 'Installation complete.', 'restore': 'Original game files restored. Backups retained.',
-                                    'start': 'The automatic World Settings launcher is starting.'}[operation])
+                                    'start': 'Installed game startup requested.'}[operation])
                         if operation == 'install':
-                            launch_note = ('Use Start with World Settings. World options remain inside Anno.'
-                                           if result['profile']['features']['world_settings']
-                                           else 'Food-only files are ready. Automatic World Settings startup is disabled.')
+                            if result.get('food_version') == installer.FOOD06_VERSION:
+                                mode = 'Food 0.6 + World Settings' if result['profile']['features']['world_settings'] else 'Food 0.6'
+                                launch_note = 'Use Start installed game for this ' + mode + ' copy. This startup path currently uses the source installer.'
+                            elif result['profile']['features']['world_settings']:
+                                launch_note = 'Use Start installed game. World options remain inside Anno.'
+                            elif result['profile']['features']['food_overhaul']:
+                                launch_note = 'Food 0.5 files are ready. Automatic Food 0.5 startup is not available here; use its existing known-working startup instructions.'
+                            else:
+                                launch_note = 'Use Start installed game to play with Bug Fixes.'
                             show_summary('Selected features installed in:\n' + result['copy_root'] + '\n' + launch_note +
+                                         ('\nFood version: ' + result['food_version'] if result.get('food_version') else '') +
+                                         ('\nStart a NEW endless world. Food 0.5 saves are not migrated.' if result.get('new_world_required') else '') +
                                          '\nRestore before changing installed features.' +
                                          ('\nDesktop shortcut: ' + result['desktop_shortcut']['path'] if result.get('desktop_shortcut') else '') +
                                          ('\n' + result['shortcut_note'] if result.get('shortcut_note') else ''))
@@ -292,7 +359,7 @@ def main():
             status.set('Please wait for the current operation to finish before closing the installer.')
         else:
             root.destroy()
-    for variable in (source, target, provider, name):
+    for variable in (source, target, provider, name, food_recipe):
         variable.trace_add('write', refresh)
     root.protocol('WM_DELETE_WINDOW', close)
     refresh()

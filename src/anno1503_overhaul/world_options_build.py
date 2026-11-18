@@ -208,7 +208,16 @@ def build_public_options_runtime(input_root, *, output, require_reviewed=True):
     return report
 
 
-def _build_options_runtime(profile, game, tools=None, *, output=None, publish=False, _public_inputs=None):
+def _build_options_runtime(profile, game, tools=None, *, output=None, publish=False, _public_inputs=None,
+                           _food06_profile=False, _food06_asset_source=None, _food06_asset_root=None):
+    if type(_food06_profile) is not bool:
+        raise old.RuntimeBuildError('Choose an explicit native runtime profile.')
+    if _food06_profile:
+        from .food_world_runtime import PROFILE, derive_sources as food06_sources, RUNTIME_SHA256
+        if profile != PROFILE or _public_inputs is not None or publish:
+            raise old.RuntimeBuildError('Food 0.6 uses its separate candidate build and review route.')
+    elif _food06_asset_source is not None or _food06_asset_root is not None:
+        raise old.RuntimeBuildError('Food 0.6 asset inputs belong only to its separate native profile.')
     if os.name != 'nt':
         raise old.RuntimeBuildError('Native compilation requires 64-bit Windows and the reviewed Zig toolchain.')
     repo, game = checked_path(old.ROOT), checked_path(game)
@@ -228,7 +237,9 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
         original[name] = value
     generation = generator_id()
     if _public_inputs is None:
-        files, proof = derive_sources(profile, original, game)
+        files, proof = (food06_sources(original, game, asset_source=_food06_asset_source,
+                                       asset_root=_food06_asset_root) if _food06_profile
+                        else derive_sources(profile, original, game))
         tools = checked_path(tools if tools is not None else repo / '.local/toolchain')
         zig = checked_path(tools / 'ziglang/zig.exe')
     else:
@@ -311,7 +322,8 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
     exports = parser.exports(normalized, REQUIRED_EXPORTS)
     report.update(built=True, runtime_path=str(runtime), runtime_sha256=_sha(normalized),
                   normalized_metadata=metadata, exports=exports,
-                  matches_reviewed_runtime=_sha(normalized) == PINNED_RUNTIMES[profile])
+                  matches_reviewed_runtime=_sha(normalized) == (RUNTIME_SHA256 if _food06_profile
+                                                               else PINNED_RUNTIMES[profile]))
     (output / 'BUILD_RESULT.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     if publish:
         if not report['matches_reviewed_runtime'] or generation != PINNED_GENERATOR:

@@ -143,12 +143,14 @@ def _spec(food_package):
         raise VanillaError("Malformed Food specification.") from exc
 
 
-def _items(root, spec):
+def _items(root, spec, *, localized_bug_fixes=False):
     result = []
     for item in spec["native_modules"]:
         result.append((item["name"], item["sources"]["vanilla"], None, None,
                        None, item["sources"]["vanilla"]))
     for name, item in spec["files"].items():
+        if localized_bug_fixes and name in {"Texte.dat", "Languages/Texte.dat", "Languages/Nl/Texte.dat"}:
+            continue
         result.append((name, item["sources"]["vanilla"], None, None,
                        None, item["sources"]["vanilla"]))
     for item in spec["archives"]:
@@ -157,7 +159,17 @@ def _items(root, spec):
             raise VanillaError("Unsupported archive for exact stock recovery.")
         result.append((name, item["sources"]["vanilla"], item["region_offset"],
                        item["region_size"], item["source_size"], VANILLA_ARCHIVE_HASHES[name]))
+    if not localized_bug_fixes:
+        result.extend(_ui_items(root))
+    names = [item[0].casefold() for item in result]
+    if len(set(names)) != len(names):
+        raise VanillaError("Duplicate stock-recovery target.")
+    return result
+
+
+def _ui_items(root):
     # Enumerate exactly the same optional UI pairs as the Food transformer.
+    result = []
     folders = [root / "ToolGfx"]
     languages = _path(root, "Languages")
     if languages.is_dir():
@@ -180,9 +192,6 @@ def _items(root, spec):
                                VANILLA_UI_HASHES[name]))
     if not {"ToolGfx/fenster.inc", "ToolGfx/fenster.tex"}.issubset(item[0] for item in result):
         raise VanillaError("The required main-game UI pair is missing.")
-    names = [item[0].casefold() for item in result]
-    if len(set(names)) != len(names):
-        raise VanillaError("Duplicate stock-recovery target.")
     return result
 
 
@@ -240,15 +249,21 @@ def _choose_backup(candidates, name, digest, offset, size, whole_digest, file_si
                        + ". Select a clean supported game source or retain its original backups.")
 
 
-def plan_vanilla_recovery(source_game, food_package):
-    """Return verified recovery inputs without changing any file."""
+def plan_vanilla_recovery(source_game, food_package, *, localized_bug_fixes=False):
+    """Return verified recovery inputs without changing any file.
+
+    Standalone Bug Fixes on other locales uses the exact shared stock baseline.
+    The game copy retains its localized text and UI files as copied. Bug Fixes
+    verifies the individual quest and audio assets that it edits.
+    """
     source = _root(source_game)
     spec = _spec(food_package)
     if _file_info(_path(source, "Anno1503.exe"))[1] != spec["exe_sha256"]:
         raise VanillaError("Unsupported Anno 1503 executable.")
     candidates = None
     plan = []
-    for name, digest, offset, length, expected_size, whole_digest in _items(source, spec):
+    scope = {"localized_bug_fixes": True} if localized_bug_fixes else {}
+    for name, digest, offset, length, expected_size, whole_digest in _items(source, spec, **scope):
         path = _path(source, name)
         file_size, current_digest = _file_info(path)
         if expected_size is not None and file_size != expected_size:
@@ -275,14 +290,15 @@ def plan_vanilla_recovery(source_game, food_package):
     return plan
 
 
-def verify_vanilla(game, food_package):
-    """Verify every inspected stock input, including whole archive and UI hashes."""
+def verify_vanilla(game, food_package, *, localized_bug_fixes=False):
+    """Verify the selected strict or standalone shared-stock input set."""
     root = _root(game)
     spec = _spec(food_package)
     if _file_info(_path(root, "Anno1503.exe"))[1] != spec["exe_sha256"]:
         raise VanillaError("Unsupported Anno 1503 executable.")
     verified = {"Anno1503.exe": spec["exe_sha256"]}
-    for name, digest, offset, length, expected_size, whole_digest in _items(root, spec):
+    scope = {"localized_bug_fixes": True} if localized_bug_fixes else {}
+    for name, digest, offset, length, expected_size, whole_digest in _items(root, spec, **scope):
         size, actual = _file_info(_path(root, name))
         if (expected_size is not None and size != expected_size) or actual != whole_digest:
             raise VanillaError("Copy is not the exact inspected stock baseline: " + name)
@@ -306,7 +322,7 @@ def _managed_copy(copy_game, source_game):
     return target, source
 
 
-def apply_vanilla_recovery(copy_game, source_game, food_package, progress=print):
+def apply_vanilla_recovery(copy_game, source_game, food_package, progress=print, *, localized_bug_fixes=False):
     """Prepare all stock outputs, then publish them only into a marked new copy.
 
     Failure during publication can leave this new copy incomplete. Its marker
@@ -314,10 +330,11 @@ def apply_vanilla_recovery(copy_game, source_game, food_package, progress=print)
     installer finish. The original game and historical journals remain intact.
     """
     target, source = _managed_copy(copy_game, source_game)
-    plan = plan_vanilla_recovery(source, food_package)
+    scope = {"localized_bug_fixes": True} if localized_bug_fixes else {}
+    plan = plan_vanilla_recovery(source, food_package, **scope)
     spec = _spec(food_package)
     # Check every inspected copied input before writing any replacement.
-    for name in ["Anno1503.exe", *(item[0] for item in _items(source, spec))]:
+    for name in ["Anno1503.exe", *(item[0] for item in _items(source, spec, **scope))]:
         original, copied = _path(source, name), _path(target, name)
         if copied.stat().st_nlink != 1 or os.path.samefile(original, copied):
             raise VanillaError("Game copy shares a file with another location: " + name)
@@ -361,7 +378,7 @@ def apply_vanilla_recovery(copy_game, source_game, food_package, progress=print)
             if copied.stat().st_nlink != 1 or _file_info(copied)[1] != entry.current_sha256:
                 raise VanillaError("Game copy changed during stock recovery: " + entry.name)
             os.replace(output, copied)
-        report = verify_vanilla(target, food_package)
+        report = verify_vanilla(target, food_package, **scope)
         report["recovered_files"] = [entry.name for entry in plan]
         return report
     finally:

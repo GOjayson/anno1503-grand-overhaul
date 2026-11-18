@@ -52,9 +52,10 @@ class OptionsPackageTests(unittest.TestCase):
             return value, dict(input_sha256=expected_sha256, output_sha256=common._sha(value))
         self.stack.enter_context(patch.object(factions, 'derive_faction_ai', side_effect=derive))
 
-    def prepare(self, food=False):
+    def prepare(self, food=False, *, bug_fixes_enabled=False):
         return options.prepare_options_package(self.provider, self.output, self.source, self.copy,
-                                               food_enabled=food, runtime_path=self.runtime)
+                                               food_enabled=food, runtime_path=self.runtime,
+                                               bug_fixes_enabled=bug_fixes_enabled)
 
     def test_stock_recipe_food_flag_and_expanded_decoder(self):
         path = self.prepare()
@@ -87,6 +88,22 @@ class OptionsPackageTests(unittest.TestCase):
             payload = 'native/' + name.removesuffix('.dll') + '.food-ai.dll'
             self.assertEqual((path / 'world' / payload).read_bytes(),
                              self.activity_inputs['food-world'][name] + b'activity-policy-v1')
+
+    def test_stock_options_can_bind_bug_fixes_without_changing_the_food_selection(self):
+        recipe = fixtures.bug_fix_recipe_fixture(self.stack)
+        path = self.prepare(False, bug_fixes_enabled=True)
+        checked = options.validate_options_package(path, self.source)
+        self.assertTrue(checked['bug_fixes_enabled'])
+        self.assertFalse(checked['food_enabled'])
+        self.assertNotIn('food_overhaul', checked['feature_versions'])
+        spec = json.loads((path / 'world/world_patch.json').read_bytes())
+        self.assertEqual(spec['bug_fixes'], recipe)
+        self.assertFalse(spec['world_options']['food_enabled'])
+
+    def test_preserved_food05_options_refuse_unimplemented_bug_fixes_composition(self):
+        with self.assertRaisesRegex(common.PackageError, 'Preserved Food 0.5'):
+            self.prepare(True, bug_fixes_enabled=True)
+        self.assertFalse(self.output.exists())
 
     def test_changed_private_ai_cannot_be_blessed_by_manifest_and_spec(self):
         parent = self.output.parent

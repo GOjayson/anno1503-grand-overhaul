@@ -5,6 +5,7 @@ It prepares introduced World files only; the shared installer owns publication.
 """
 from pathlib import Path
 import hashlib
+import importlib
 import json
 import os
 import struct
@@ -21,6 +22,7 @@ import package_world_assets as islands
 FINAL_STATE = 'world-only-0.3.0'
 MARKER = '.anno1503-worldsettings-test-copy.json'
 MANAGED = '.anno1503-grand-overhaul-copy.json'
+INSTALL_RECORD = '.anno1503-grand-overhaul-install.json'
 
 
 def sha(data):
@@ -102,6 +104,59 @@ def _payloads(spec):
     return outputs
 
 
+def _file_state(root, name):
+    path = tx._path(root, name)
+    if not path.is_file():
+        raise ValueError('A World-only selected-feature file is missing: ' + name)
+    return path.stat().st_size, tx.file_sha(path)
+
+
+def _bug_fix_files(root, spec, *, installed):
+    """Keep optional asset fixes exact while all Food/native inputs stay stock."""
+    expected = spec.get('bug_fixes')
+    record_path = tx._path(root, INSTALL_RECORD, target=False)
+    installation = _json(record_path) if installed and record_path.is_file() else None
+    profile = installation.get('profile') if isinstance(installation, dict) else None
+    features = profile.get('features', {}) if isinstance(profile, dict) else {}
+    if expected is None:
+        if isinstance(features, dict) and features.get('bug_fixes') is True:
+            raise ValueError('This World-only package has no selected Bug Fixes recipe.')
+        return {}
+    if not isinstance(expected, dict):
+        raise ValueError('The World-only Bug Fixes recipe differs.')
+    support = (PACKAGE / 'support').resolve(strict=True)
+    modules = ('_combined_filesystem', '_combined_ambient_sound_baselines', '_combined_bug_fixes',
+               '_combined_ambient_sound', '_combined_bugfix_recipe')
+    for name in modules:
+        module = importlib.import_module(name)
+        if Path(module.__file__).resolve(strict=True) != support / (name + '.py'):
+            raise ValueError('Unexpected World-only Bug Fixes helper: ' + name)
+    actual = sys.modules[modules[-1]].recipe(Path(spec['input_source_root']))
+    if expected != actual or actual.get('version') != '1.2':
+        raise ValueError('The World-only Bug Fixes recipe differs from the reviewed originals.')
+    files = {entry['path']: {key: value for key, value in entry.items() if key != 'path'}
+             for entry in actual['files']}
+    if len(files) != len(actual['files']) or len({name.casefold() for name in files}) != len(files):
+        raise ValueError('The World-only Bug Fixes inventory contains duplicate paths.')
+    for quest in actual['quests']:
+        if _file_state(root, quest['scene_path'])[1] != quest['scene_sha256']:
+            raise ValueError('The World-only King of Ore scenario changed: ' + quest['locale'])
+    if installed:
+        if (not isinstance(installation, dict) or installation.get('schema') != 1
+                or installation.get('status') != 'installed'
+                or installation.get('copy_root') != str(root)
+                or installation.get('source_root') != spec['input_source_root']
+                or not isinstance(features, dict)
+                or features.get('food_overhaul') is not False
+                or features.get('world_settings') is not True
+                or features.get('bug_fixes') is not True
+                or installation.get('bug_fixes_version') != actual['version']
+                or installation.get('bug_fix_quests') != actual['quests']
+                or installation.get('bug_fix_sounds') != actual['sounds']):
+            raise ValueError('The World-only Bug Fixes installation binding differs.')
+    return files
+
+
 def build_edits(root, spec, progress=print):
     root = resolve_copy(spec, root)
     baseline = stock.verify_vanilla(root, PACKAGE)
@@ -114,11 +169,25 @@ def build_edits(root, spec, progress=print):
     islands.validate_required_copy(root)
     outputs = _payloads(spec)
     record = tx.read_manifest(root)
-    if record and record['status'] == 'installed':
+    installed = record is not None and record['status'] == 'installed'
+    bug_fixes = _bug_fix_files(root, spec, installed=installed)
+    if {name.casefold() for name in bug_fixes} & {name.casefold() for name in outputs}:
+        raise ValueError('World-only Bug Fixes overlaps another selected feature.')
+    if installed:
         entries = {entry['name']: entry for entry in record['edits']}
-        if record['source_state'] != 'vanilla' or set(entries) != set(outputs):
+        if (record['source_state'] != 'vanilla' or len(entries) != len(record['edits'])
+                or set(entries) != set(outputs) | set(bug_fixes)):
             raise ValueError('World-only installation has an unexpected restoration journal.')
         backup = tx._path(root, tx.BACKUP, target=False)
+        for name, expected in bug_fixes.items():
+            entry = entries[name]
+            if (entry.get('existed') is not True
+                    or any(entry.get(key) != value for key, value in expected.items())):
+                raise ValueError('A World-only Bug Fixes restoration record differs: ' + name)
+            tx._require(root, entry, [tx._after(entry)])
+            original = tx._path(backup, 'before/' + name, target=False)
+            if tx._state(original) != tx._before(entry):
+                raise ValueError('A World-only Bug Fixes backup is missing or changed: ' + name)
         for name, value in outputs.items():
             entry = entries[name]
             if entry['existed'] or tx._after(entry) != (len(value), sha(value)):
@@ -128,6 +197,9 @@ def build_edits(root, spec, progress=print):
         return FINAL_STATE, []
     if record and record['status'] not in {'restored', 'rolled_back'}:
         raise ValueError('Restore the interrupted installation before installing World Settings.')
+    for name, expected in bug_fixes.items():
+        if _file_state(root, name) != (expected['before_size'], expected['before_sha256']):
+            raise ValueError('World-only Bug Fixes requires its exact original file: ' + name)
     edits = []
     for name, value in outputs.items():
         if os.path.lexists(tx._path(root, name)):

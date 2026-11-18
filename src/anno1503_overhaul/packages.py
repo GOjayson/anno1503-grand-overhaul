@@ -25,6 +25,7 @@ FROZEN_WORLD_SPEC_SHA256 = "f43d4a136a0625836889a1379a70ecb60c589aa34d7acdc9a75d
 FOOD_SPEC_SHA256 = "aa88900d4f55661720c5927ba7e66cb3dc3dfaa17a55ddedb89d4fb5a61bdae5"
 RUNTIME_SHA256 = "2f9d1156f3ac53d92a900e41c38a169138c2b4ac7145f2dc92b93c48736cf089"
 ADAPTER_VERSION = "1.0"
+BUG_FIXES_PACKAGE_KIND = "anno1503-bug-fixes-installer-package"
 TRANSACTION_BACKUP = "GrandOverhaul_Backup_v1"
 TRANSACTION_LOCK = ".grand-overhaul-transaction.lock"
 TRANSACTION_VERSION = "1.0-modular-transactions"
@@ -301,6 +302,80 @@ def _mutable(name: str) -> bool:
     )
 
 
+def king_of_ore_fingerprints(edits) -> list[dict]:
+    return [
+        {"locale": edit.locale, "path": edit.quest_path,
+         "before_sha256": _sha(edit.before), "after_sha256": _sha(edit.after),
+         "scene_path": edit.scene_path, "scene_sha256": edit.scene_sha256}
+        for edit in edits
+    ]
+
+
+def ambient_sound_fingerprints(edits) -> list[dict]:
+    return [
+        {"path": edit.path, "before_sha256": _sha(edit.before), "after_sha256": _sha(edit.after)}
+        for edit in edits
+    ]
+
+
+def _bug_fixes_recipe(source: Path, copy: Path, *, schema_version: int = 3):
+    from .bug_fixes import king_of_ore_assets
+
+    quests = king_of_ore_fingerprints(king_of_ore_assets(source, locales=("Nl",) if schema_version == 1 else None))
+    sounds = []
+    if schema_version == 3:
+        from .ambient_sound import ambient_sound_assets
+        sounds = ambient_sound_fingerprints(ambient_sound_assets(source, (quest['locale'] for quest in quests)))
+    spec = _require_sha(_read(ROOT, "legacy/food_overhaul/food_patch.json"),
+                        FOOD_SPEC_SHA256, "original game recovery specification")
+    files = {"food/food_patch.json": spec}
+    manifest = {
+        "schema_version": schema_version,
+        "kind": BUG_FIXES_PACKAGE_KIND,
+        "feature_versions": {"bug_fixes": {1: "1.0", 2: "1.1", 3: "1.2"}[schema_version]},
+        "source_root": str(source),
+        "copy_root": str(copy),
+        "files": {name: _sha(data) for name, data in files.items()},
+    }
+    if schema_version == 1:
+        # Preserve launch and validation for installed Dutch 1.0 packages.
+        manifest["quest"] = {key: value for key, value in quests[0].items()
+                             if key not in {"locale", "scene_path"}}
+    else:
+        manifest["quests"] = quests
+    if schema_version == 3:
+        manifest["sounds"] = sounds
+    files["manifest.json"] = _encoded(manifest)
+    return files, quests, sounds
+
+
+def _validate_bug_fixes_package(root: Path, manifest: dict, source_game) -> dict:
+    from .filesystem import validate_roots
+
+    source_value, copy_value = manifest.get("source_root"), manifest.get("copy_root")
+    if not isinstance(source_value, str) or not isinstance(copy_value, str):
+        raise PackageError("Invalid Bug Fixes package game paths")
+    source, copy = validate_roots(Path(source_value), Path(copy_value))
+    if str(source) != source_value or str(copy) != copy_value:
+        raise PackageError("Bug Fixes package game paths are not canonical")
+    if source_game is not None and _checked_path(Path(source_game)) != source:
+        raise PackageError("This package was prepared for a different source game")
+    schema_version = manifest.get("schema_version")
+    if type(schema_version) is not int or schema_version not in {1, 2, 3}:
+        raise PackageError("Unsupported Bug Fixes package version")
+    files, quests, sounds = _bug_fixes_recipe(source, copy, schema_version=schema_version)
+    if {item.name for item in root.iterdir()} != {"food", "manifest.json"}:
+        raise PackageError("Unexpected contents in the Bug Fixes package")
+    food = _checked_path(root / "food")
+    if not food.is_dir() or {item.name for item in food.iterdir()} != {"food_patch.json"}:
+        raise PackageError("Unexpected Bug Fixes recovery inputs")
+    for name, data in files.items():
+        if _read(root, name) != data:
+            raise PackageError("Bug Fixes package differs from the reviewed recipe: " + name)
+    return dict(manifest, root=root, path=root, world_path=None, food_path=food,
+                launcher_path=None, verified=True, quests=quests, sounds=sounds)
+
+
 def validate_package(path: Path | str, source_game: Path | str | None = None) -> dict:
     """Recompute every immutable expected byte; a manifest cannot bless new code."""
     root = _checked_path(Path(path))
@@ -308,6 +383,14 @@ def validate_package(path: Path | str, source_game: Path | str | None = None) ->
         raise PackageError("Select a prepared installer package folder")
     manifest = _json(_read(root, "manifest.json"), "package manifest")
     kind = manifest.get("kind")
+    if kind == BUG_FIXES_PACKAGE_KIND:
+        return _validate_bug_fixes_package(root, manifest, source_game)
+    if kind == "anno1503-food06-installer-package":
+        from .food06_package import validate_food06_package
+        return validate_food06_package(root, source_game)
+    if kind == "anno1503-food-world06-installer-package":
+        from .food_world_package import validate_food_world_package
+        return validate_food_world_package(root, source_game)
     if kind == "anno1503-public-beta-world-package":
         from .beta_package import validate_beta_package
         return validate_beta_package(root, source_game)
@@ -426,6 +509,16 @@ def prepare_food_package(output_dir: Path | str, source_game: Path | str,
     manifest = _manifest(str(source), None if copy is None else str(copy),
                          {name: _sha(data) for name, data in sorted(files.items())}, food_only=True)
     files["manifest.json"] = _encoded(manifest)
+    return _publish(files, output, source)
+
+
+def prepare_bug_fixes_package(output_dir: Path, source_game: Path, copy_game: Path) -> Path:
+    """Bind the standalone asset fix to the checked local language files and copy."""
+    from .filesystem import validate_roots
+
+    source, copy = validate_roots(source_game, copy_game)
+    output = _package_output(output_dir, source, copy)
+    files, _, _ = _bug_fixes_recipe(source, copy)
     return _publish(files, output, source)
 
 

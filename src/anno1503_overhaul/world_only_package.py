@@ -35,6 +35,41 @@ def _source(name: str) -> bytes:
     return common._read(ROOT,'src/anno1503_overhaul/'+name)
 
 
+def _bug_fix_recipe(files, source_game, enabled):
+    """Stage only the optional asset transforms, without importing Food hosts."""
+    if type(enabled) is not bool:
+        raise common.PackageError('Choose an explicit Bug Fixes selection for World Settings.')
+    if not enabled:
+        return None
+    from .food_world_bug_fixes import recipe
+    result = recipe(Path(source_game))
+    transformations = {
+        'bug_fixes.py': ('_combined_bug_fixes.py', (
+            (b'from .filesystem import file_sha, safe_child', b'from _combined_filesystem import file_sha, safe_child'),)),
+        'ambient_sound.py': ('_combined_ambient_sound.py', (
+            (b'from .ambient_sound_baselines import localized_sample_baselines', b'from _combined_ambient_sound_baselines import localized_sample_baselines'),
+            (b'from .bug_fixes import BugFixError', b'from _combined_bug_fixes import BugFixError'),
+            (b'from .filesystem import safe_child', b'from _combined_filesystem import safe_child'))),
+        'filesystem.py': ('_combined_filesystem.py', ()),
+        'ambient_sound_baselines.py': ('_combined_ambient_sound_baselines.py', ()),
+        'food_world_bug_fixes.py': ('_combined_bugfix_recipe.py', (
+            (b'from .ambient_sound import ambient_sound_assets', b'from _combined_ambient_sound import ambient_sound_assets'),
+            (b'from .bug_fixes import king_of_ore_assets', b'from _combined_bug_fixes import king_of_ore_assets'))),
+    }
+    for original, (staged, substitutions) in transformations.items():
+        value = _source(original)
+        for before, after in substitutions:
+            value = common._replace(value, before, after, original)
+        files['world/support/' + staged] = value
+    return result
+
+
+def _bug_fix_manifest(enabled):
+    if type(enabled) is not bool:
+        raise common.PackageError('Choose an explicit Bug Fixes selection for World Settings.')
+    return {'bug_fixes_enabled': True} if enabled else {}
+
+
 def _preflight_source() -> bytes:
     return b'''"""Exact stock-host World-only activation preflight."""
 from pathlib import Path
@@ -140,7 +175,7 @@ def build_source_probe(package,spec):
 
 def _recipe(raw_frozen: bytes, stock: dict[str,bytes], frozen_payloads: dict[str,bytes],
             runtime: bytes, source_game: str, copy_game: str, *, baselines=None,
-            runtime_policy=None) -> dict[str,bytes]:
+            runtime_policy=None, bug_fixes_enabled=False) -> dict[str,bytes]:
     runtime_sha, engine_sha, stock_hashes=_runtime_policy() if runtime_policy is None else runtime_policy
     if set(stock)!=set(_STOCK_NAMES):
         raise common.PackageError('The complete stock World-only native inputs are missing.')
@@ -194,6 +229,9 @@ def _recipe(raw_frozen: bytes, stock: dict[str,bytes], frozen_payloads: dict[str
               actual_game_run=False,packaged_runtime_gameplay_verified=False,
               complete_feature_verified=False,
               evidence_scope='Pinned stock-host derivative; building a package is not a new game test.')
+    bug_fixes = _bug_fix_recipe(files, source_game, bug_fixes_enabled)
+    if bug_fixes is not None:
+        spec['bug_fixes'] = bug_fixes
     files['world/world_patch.json']=common._encoded(spec)
     config=dict(version='1.0.0',profile=PROFILE,food_enabled=False,
                 package_relative='../world',package_spec_sha256=common._sha(files['world/world_patch.json']),
@@ -205,17 +243,18 @@ def _recipe(raw_frozen: bytes, stock: dict[str,bytes], frozen_payloads: dict[str
     return files
 
 
-def _manifest(source: str,copy: str,files: dict[str,bytes]) -> dict:
+def _manifest(source: str,copy: str,files: dict[str,bytes], *, bug_fixes_enabled=False) -> dict:
     runtime_sha,engine_sha,stock_hashes=_runtime_policy()
     return dict(schema_version=1,kind=KIND,profile=PROFILE,adapter_version=VERSION,
                 food_enabled=False,source_root=source,input_source_root=source,copy_root=copy,host_root=copy,
-                feature_versions={'world_settings':'0.3.0-world-only','launcher':'1.0.0-world-only'},
+                feature_versions={'world_settings':'0.3.0-world-only','launcher':'1.0.0-world-only',
+                                  **({'bug_fixes': '1.2'} if bug_fixes_enabled else {})},
                 runtime_sha256=runtime_sha,engine_plan_sha256=engine_sha,
                 frozen_world_spec_sha256=common.FROZEN_WORLD_SPEC_SHA256,
                 files={name:common._sha(data) for name,data in sorted(files.items())},
                 transaction=dict(backup=common.TRANSACTION_BACKUP,lock=common.TRANSACTION_LOCK,
                                  version=common.TRANSACTION_VERSION,schema=1),
-                actual_game_test_performed=False)
+                actual_game_test_performed=False, **_bug_fix_manifest(bug_fixes_enabled))
 
 
 def _paths(source_value,copy_value):
@@ -244,8 +283,9 @@ def validate_world_only_package(path,source_game=None) -> dict:
     stock={name:common._read(root,'world/stock/'+name)for name in _STOCK_NAMES}
     corpus={name:common._read(root,'world/frozen-inputs/'+common._name(name))for name in frozen['payloads']}
     runtime=common._read(root,'world/native/AnnoWorldSettings.dll')
-    files=_recipe(raw,stock,corpus,runtime,str(source),str(copy))
-    expected=_manifest(str(source),str(copy),files)
+    bug_fixes_enabled = record.get('bug_fixes_enabled', False)
+    files=_recipe(raw,stock,corpus,runtime,str(source),str(copy), bug_fixes_enabled=bug_fixes_enabled)
+    expected=_manifest(str(source),str(copy),files, bug_fixes_enabled=bug_fixes_enabled)
     if common._encoded(record)!=common._encoded(expected):
         raise common.PackageError('World-only manifest differs from its reviewed recipe.')
     for name,data in files.items():
@@ -288,7 +328,9 @@ def _stock_inputs(source: Path) -> dict[str,bytes]:
     return result
 
 
-def prepare_world_only_package(baselines_dir,output_dir,source_game,copy_game,runtime_path=None) -> Path:
+def prepare_world_only_package(baselines_dir,output_dir,source_game,copy_game,runtime_path=None,
+                               *, bug_fixes_enabled=False) -> Path:
+    _bug_fix_manifest(bug_fixes_enabled)
     baselines=common._checked_path(Path(baselines_dir))
     source,copy=_paths(str(common._checked_path(Path(source_game))),
                        str(common._checked_path(Path(copy_game),exists=False)))
@@ -301,8 +343,9 @@ def prepare_world_only_package(baselines_dir,output_dir,source_game,copy_game,ru
                                     else ROOT/'.local/runtime-profiles/world-only-v1/AnnoWorldSettings.dll')
     if not runtime_path.is_file()or runtime_path.stat().st_size>common._MAX_FILE:
         raise common.PackageError('The pinned World-only runtime is missing or too large.')
-    files=_recipe(raw,stock,corpus,runtime_path.read_bytes(),str(source),str(copy),baselines=baselines)
-    record=_manifest(str(source),str(copy),files)
+    files=_recipe(raw,stock,corpus,runtime_path.read_bytes(),str(source),str(copy),baselines=baselines,
+                  bug_fixes_enabled=bug_fixes_enabled)
+    record=_manifest(str(source),str(copy),files, bug_fixes_enabled=bug_fixes_enabled)
     files['manifest.json']=common._encoded(record)
     # Use this profile's validator before publication, rather than asking an
     # older catalogue to recognize the new package kind during staged creation.

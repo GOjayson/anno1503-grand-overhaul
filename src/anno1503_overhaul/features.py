@@ -1,7 +1,7 @@
 """Feature metadata and dependencies, separate from legacy installation code.
 
-Availability here means an imported experimental baseline exists. It does not
-certify a new build, arbitrary feature combinations, or a portable installer.
+Availability means a feature can be selected for installation. Individual
+installers still validate the build and feature combination.
 """
 from __future__ import annotations
 
@@ -121,16 +121,16 @@ class FeatureCatalog(Mapping[str, Feature]):
 
 
 def default_catalog() -> FeatureCatalog:
-    """Describe existing baselines and future targets without enabling targets."""
+    """Describe installable features and research targets."""
     return FeatureCatalog((
         Feature(
             id="food_overhaul",
             name="Food overhaul",
-            description="The imported Food 0.5.0 overhaul, including its existing gameplay changes.",
+            description="Tier-specific food needs and an informative household Food bar, with a preserved Food 0.5 option.",
             status="experimental",
             priority="priority",
             default_enabled=False,
-            notes=("Imported working baseline; the overhaul is unfinished.",),
+            notes=("Food 0.6 requires a new endless world; full progression and long-session balance remain unverified.",),
         ),
         Feature(
             id="world_settings",
@@ -145,6 +145,13 @@ def default_catalog() -> FeatureCatalog:
                 "Currently supports 0–3 ordinary AI opponents through mapped stock placeholders; this is not a proven engine maximum.",
                 "Huge 2048 worlds remain experimental; automated tests and bounded game runs do not establish long-session stability.",
             ),
+        ),
+        Feature(
+            id="bug_fixes",
+            name="Bug Fixes",
+            description="Corrects the King of Ore objective and lowers loud sound effects in the installed supported languages.",
+            status="experimental",
+            priority="planned",
         ),
         Feature(
             id="smarter_ai",

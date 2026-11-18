@@ -1,5 +1,19 @@
 # Changelog
 
+## Source development update — 2026-11-18
+
+- Add Food 0.6 tier-specific diets, a read-only household Food summary using the original Food icon, and consistent food-icon backgrounds.
+- Add a separate, pinned Food 0.6 + World Settings profile, including compatible AI need lookups and active engine exception-table checks.
+- Add optional Bug Fixes: corrected King of Ore quest instructions and 118 quieter sound effects per installed supported language, derived from the player's originals.
+- Allow Food 0.6, World Settings and Bug Fixes together with an exact package selection, guarded launch checks and one restoration journal.
+- Allow World Settings and Bug Fixes with Food unchecked, retaining the stock diet and separate native profile. Refuse the unsupported preserved Food 0.5 + World + Bug Fixes combination explicitly.
+- Default new source-installer Food choices to 0.6 while retaining explicit Food 0.5 selections and their preserved recipes.
+
+Food 0.6 requires new endless worlds. This source update does not replace the
+published World Settings-only beta ZIP. See [Food validation](FOOD_06_VALIDATION.md),
+[combined validation](FOOD_WORLD_VALIDATION.md) and [Bug Fixes scope](BUGFIX_RESEARCH.md)
+for separate automated, file, game and remaining gameplay checks.
+
 ## 0.9.0-beta.1
 
 - Add an in-game Original game / Custom world choice. Original generation ignores World Settings options.

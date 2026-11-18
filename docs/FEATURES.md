@@ -2,17 +2,17 @@
 
 The overhaul offers feature checkboxes before installation, with world-specific
 choices remaining in the in-game World Settings menu. The modular installer
-checks and installs Food alone, World Settings alone, or both on an independent
-managed copy, and restores its managed files to the verified vanilla baseline.
-It does not support arbitrary combinations of future native modifications.
+checks the feature selection and installs it on an independent managed copy.
+Restoration returns managed files to the verified vanilla baseline.
 
 ## Current and planned modules
 
 | Module | Priority | Current status | Selection constraints |
 | --- | --- | --- | --- |
-| World Settings | Priority | Experimental 0.8.0-dev.4 installed; new island/disaster controls passed automated checks, world creation, in-game reload and fresh-process reload | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
-| Food overhaul | Priority | Experimental 0.5.0 with Food-only installation inputs prepared from public source | Keep its gameplay changes; supported stock/recovery fingerprints are checked; standalone and combined AI evidence have different scope |
+| World Settings | Priority | Beta 0.9.0-beta.1 adds the Original game / Custom world choice; bounded creation, tutorial/campaign and reload checks passed | Food is optional; each selection needs its exact local payload/runtime profile and marked copy; automated and actual game evidence remain separate |
+| Food overhaul | Priority | Source 0.6.0-dev.1 adds tier diets, an informative household Food bar and consistent icons. Bounded Food-only and combined World live checks passed, including both save-loading routes. Full tier progression and long-session balance remain unverified. Food 0.5 remains preserved | Food 0.6 requires a new world and explicit Food-only or combined profile; exact inputs and Food versions are checked |
 | Automatic launch | Supporting platform | Preserved combined launcher plus a guarded normal-client handoff for the independent host | Exact fresh process, main menu, executable, module and selected-profile checks; no startup-value logging or permanent client-registration changes |
+| Bug Fixes | Optional | Corrects the King of Ore quest and quiets 118 effects per installed language. A bounded Food 0.6 + World + Bug Fixes game check passed | Off by default. May accompany Food 0.6 + World, or World with Food disabled, using exact optional asset recipes. Standalone supports the reviewed Ubisoft Connect build in Dutch, English, French, German, Italian and Spanish. Food/World profiles retain their Dutch input requirements; preserved Food 0.5 + World + Bug Fixes is unsupported. |
 | Smarter AI | Planned | Existing combined AI adaptations are a starting point, not a completed overhaul | Unavailable as a new independent module until implemented and validated |
 | Local-host multiplayer | Priority research | No new transport, lobby or capacity implementation provided by this migration | Unavailable; establish engine/network feasibility and session limits first |
 | Knowledge overhaul | Planned | Design and native-state investigation pending | Unavailable; establish education/research behavior, persistence and interactions first |
@@ -262,10 +262,25 @@ combined-world observations remain separate evidence.
 
 ## Food baseline
 
-Preserve the existing five-food diet, market handling, production/need changes,
-consumer-goods menus, artwork and visible prices. The imported Food 0.5.0
-package remains an experimental baseline rather than a finished economy
-overhaul.
+The source **Food 0.6.0-dev.1** candidate retains the five foods, six-good market,
+consumer-goods menus and sale accounting, while adding population-specific
+diet proportions, a read-only combined Food row in houses and matching native
+consumer icon backgrounds. The original Food icon is reused for the summary.
+The summary reads actual household supplies, adds no traded good or extra
+consumption and leaves the existing Fish starvation path unchanged.
+
+Food 0.6 requires a new endless world because zero-share needs are removed from
+lower tiers' records. It does not migrate old saves. Its separate combined
+World Settings profile has exact native pins, an independent host and guarded
+AI need lookups. Combined installation, restoration and bounded live checks
+passed: Huge generation with three active AI opponents, selected ship cargo,
+house Food display, market artwork and both save-loading routes. This does
+not certify every world option, tier progression or sustained AI food planning.
+The imported Food 0.5.0 recipe, its separately guarded combined profile and the
+published World Settings beta remain preserved. Read the [Food guide](FOOD_OVERHAUL.md) for the diet table and the
+[validation record](FOOD_06_VALIDATION.md) for automated checks, observed game
+runs and remaining gameplay checks. [Combined validation](FOOD_WORLD_VALIDATION.md)
+records the new profile separately.
 
 Food development should verify production, consumption, resident supply,
 market sales, starvation, trade, AI planning and save/reload together. A native

@@ -50,7 +50,7 @@ def _asset_policy(files):
     return introduced,hashes,validators
 
 
-def _recipe(source,copy,stock_native,assets,private_ai,runtime):
+def _recipe(source,copy,stock_native,assets,private_ai,runtime, *, bug_fixes_enabled=False):
     runtime_sha = _policy()
     from .beta_inputs import verify_beta_source
     source_proof = verify_beta_source(source)
@@ -102,6 +102,9 @@ def _recipe(source,copy,stock_native,assets,private_ai,runtime):
                 **source_proof,
                 world_options=dict(version=VERSION,generator_id=generator_id(),settings_size=SETTINGS_SIZE,
                                    preview_size=PREVIEW_SIZE,food_enabled=False))
+    bug_fixes = stock._bug_fix_recipe(files, source, bug_fixes_enabled)
+    if bug_fixes is not None:
+        spec['bug_fixes'] = bug_fixes
     files['world/world_patch.json'] = common._encoded(spec)
     files['world/activation/preview_snapshot.py'] = common._read(common.ROOT,'src/anno1503_overhaul/world_options_snapshot.py')
     config = dict(version='1.0.0',profile=stock.PROFILE,food_enabled=False,
@@ -120,15 +123,17 @@ def _recipe(source,copy,stock_native,assets,private_ai,runtime):
     return files
 
 
-def _manifest(source,copy,files):
+def _manifest(source,copy,files, *, bug_fixes_enabled=False):
     source_proof = common._json(files['world/world_patch.json'],'public beta World specification')
     return dict(schema_version=1,kind=KIND,version=VERSION,profile='world-only',food_enabled=False,
                 source_root=str(source),copy_root=str(copy),host_root=str(copy),input_source_root=str(source),
                 runtime_sha256=_policy(),engine_plan_sha256=native.WORLD_ONLY_ENGINE_PLAN_SHA256,
-                generator_id=generator_id(),feature_versions={'world_settings':VERSION},public_beta_source=True,
+                generator_id=generator_id(),feature_versions={'world_settings':VERSION,
+                    **({'bug_fixes': '1.2'} if bug_fixes_enabled else {})},public_beta_source=True,
                 source_native_profile=source_proof['source_native_profile'],
                 source_native_sha256=source_proof['source_native_sha256'],
-                files={n:common._sha(v) for n,v in sorted(files.items())},actual_game_test_performed=False)
+                files={n:common._sha(v) for n,v in sorted(files.items())},actual_game_test_performed=False,
+                **stock._bug_fix_manifest(bug_fixes_enabled))
 
 
 def validate_beta_package(path,source_game=None):
@@ -146,8 +151,9 @@ def validate_beta_package(path,source_game=None):
     ai = {n:common._read(root,'world/native/'+n.removesuffix('.dll')+'.world-only.dll')
           for n in ('CompLogic.dll','CompLogicClassic.dll')}
     runtime = common._read(root,'world/native/AnnoWorldSettings.dll')
-    files = _recipe(source,copy,natives,assets,ai,runtime)
-    expected = _manifest(source,copy,files)
+    bug_fixes_enabled = manifest.get('bug_fixes_enabled', False)
+    files = _recipe(source,copy,natives,assets,ai,runtime,bug_fixes_enabled=bug_fixes_enabled)
+    expected = _manifest(source,copy,files,bug_fixes_enabled=bug_fixes_enabled)
     if common._encoded(manifest) != common._encoded(expected):
         raise common.PackageError('Public beta metadata differs from its independently reconstructed recipe.')
     for name,value in files.items():
@@ -169,12 +175,14 @@ def validate_beta_package(path,source_game=None):
                 launcher_path=root/'launcher',verified=True)
 
 
-def prepare_beta_package(output_dir,source_game,copy_game,*,compiler_path,runtime_path=None):
+def prepare_beta_package(output_dir,source_game,copy_game,*,compiler_path,runtime_path=None,
+                         bug_fixes_enabled=False):
     """Reconstruct local game derivatives and publish one pinned beta package.
 
     Neither a private baseline store nor a pre-existing runtime profile is used.
     Build/input evidence is retained in a fresh sibling work directory.
     """
+    stock._bug_fix_manifest(bug_fixes_enabled)
     from .beta_inputs import prepare_beta_inputs
     source,copy = stock._paths(str(common._checked_path(Path(source_game))),
                                str(common._checked_path(Path(copy_game),exists=False)))
@@ -193,6 +201,6 @@ def prepare_beta_package(output_dir,source_game,copy_game,*,compiler_path,runtim
     assets = {n:common._read(inputs['assets_root'],n.removeprefix('assets/')) for n in hashes}
     ai = {n:common._read(inputs['private_ai_root'],n) for n in ('CompLogic.dll','CompLogicClassic.dll')}
     natives = {n:inputs['stock_native_bytes'][n] for n in _native_pins()}
-    files = _recipe(source,copy,natives,assets,ai,runtime)
-    files['manifest.json'] = common._encoded(_manifest(source,copy,files))
+    files = _recipe(source,copy,natives,assets,ai,runtime,bug_fixes_enabled=bug_fixes_enabled)
+    files['manifest.json'] = common._encoded(_manifest(source,copy,files,bug_fixes_enabled=bug_fixes_enabled))
     return common._publish(files,output,source)

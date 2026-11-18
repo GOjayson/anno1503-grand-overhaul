@@ -227,11 +227,14 @@ def _payload(directory: Path, name: str, expected: str) -> bytes:
     return value
 
 
-def install_prepared(root: Path, prepared: dict, source_state: str,
-                     progress: Progress = lambda _: None) -> dict:
+def install_prepared(root: Path, prepared: dict | None, source_state: str,
+                     progress: Progress = lambda _: None, *, additional_edits=()) -> dict:
     """Install one prepared plan with exact full-file backups and rollback."""
     try:
-        edits = _validated_edits(Path(root), prepared)
+        edits = [] if prepared is None else _validated_edits(Path(root), prepared)
+        edits.extend(additional_edits)
+        if len({edit.name.casefold() for edit in edits}) != len(edits):
+            raise AdapterError("Selected features modify the same game file.")
         if not isinstance(source_state, str) or not source_state:
             raise AdapterError("A source-state description is required")
         tx = _transactions()

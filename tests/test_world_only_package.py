@@ -5,6 +5,7 @@ tests. Here those stages return bounded fixture bytes while real public helper
 recipes, immutable manifests, path guards and publication are exercised.
 """
 from contextlib import ExitStack
+from copy import deepcopy
 import ast
 import json
 from pathlib import Path
@@ -20,12 +21,23 @@ ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
 from anno1503_overhaul import packages as common,world_only_package as world
 from anno1503_overhaul import world_runtime_build as build
+from anno1503_overhaul import food_world_bug_fixes as fixes
 
 
 def native(machine=0x8664):
     data=bytearray(256);data[:2]=b'MZ';struct.pack_into('<I',data,60,128)
     data[128:132]=b'PE\0\0';struct.pack_into('<H',data,132,machine);struct.pack_into('<H',data,152,0x20b)
     return bytes(data)
+
+
+def bug_fix_recipe_fixture(stack):
+    """Substitute the separately tested original-asset transform boundary."""
+    recipe = dict(version='1.2', quests=[dict(locale='Nl', path='Languages/Nl/quest.htm',
+        before_sha256='a'*64, after_sha256='b'*64, scene_path='Languages/Nl/scene.sze',
+        scene_sha256='c'*64)], sounds=[dict(path='Languages/Nl/Samples/fixture.wav',
+        before_sha256='d'*64, after_sha256='e'*64)], files=[])
+    stack.enter_context(patch.object(fixes, 'recipe', return_value=deepcopy(recipe)))
+    return recipe
 
 
 class WorldOnlyPackageTests(unittest.TestCase):
@@ -78,8 +90,9 @@ class WorldOnlyPackageTests(unittest.TestCase):
         self.stack.enter_context(patch.object(common,'FROZEN_WORLD_SPEC_SHA256',common._sha(raw)))
         self.stack.enter_context(patch.object(common,'RUNTIME_SHA256',self.frozen['payloads']['native/AnnoWorldSettings.dll']))
 
-    def prepare(self):
-        return world.prepare_world_only_package(self.provider,self.output,self.source,self.copy,self.runtime)
+    def prepare(self, *, bug_fixes_enabled=False):
+        return world.prepare_world_only_package(self.provider,self.output,self.source,self.copy,self.runtime,
+                                                bug_fixes_enabled=bug_fixes_enabled)
 
     def test_world_only_targets_are_introduced_files_and_host_native_stays_stock(self):
         raw=(self.provider/'world_settings/world_patch.json').read_bytes()
@@ -104,6 +117,26 @@ class WorldOnlyPackageTests(unittest.TestCase):
         path.write_bytes(native()+b'changed-runtime')
         self._bless_manifest('world/native/AnnoWorldSettings.dll')
         with self.assertRaises(common.PackageError):world.validate_world_only_package(self.output)
+
+    def test_optional_bug_fixes_stages_a_closed_asset_recipe_without_food_hosts(self):
+        recipe = bug_fix_recipe_fixture(self.stack)
+        self.prepare(bug_fixes_enabled=True)
+        checked = world.validate_world_only_package(self.output, self.source)
+        self.assertTrue(checked['bug_fixes_enabled'])
+        self.assertFalse(checked['food_enabled'])
+        self.assertNotIn('food_overhaul', checked['feature_versions'])
+        self.assertEqual(checked['feature_versions']['bug_fixes'], '1.2')
+        spec = json.loads((self.output / 'world/world_patch.json').read_bytes())
+        self.assertEqual(spec['bug_fixes'], recipe)
+        self.assertEqual(len(spec['introduced_files']), 19)
+        for name, value in self.stock.items():
+            self.assertEqual((self.output / 'world/stock' / name).read_bytes(), value)
+        helper = 'world/support/_combined_bugfix_recipe.py'
+        self.assertTrue((self.output / helper).is_file())
+        (self.output / helper).write_bytes(b'unreviewed helper')
+        self._bless_manifest(helper)
+        with self.assertRaises(common.PackageError):
+            world.validate_world_only_package(self.output, self.source)
 
     def test_copy_probe_is_stock_by_default_and_source_probe_is_instance_bound(self):
         self.prepare()

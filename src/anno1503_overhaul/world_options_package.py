@@ -33,7 +33,10 @@ def _runtime_path(food):
     return ROOT / '.local/runtime-profiles' / ('options-' + profile + '-' + digest[:16]) / 'AnnoWorldSettings.dll'
 
 
-def _recipe(raw, corpus, native, runtime, source, copy, food, baselines=None):
+def _recipe(raw, corpus, native, runtime, source, copy, food, baselines=None, *, bug_fixes_enabled=False):
+    stock._bug_fix_manifest(bug_fixes_enabled)
+    if food and bug_fixes_enabled:
+        raise common.PackageError('Preserved Food 0.5 + World Settings does not support Bug Fixes. Choose Food 0.6 or leave Food unchecked.')
     profile, runtime_sha = _policy(food)
     frozen, unused = common._world_spec(raw, source, copy)
     if set(corpus) != set(frozen['payloads']):
@@ -52,7 +55,8 @@ def _recipe(raw, corpus, native, runtime, source, copy, food, baselines=None):
     else:
         engine_sha = base.WORLD_ONLY_ENGINE_PLAN_SHA256
         files = stock._recipe(raw, native, corpus, runtime, source, copy, baselines=baselines,
-                              runtime_policy=(runtime_sha, engine_sha, base.STOCK_SHA256))
+                              runtime_policy=(runtime_sha, engine_sha, base.STOCK_SHA256),
+                              bug_fixes_enabled=bug_fixes_enabled)
         spec = common._json(files['world/world_patch.json'], 'World-only specification')
     files['world/native/AnnoWorldSettings.dll'] = runtime
     # Preserve frozen inputs and historical recipes. Only the two private AI
@@ -80,15 +84,16 @@ def _recipe(raw, corpus, native, runtime, source, copy, food, baselines=None):
     return files, engine_sha
 
 
-def _manifest(source, copy, food, files, engine):
+def _manifest(source, copy, food, files, engine, *, bug_fixes_enabled=False):
     profile, runtime = _policy(food)
     return dict(schema_version=1, kind=KIND, version=VERSION, profile=profile,
                 source_root=source, copy_root=copy, food_enabled=food,
                 runtime_sha256=runtime, engine_plan_sha256=engine, generator_id=generator_id(),
-                feature_versions={'world_settings': VERSION, **({'food_overhaul': '0.5.0'} if food else {})},
+                feature_versions={'world_settings': VERSION, **({'food_overhaul': '0.5.0'} if food else {}),
+                                  **({'bug_fixes': '1.2'} if bug_fixes_enabled else {})},
                 frozen_world_spec_sha256=common.FROZEN_WORLD_SPEC_SHA256,
                 files={name: common._sha(value) for name, value in sorted(files.items())},
-                actual_game_test_performed=False)
+                actual_game_test_performed=False, **stock._bug_fix_manifest(bug_fixes_enabled))
 
 
 def validate_options_package(path, source_game=None):
@@ -105,8 +110,10 @@ def validate_options_package(path, source_game=None):
     corpus = {name: common._read(root, 'world/frozen-inputs/' + common._name(name)) for name in frozen['payloads']}
     native = {} if food else {name: common._read(root, 'world/stock/' + name) for name in stock._STOCK_NAMES}
     runtime = common._read(root, 'world/native/AnnoWorldSettings.dll')
-    files, engine = _recipe(raw, corpus, native, runtime, str(source), str(copy), food)
-    expected = _manifest(str(source), str(copy), food, files, engine)
+    bug_fixes_enabled = manifest.get('bug_fixes_enabled', False)
+    files, engine = _recipe(raw, corpus, native, runtime, str(source), str(copy), food,
+                            bug_fixes_enabled=bug_fixes_enabled)
+    expected = _manifest(str(source), str(copy), food, files, engine, bug_fixes_enabled=bug_fixes_enabled)
     if common._encoded(manifest) != common._encoded(expected):
         raise common.PackageError('The World options manifest differs from its reviewed recipe.')
     for name, value in files.items():
@@ -131,9 +138,13 @@ def validate_options_package(path, source_game=None):
                 launcher_path=root / 'launcher', verified=True)
 
 
-def prepare_options_package(baselines_dir, output_dir, source_game, copy_game, *, food_enabled, runtime_path=None):
+def prepare_options_package(baselines_dir, output_dir, source_game, copy_game, *, food_enabled,
+                             runtime_path=None, bug_fixes_enabled=False):
     if type(food_enabled) is not bool:
         raise common.PackageError('Choose an exact Food feature selection.')
+    stock._bug_fix_manifest(bug_fixes_enabled)
+    if food_enabled and bug_fixes_enabled:
+        raise common.PackageError('Preserved Food 0.5 + World Settings does not support Bug Fixes. Choose Food 0.6 or leave Food unchecked.')
     baselines = common._checked_path(Path(baselines_dir))
     source, copy = stock._paths(str(common._checked_path(Path(source_game))),
                                 str(common._checked_path(Path(copy_game), exists=False)))
@@ -145,6 +156,8 @@ def prepare_options_package(baselines_dir, output_dir, source_game, copy_game, *
     runtime = common._checked_path(Path(runtime_path) if runtime_path is not None else _runtime_path(food_enabled))
     if not runtime.is_file() or runtime.stat().st_size > common._MAX_FILE:
         raise common.PackageError('The reviewed World options runtime is missing or too large.')
-    files, engine = _recipe(raw, corpus, native, runtime.read_bytes(), str(source), str(copy), food_enabled, baselines)
-    files['manifest.json'] = common._encoded(_manifest(str(source), str(copy), food_enabled, files, engine))
+    files, engine = _recipe(raw, corpus, native, runtime.read_bytes(), str(source), str(copy), food_enabled, baselines,
+                            bug_fixes_enabled=bug_fixes_enabled)
+    files['manifest.json'] = common._encoded(_manifest(str(source), str(copy), food_enabled, files, engine,
+                                                      bug_fixes_enabled=bug_fixes_enabled))
     return common._publish(files, output, source)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+from itertools import product
 import json
 from pathlib import Path
 import tempfile
@@ -77,22 +78,20 @@ class ProfileTests(unittest.TestCase):
                          {"world_settings"})
         self.assertEqual(validate_profile(value), value)
 
-    def test_every_food_and_world_combination_preserves_the_selected_flags(self):
-        for world, food in ((True, False), (False, True), (True, True), (False, False)):
-            for auto in (False, True):
-                with self.subTest(world=world, food=food, auto=auto):
-                    value = resolve_selection(document(world_settings=world, food_overhaul=food),
-                                              auto_enable_dependencies=auto)
-                    self.assertIs(value["features"]["world_settings"], world)
-                    self.assertIs(value["features"]["food_overhaul"], food)
-                    self.assertEqual({f.id for f in selected_features(value)},
-                                     {key for key, enabled in (("world_settings", world), ("food_overhaul", food))
-                                      if enabled})
+    def test_every_food_world_and_bug_fixes_combination_preserves_selected_flags(self):
+        module_ids = ("world_settings", "food_overhaul", "bug_fixes")
+        for world, food, fixes, auto in product((False, True), repeat=4):
+            with self.subTest(world=world, food=food, fixes=fixes, auto=auto):
+                flags = dict(zip(module_ids, (world, food, fixes)))
+                value = resolve_selection(document(**flags), auto_enable_dependencies=auto)
+                self.assertEqual({f.id for f in selected_features(value)},
+                                 {feature_id for feature_id, enabled in flags.items() if enabled})
 
     def test_world_only_does_not_enable_food_when_other_flags_are_omitted(self):
         value = resolve_selection(document(world_settings=True), auto_enable_dependencies=True)
         self.assertTrue(value["features"]["world_settings"])
         self.assertFalse(value["features"]["food_overhaul"])
+        self.assertFalse(value["features"]["bug_fixes"])
         self.assertFalse(value["features"]["lan_multiplayer"])
 
     def test_declared_dependencies_are_still_required_in_other_catalogues(self):
