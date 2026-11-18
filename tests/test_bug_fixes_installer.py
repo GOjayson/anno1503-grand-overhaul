@@ -388,17 +388,33 @@ class BugFixesInstallerTests(unittest.TestCase):
         builder = ModuleType('anno1503_overhaul.food_world_public')
         builder.prepare_public_food_world_package = Mock(return_value=self.package)
         stack.enter_context(patch.dict(sys.modules, {builder.__name__: builder}))
+        # Native construction is already substituted above. Keep compiler
+        # discovery inside that same fixture boundary: CI has no toolchain.
+        compiler = self.base / 'synthetic-toolchain' / 'zig'
+        lookup = stack.enter_context(patch.object(beta_paths, 'compiler_path', return_value=compiler))
         selected = dict(schema_version=1, name='All three features', features={
             'food_overhaul': True, 'world_settings': True, 'bug_fixes': True,
         })
         plan = installer.check_install(self.source, self.copy, selected,
                                        food_version=installer.FOOD06_VERSION)
         builder.prepare_public_food_world_package.assert_called_once()
-        self.assertIs(builder.prepare_public_food_world_package.call_args.kwargs['bug_fixes_enabled'], True)
+        self.assertEqual(builder.prepare_public_food_world_package.call_args.args[1:], (self.source, self.copy))
+        self.assertEqual(builder.prepare_public_food_world_package.call_args.kwargs,
+                         {'compiler_path': compiler, 'bug_fixes_enabled': True})
+        lookup.assert_called_once_with()
+        self.assertFalse(compiler.exists())
         self.assertFalse(self.copy.exists())
         record = installer.install(self.source, self.copy, selected, package=self.package,
                                    food_version=installer.FOOD06_VERSION)
         return record, plan
+
+    def test_all_mods_fixture_does_not_discover_a_real_compiler(self):
+        with patch.object(beta_paths, 'compiler_path', side_effect=RuntimeError('No local compiler')) as real_lookup:
+            with ExitStack() as stack:
+                record, _ = self.install_all_mods_fixture(stack)
+        real_lookup.assert_not_called()
+        self.assertEqual(record['food_version'], installer.FOOD06_VERSION)
+        self.assertTrue(record['profile']['features']['bug_fixes'])
 
     def test_all_three_modules_share_one_guarded_journal_and_restore_together(self):
         with ExitStack() as stack:
