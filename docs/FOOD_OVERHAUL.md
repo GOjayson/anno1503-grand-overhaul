@@ -57,10 +57,27 @@ consume the individual foods; the summary does not consume anything twice or
 create sales income. It is derived when the house information is refreshed
 and adds no saved need or traded-good ID.
 
-**Fish still follows the existing staple/starvation path.** The summary does
-not make foods interchangeable or change the starvation, happiness or
-advancement rules to use its combined percentage. Those would be separate
-gameplay changes.
+The released 0.6.0-dev.1 build uses Fish as the staple for housing
+growth, food-related population loss and promotion.
+
+## Combined food and housing progression in source builds
+
+Food 0.6 packages prepared with the updated housing rules check the food
+delivered to each house. Each unlocked food counts up to its share of the
+current household diet. Fish and Potatoes can cover about 90% of a Pioneer
+diet, while a surplus of Fish alone can cover only its roughly 45% share.
+The same food coverage drives growth and food-related population loss.
+
+Promotion uses the current household's diet and the original vanilla ratio
+between current-tier and next-tier Food demand. The staple check requires
+about 76% of the Pioneer diet and about 91% for the next two upgrades.
+Bread and Butcher's Meat begin contributing when the current household
+needs them and their chains unlock.
+
+Food contributes through this combined score. The separate goods score
+uses the original non-food needs, and the original checks for services and
+building materials still apply. Separate food production, purchases and
+consumption continue to use the individual goods.
 
 ## Icons and markets
 

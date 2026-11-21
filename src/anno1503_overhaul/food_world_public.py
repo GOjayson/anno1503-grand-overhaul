@@ -15,7 +15,7 @@ from . import food_world_package as combined
 from . import food_world_runtime as native
 from . import beta_inputs, beta_package
 from . import world_only_package as stock
-from .food_world_policy import PROFILE, food_files
+from .food_world_policy import PROFILE
 from .food_diet import VERSION
 from .world_options import VERSION as WORLD_VERSION, generator_id, SETTINGS_SIZE, PREVIEW_SIZE
 
@@ -80,7 +80,8 @@ def _recipe(source, copy, runtime, view, welt, *, bug_fixes_enabled=False, city_
     files.update(food_inputs)
     files.update({'world/'+name.removeprefix('food/'):value for name,value in food_inputs.items()})
     files['world/world_mod.py'] = stock._source('food_world_backend.py')
-    files['world/support/food_world_policy.py'] = stock._source('food_world_policy.py')
+    policy_source, native_food_policy = combined._native_food_policy(city_statistics_guard=city_statistics_guard)
+    files['world/support/food_world_policy.py'] = policy_source
     files['world/support/stock_baseline.py'] = stock._source('vanilla.py')
     files['world/activation/preflight.py'] = stock._preflight_source()
     files['world/activation/preview_snapshot.py'] = stock._source('world_options_snapshot.py')
@@ -105,7 +106,7 @@ def _recipe(source, copy, runtime, view, welt, *, bug_fixes_enabled=False, city_
     spec = dict(profile=PROFILE, version=WORLD_VERSION, food_version=VERSION, status='BETA',
                 food_enabled=True, host_root=str(copy), input_source_root=str(source), original_game_root=str(copy),
                 exe_sha256=host['Anno1503.exe'], native_sha256=host,
-                food_files=food_files(), new_world_required=True, old_save_migration_supported=False,
+                food_files=native_food_policy, new_world_required=True, old_save_migration_supported=False,
                 introduced_files=introduced, payloads={name:common._sha(value) for name,value in sorted(payloads.items())},
                 expanded_engine_patch_count=173, expanded_engine_plan_sha256=engine_pin,
                 public_beta_source=True, historical_private_inputs_used=False, **source_proof,

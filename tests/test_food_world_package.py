@@ -220,8 +220,12 @@ class FoodWorldPackageTests(unittest.TestCase):
             self.assertEqual(metadata['feature_versions']['bug_fixes'], '1.2')
             spec = json.loads((self.output / 'world/world_patch.json').read_bytes())
             self.assertEqual(spec['native_sha256'], self.guarded_host)
+            self.assertEqual(spec['food_files']['AnnoWelt.dll']['after_sha256'], self.guarded_host['AnnoWelt.dll'])
             self.assertEqual(spec['bug_fixes'], recipe)
             support = self.output / 'world/support'
+            policy = {}
+            exec((support / 'food_world_policy.py').read_bytes(), policy)
+            self.assertEqual(policy['food_files'](), spec['food_files'])
             self.assertTrue((support / '_combined_bugfix_recipe.py').is_file())
             for name in ('_combined_filesystem.py', '_combined_bug_fixes.py', '_combined_ambient_sound.py',
                          '_combined_ambient_sound_baselines.py', '_combined_bugfix_recipe.py'):

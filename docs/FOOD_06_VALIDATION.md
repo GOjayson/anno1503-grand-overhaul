@@ -4,8 +4,9 @@
 64-bit History Edition build. World Settings is disabled. Food 0.5 and its
 preserved combined profile remain separate.
 
-**Status:** the final shorter-label candidate has passed focused Food checks,
-the current full-repository suite, managed-copy restoration/reinstallation and
+**Status of the original 0.6 release:** the final shorter-label candidate passed focused
+Food checks, the full-repository suite for that revision, managed-copy
+restoration/reinstallation and
 bounded live startup, house-display, food-purchase and save-reload checks.
 All-tier playthrough and broader gameplay acceptance remain unverified.
 
@@ -14,6 +15,19 @@ overhaul](FOOD_OVERHAUL.md). Short native fingerprint prefixes identify the
 checkpoints below; the exact pins are maintained in
 [food_household.py](../src/anno1503_overhaul/food_household.py) and
 [food_supply.py](../src/anno1503_overhaul/food_supply.py).
+
+## Combined housing progression
+
+The source build now scores active foods together for population growth,
+food-related population loss and promotion. It uses the house's existing
+delivered supply and the owner's unlock mask.
+
+Native fixtures compare the vanilla and combined-food routines across 101
+food-delivery levels for each of the five growth tables and for each of the
+three residential upgrades. Separate cases exercise per-food caps, locked
+and newly unlocked foods, missing non-food goods and services, and owner
+unlock handling through both native entry points. These fixtures run outside
+the game. Timing from matched in-game starts still needs validation.
 
 ## Evidence checkpoints
 
@@ -46,7 +60,7 @@ Artwork checks cover the available main 50 × 50, main low-resolution 39 × 39
 and Dutch 50 × 50 UI pairs. An authored mixed 39/40 × 39 fixture checks dimension
 preservation. Other language and UI combinations remain unverified.
 
-## Implementation boundaries
+## Original 0.6 implementation boundaries
 
 - The new diet is composed from exact preserved Food 0.5 resident definitions.
   Complete file-level Food quantities retain each tier's original total.

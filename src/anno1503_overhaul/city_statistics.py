@@ -8,7 +8,7 @@ from .world_native import checksum
 from .world_runtime_build import PE
 
 
-FOOD06_GUARDED_WELT_SHA256 = "20cda6bfdcd7b21b704e058f06aabba760b39acf8311621ec50823b4b8e76741"
+FOOD06_GUARDED_WELT_SHA256 = "48afb7d4ef40b88afdbe111da342810ff78193b6fb5763d6ae8993f555c8c805"
 
 _FUNCTION_RVA = 0xAE4F0
 _FUNCTION_SIZE = 0x2FD

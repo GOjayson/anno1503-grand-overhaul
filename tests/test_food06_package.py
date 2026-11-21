@@ -194,7 +194,7 @@ class Food06PackageTests(unittest.TestCase):
 
     def test_unreviewed_world_pin_fails_before_build_or_output(self):
         dummy = ModuleType("anno1503_overhaul.food_supply")
-        dummy.FOOD06_WELT_SHA256 = None
+        dummy.FOOD_PROGRESSION_WELT_SHA256 = None
         with patch.dict(sys.modules, {dummy.__name__: dummy}):
             with patch.object(package, "_welt_policy", REAL_WELT_POLICY):
                 with self.assertRaisesRegex(common.PackageError, "build review"):

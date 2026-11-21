@@ -17,20 +17,21 @@ from . import world_options_build as options
 from . import world_runtime_build as base
 from .filesystem import checked_path
 from .food_household import FOOD06_VIEW_SHA256, HOUSE_VTABLE as VIEW_HOUSE_VTABLE, HOOKS as VIEW_HOOKS
-from .food_supply import FOOD06_WELT_SHA256, HOUSE_VTABLE, GETTERS, PROMOTION
+from .food_supply import (FOOD_PROGRESSION_WELT_SHA256, HOUSE_VTABLE, GETTERS,
+                          PROMOTION, progression_edited_spans)
 
 
 PROFILE = "food06-world"
 # Filled only after independent candidate builds and native proof review.
-RUNTIME_SHA256 = "43f92ca0f1753de02e64d85d3ef2c37c9e2e1f25ae0d8e7915c90628f89a8d4a"
-ENGINE_PLAN_SHA256 = "e2375529553996e6e02c74814a97be1dddd45c9be6649ea048087e12299bb07c"
-GUARDED_RUNTIME_SHA256 = "2d4f4120b88b264368bc66ee1fbd16d871728ebb81643e3e8e8bb84417569b4f"
-GUARDED_ENGINE_PLAN_SHA256 = "7a31792b6518c6986da3efad7fca80265fde21cf829d70ae22fd497a00c26eda"
+RUNTIME_SHA256 = "928667ae84f54f9401103acdf81431cbc9d3d056b11da0eecaf2cb2c02b88fc9"
+ENGINE_PLAN_SHA256 = "229e625e32ee69c13de4e2e619e6df66ed43c56ac61a603099e83f1793b46c0d"
+GUARDED_RUNTIME_SHA256 = "c9d87dadd3f6319c25c2a9d2c71915105cc95f0def76b71c9fc76b5aede6a1cc"
+GUARDED_ENGINE_PLAN_SHA256 = "6c62b49e5cbb7c5b958f712d2ebd31734e6c7f626354b408e382194ee556cf65"
 UNWIND_EDITS = (
     (0x14BE8C, (0x68024, 0x6804D, 0x115800), 4,
-     "4d800600", "59800600", 0x157B18),
+     "4d800600", "59800600", 0x157DF8),
     (0x14BE94, (0x6804D, 0x68053, 0x115814), 0,
-     "4d80060053800600", "598006005f800600", 0x157B20),
+     "4d80060053800600", "598006005f800600", 0x157E00),
 )
 
 
@@ -57,7 +58,7 @@ def expected_native_hashes(*, city_statistics_guard: bool = False) -> dict[str, 
             **{item["name"]: item["sources"]["combined-0.5.0"]
                for item in food["native_modules"]},
             "AnnoWelt.dll": (city_statistics.FOOD06_GUARDED_WELT_SHA256
-                             if city_statistics_guard else FOOD06_WELT_SHA256),
+                             if city_statistics_guard else FOOD_PROGRESSION_WELT_SHA256),
             "View.dll": FOOD06_VIEW_SHA256,
             "AnnoDisplay.dll": options.DISPLAY_SHA256}
 
@@ -94,7 +95,7 @@ def _active_unwind_edits(pe: base.PE, plan: dict) -> list[dict]:
 def derive_engine_plan(welt: bytes, frozen: bytes) -> bytes:
     welt_hash = _sha(welt)
     guarded = welt_hash == city_statistics.FOOD06_GUARDED_WELT_SHA256
-    if (not guarded and welt_hash != FOOD06_WELT_SHA256) or _sha(frozen) != base.ENGINE_PLAN_SHA256:
+    if (not guarded and welt_hash != FOOD_PROGRESSION_WELT_SHA256) or _sha(frozen) != base.ENGINE_PLAN_SHA256:
         raise base.RuntimeBuildError("The Food 0.6 World image or frozen engine plan differs.")
     pe, plan = base.PE(welt), json.loads(frozen)
     relocations = _active_unwind_edits(pe, plan)
@@ -174,7 +175,7 @@ def _coexistence_proof(images: dict[str, bytes], header: bytes, plan: bytes, *,
         world.extend((module, row[0], 8) for row in hooks)
     world.extend((row[0], row[1], 8) for row in IMPORT_HOOKS)
     food = [("AnnoWelt.dll", HOUSE_VTABLE + g["slot"], 8) for g in GETTERS.values()]
-    food.append(("AnnoWelt.dll", PROMOTION["patch"], len(PROMOTION["preimage"])))
+    food.extend(("AnnoWelt.dll", rva, size) for rva, size in progression_edited_spans())
     if city_statistics_guard:
         food.extend(("AnnoWelt.dll", rva, size) for rva, size in city_statistics.edited_spans())
     food.extend(("View.dll", VIEW_HOUSE_VTABLE + slot, 8) for slot in VIEW_HOOKS)

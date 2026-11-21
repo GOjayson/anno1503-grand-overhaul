@@ -15,18 +15,19 @@ from anno1503_overhaul import food_world_runtime as food
 from anno1503_overhaul import world_options_build as options
 from anno1503_overhaul import world_runtime_build as base
 from anno1503_overhaul.food_household import FOOD06_VIEW_SHA256
-from anno1503_overhaul.food_supply import FOOD06_WELT_SHA256
+from anno1503_overhaul.food_supply import FOOD05_WELT_SHA256, FOOD_PROGRESSION_WELT_SHA256
 
 
 ROOT = base.ROOT
 SOURCE = ROOT / "legacy/world_settings"
 HOST = ROOT / ".local/game-copies/Food 0.6 Development"
+WELT_SOURCE = ROOT / ".local/baselines/world_settings/native/AnnoWelt.source.dll"
 
 
 class ActiveTable:
     """Retain the stale table as well as a distinct loader-active table."""
     def __init__(self, *, duplicate=False, moved=False):
-        self.rva = 0x157B14 + (12 if moved else 0)
+        self.rva = 0x157DF4 + (12 if moved else 0)
         entries = [struct.pack("<III", *e[1]) for e in food.UNWIND_EDITS]
         if duplicate:
             entries.append(entries[0])
@@ -59,10 +60,16 @@ def imported_sources():
 
 def local_host_available():
     try:
-        return (hashlib.sha256((HOST / "AnnoWelt.dll").read_bytes()).hexdigest() == FOOD06_WELT_SHA256
+        return (hashlib.sha256(WELT_SOURCE.read_bytes()).hexdigest() == FOOD05_WELT_SHA256
                 and hashlib.sha256((HOST / "View.dll").read_bytes()).hexdigest() == FOOD06_VIEW_SHA256)
     except OSError:
         return False
+
+
+def build_food_welt():
+    from anno1503_overhaul.food_supply import build_progression_welt
+
+    return build_progression_welt(WELT_SOURCE.read_bytes())[0]
 
 
 class FoodWorldRuntimeTests(unittest.TestCase):
@@ -70,7 +77,7 @@ class FoodWorldRuntimeTests(unittest.TestCase):
         plan = frozen_plan()
         original = copy.deepcopy(plan)
         proof = food._active_unwind_edits(ActiveTable(), plan)
-        self.assertEqual([p["active_rva"] for p in proof], [0x157B18, 0x157B20])
+        self.assertEqual([p["active_rva"] for p in proof], [0x157DF8, 0x157E00])
         self.assertEqual([p["frozen_rva"] for p in proof], [0x14BE8C, 0x14BE94])
         self.assertEqual(sum(a != b for a, b in zip(original["edits"], plan["edits"])), 2)
         for before, after in zip(original["edits"], plan["edits"]):
@@ -108,7 +115,7 @@ class FoodWorldRuntimeTests(unittest.TestCase):
                            (b"unknown", b"{}")):
             with self.assertRaises(base.RuntimeBuildError):
                 food.derive_engine_plan(host, plan)
-        self.assertEqual(food.HOST_SHA256["AnnoWelt.dll"], FOOD06_WELT_SHA256)
+        self.assertEqual(food.HOST_SHA256["AnnoWelt.dll"], FOOD_PROGRESSION_WELT_SHA256)
         self.assertEqual(food.HOST_SHA256["View.dll"], FOOD06_VIEW_SHA256)
         self.assertNotEqual(food.HOST_SHA256["AnnoWelt.dll"], base.FOOD_SHA256["AnnoWelt.dll"])
 
@@ -132,7 +139,7 @@ class FoodWorldRuntimeTests(unittest.TestCase):
 
     def test_world_overlap_is_rejected_before_native_delegate_use(self):
         files = imported_sources()
-        with mock.patch.dict(food.PROMOTION, {"patch": 0xC714D}):
+        with mock.patch.object(food, "progression_edited_spans", return_value=((0xC714D, 14),)):
             with self.assertRaisesRegex(base.RuntimeBuildError, "overlaps"):
                 food._coexistence_proof({}, files[base.BLOBS], files[base.ENGINE_PLAN])
 
@@ -151,15 +158,15 @@ class FoodWorldRuntimeTests(unittest.TestCase):
     @unittest.skipUnless(local_host_available(), "exact private Food 0.6 host unavailable")
     def test_exact_native_plan_uses_active_exception_entries(self):
         raw = (SOURCE / base.ENGINE_PLAN).read_bytes()
-        image = (HOST / "AnnoWelt.dll").read_bytes()
+        image = build_food_welt()
         plan = food.derive_engine_plan(image, raw)
         self.assertEqual(hashlib.sha256(plan).hexdigest(), food.ENGINE_PLAN_SHA256)
         value = json.loads(plan)
         self.assertEqual(len(value["edits"]), 173)
         rvas = {e["rva"] for e in value["edits"]}
-        self.assertTrue({0x157B18, 0x157B20}.issubset(rvas))
+        self.assertTrue({0x157DF8, 0x157E00}.issubset(rvas))
         self.assertFalse({0x14BE8C, 0x14BE94} & rvas)
-        self.assertEqual(value["food06_derivative"]["active_exception_directory_rva"], 0x153140)
+        self.assertEqual(value["food06_derivative"]["active_exception_directory_rva"], 0x153420)
         self.assertEqual((SOURCE / base.ENGINE_PLAN).read_bytes(), raw)
         with self.assertRaises(base.RuntimeBuildError):
             food.derive_engine_plan(image, plan)
@@ -171,7 +178,8 @@ class FoodWorldRuntimeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             minimal = Path(directory).resolve()
             for name in food.HOST_SHA256:
-                (minimal / name).write_bytes((HOST / name).read_bytes())
+                value = build_food_welt() if name == "AnnoWelt.dll" else (HOST / name).read_bytes()
+                (minimal / name).write_bytes(value)
             derived, proof = food.derive_sources(sources, minimal, asset_source=HOST)
             self.assertFalse((minimal / "Anlagen.dat").exists())
         self.assertEqual(sources, original)
@@ -180,7 +188,7 @@ class FoodWorldRuntimeTests(unittest.TestCase):
         self.assertEqual(proof["food06_coexistence"]["world_write_spans"], 218)
         self.assertEqual(proof["food06_coexistence"]["overlapping_write_spans"], 0)
         self.assertEqual(proof["visibility_runtime_module_pins"]["View.dll"], FOOD06_VIEW_SHA256)
-        self.assertEqual(proof["visibility_runtime_module_pins"]["AnnoWelt.dll"], FOOD06_WELT_SHA256)
+        self.assertEqual(proof["visibility_runtime_module_pins"]["AnnoWelt.dll"], FOOD_PROGRESSION_WELT_SHA256)
         pin_header = derived["developer/source/engine_resume/ai_loader/visibility_native_pins.h"].decode("ascii")
         emitted = {name: base._hex_bytes(value).hex()
                    for name, value in re.findall(r'\{L"([^"]+)",\{([^}]+)\}\}', pin_header)}

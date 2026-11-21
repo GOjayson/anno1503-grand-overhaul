@@ -35,7 +35,7 @@ FEATURE_VERSIONS = {'world_settings': '0.9.0-beta.1', 'food_overhaul': '0.6.0-de
 _MODULAR_SOURCES = frozenset('src/anno1503_overhaul/' + name + '.py' for name in (
     'frozen_runner', 'legacy_worker', 'installer', 'selector', 'filesystem', 'packages',
     'vanilla', 'beta_package', 'beta_inputs', 'world_runtime_build', 'world_options_build',
-    'food06_package', 'food_artwork', 'food_diet', 'food_household', 'food_supply',
+    'food06_package', 'food_artwork', 'food_diet', 'food_household', 'food_progression', 'food_supply',
     'food_world_ai', 'food_world_backend', 'food_world_bug_fixes', 'food_world_package',
     'food_world_policy', 'food_world_runtime', 'food_world_public', 'food_world_public_ai',
     'food_launch', 'ambient_sound', 'city_statistics',

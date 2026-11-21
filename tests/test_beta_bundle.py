@@ -29,6 +29,7 @@ class BetaBundle(unittest.TestCase):
         files = builder.public_inventory(ROOT)
         for name in ('src/anno1503_overhaul/native/food_household.c',
                      'src/anno1503_overhaul/ambient_sound_baselines.py',
+                     'src/anno1503_overhaul/food_progression.py',
                      'src/anno1503_overhaul/food_world_package.py',
                      'src/anno1503_overhaul/food_world_public.py',
                      'src/anno1503_overhaul/food_world_public_ai.py',

@@ -47,6 +47,19 @@ def _private_ai(corpus):
     return result
 
 
+def _native_food_policy(*, city_statistics_guard):
+    path = 'src/anno1503_overhaul/food_world_policy.py'
+    source = common._read(common.ROOT, path)
+    policy = food_files()
+    if city_statistics_guard:
+        world = policy['AnnoWelt.dll']
+        plain = world['after_sha256']
+        guarded = food._welt_policy(city_statistics_guard=True)
+        source = common._replace(source, plain.encode('ascii'), guarded.encode('ascii'), path)
+        world['after_sha256'] = guarded
+    return source, policy
+
+
 def _source_readiness():
     """Two coherent exact source profiles; no mixture of historical versions."""
     return b'''"""Read-only normal-client source check for the combined Food06 host."""
@@ -130,7 +143,8 @@ def _recipe(raw, corpus, runtime, view, welt, source, copy, baselines=None, *, b
     files.update({'world/frozen-inputs/' + name: value for name, value in corpus.items()})
     files['world/frozen_world_patch.json'] = raw
     files['world/world_mod.py'] = common._read(common.ROOT, 'src/anno1503_overhaul/food_world_backend.py')
-    files['world/support/food_world_policy.py'] = common._read(common.ROOT, 'src/anno1503_overhaul/food_world_policy.py')
+    policy_source, native_food_policy = _native_food_policy(city_statistics_guard=city_statistics_guard)
+    files['world/support/food_world_policy.py'] = policy_source
     files['world/support/stock_baseline.py'] = common._read(common.ROOT, 'src/anno1503_overhaul/vanilla.py')
     bug_fixes = None
     if bug_fixes_enabled:
@@ -157,7 +171,7 @@ def _recipe(raw, corpus, runtime, view, welt, source, copy, baselines=None, *, b
     spec = dict(profile=PROFILE, version=WORLD_VERSION, food_version=VERSION, status='DEVELOPMENT',
                 food_enabled=True, host_root=copy, input_source_root=source, original_game_root=copy,
                 exe_sha256=frozen['exe_sha256'], native_sha256=host,
-                food_files=food_files(), new_world_required=True, old_save_migration_supported=False,
+                food_files=native_food_policy, new_world_required=True, old_save_migration_supported=False,
                 introduced_files=introduced,
                 payloads={name: common._sha(value) for name, value in sorted(payloads.items())},
                 expanded_engine_patch_count=173, expanded_engine_plan_sha256=engine_pin,

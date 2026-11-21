@@ -43,9 +43,9 @@ def _welt_policy(*, city_statistics_guard: bool = False) -> str:
         if city_statistics_guard:
             from .city_statistics import FOOD06_GUARDED_WELT_SHA256 as digest
         else:
-            from .food_supply import FOOD06_WELT_SHA256 as digest
+            from .food_supply import FOOD_PROGRESSION_WELT_SHA256 as digest
     except ImportError as exc:
-        raise common.PackageError("The reviewed Food 0.6 household supply guards are not ready.") from exc
+        raise common.PackageError("The reviewed Food 0.6 household progression is not ready.") from exc
     if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
         raise common.PackageError("The Food 0.6 World derivative has not passed its build review.")
     return digest
@@ -286,9 +286,9 @@ def _build_welt_from_source(source: Path, *, city_statistics_guard: bool = False
     common._require_sha(common._read(source, "Anno1503.exe"), spec["exe_sha256"],
                         "supported History Edition executable")
     food05 = _food05_native(common._read(source, "AnnoWelt.dll"), spec, "AnnoWelt.dll")
-    from .food_supply import build_welt
+    from .food_supply import build_progression_welt
 
-    welt, proof = build_welt(food05)
+    welt, proof = build_progression_welt(food05)
     if city_statistics_guard:
         welt = _guard_welt(welt)
         proof = dict(proof, city_statistics_guard_sha256=common._sha(welt))
@@ -317,7 +317,7 @@ def prepare_food06_package(output_dir, source_game, copy_game=None, *,
         raise common.PackageError("The Food household supply build returned no review proof.")
     if city_statistics_guard:
         welt = _guard_welt(welt)
-    common._require_sha(welt, welt_pin, "reviewed Food 0.6 household supply guards")
+    common._require_sha(welt, welt_pin, "reviewed Food 0.6 household progression")
     files = _recipe(str(source), None if copy is None else str(copy), view, welt,
                     city_statistics_guard=city_statistics_guard)
     files["manifest.json"] = common._encoded(_manifest(

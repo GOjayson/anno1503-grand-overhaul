@@ -66,7 +66,7 @@ class PublicFoodWorldTests(unittest.TestCase):
         spec=json.loads((self.output/'world/world_patch.json').read_bytes())
         self.assertEqual(spec['native_sha256'],self.host)
         self.assertEqual(len(spec['introduced_files']),19)
-        self.assertEqual(spec['food_files'],public.food_files())
+        self.assertEqual(spec['food_files'],combined.food_files())
         self.assertNotIn('frozen_world_spec_sha256',spec)
         self.assertFalse((self.output/'world/frozen-inputs').exists())
         self.assertFalse((self.output/'world/frozen_world_patch.json').exists())
@@ -117,6 +117,10 @@ class PublicFoodWorldTests(unittest.TestCase):
         spec=json.loads((self.output/'world/world_patch.json').read_bytes())
         self.assertEqual(spec['bug_fixes'],recipe)
         self.assertEqual(spec['native_sha256'],self.guarded_host)
+        self.assertEqual(spec['food_files']['AnnoWelt.dll']['after_sha256'],self.guarded_host['AnnoWelt.dll'])
+        policy = {}
+        exec((self.output/'world/support/food_world_policy.py').read_bytes(), policy)
+        self.assertEqual(policy['food_files'](), spec['food_files'])
         for item in (self.output/'world/support').glob('_combined_*.py'):
             ast.parse(item.read_bytes())
         changed=self.output/'world/support/_combined_bugfix_recipe.py'

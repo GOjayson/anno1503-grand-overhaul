@@ -12,12 +12,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 from anno1503_overhaul import city_statistics
+from anno1503_overhaul.food_supply import FOOD05_WELT_SHA256, build_progression_welt
 from anno1503_overhaul.world_native import checksum
 from anno1503_overhaul.world_runtime_build import PE
 
 
-NATIVE_PATH = ROOT / ".local/game-copies/Food 0.6 Development/AnnoWelt.dll"
-NATIVE_SHA256 = "e3755d8d796dae276ee5d62f08e778cb4cbec5d6d27053c608e43d7440108d71"
+NATIVE_PATH = ROOT / ".local/baselines/world_settings/native/AnnoWelt.source.dll"
 FUNCTION_RVA = 0xAE4F0
 FUNCTION_SIZE = 0x2FD
 MILESTONE = 0x798
@@ -28,11 +28,11 @@ SERVICE_STATISTIC = 0x958
 
 def original_image():
     if not NATIVE_PATH.is_file():
-        raise unittest.SkipTest("The private unpatched Food 0.6 native fixture is unavailable.")
+        raise unittest.SkipTest("The private Food 0.5 native source fixture is unavailable.")
     data = NATIVE_PATH.read_bytes()
-    if hashlib.sha256(data).hexdigest() != NATIVE_SHA256:
-        raise unittest.SkipTest("The private Food 0.6 fixture is a different build.")
-    return data
+    if hashlib.sha256(data).hexdigest() != FOOD05_WELT_SHA256:
+        raise unittest.SkipTest("The private Food 0.5 source fixture is a different build.")
+    return build_progression_welt(data)[0]
 
 
 class CityStatisticsPatchTests(unittest.TestCase):
