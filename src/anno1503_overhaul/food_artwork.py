@@ -145,10 +145,11 @@ def _palette(data, ident):
     return raw, [(raw[n + 2], raw[n + 1], raw[n]) for n in range(0, 1024, 4)]
 
 
-def _decode(frame):
+def _decode(frame, *, additional_sizes=()):
     parts = _parts(frame)
     width, height = struct.unpack_from("<HH", parts["HEAD"])
-    if (width, height) not in ((50, 50), (39, 39), (40, 39)):
+    if ((width, height) not in ((50, 50), (39, 39), (40, 39))
+            and (width, height) not in additional_sizes):
         raise FoodArtworkError("Unsupported native commodity icon dimensions.")
     body = parts.get("BODY", b"")
     pixels = [-1] * (width * height)
@@ -201,8 +202,8 @@ def _encode(width, height, pixels):
     return bytes(body)
 
 
-def _replace_body(frame, pixels, palette_id=None):
-    width, height, _ = _decode(frame)
+def _replace_body(frame, pixels, palette_id=None, *, additional_sizes=()):
+    width, height, _ = _decode(frame, additional_sizes=additional_sizes)
     body = _encode(width, height, pixels)
     parts = []
     for tag, a, b in _chunks(frame, 24):
@@ -216,7 +217,7 @@ def _replace_body(frame, pixels, palette_id=None):
             parts.append(frame[a:b])
     payload = frame[16:24] + b"".join(parts)
     result = _chunk("TEXTURE", payload)
-    if _decode(result) != (width, height, pixels):
+    if _decode(result, additional_sizes=additional_sizes) != (width, height, pixels):
         raise FoodArtworkError("Native icon composition failed its roundtrip.")
     return result
 

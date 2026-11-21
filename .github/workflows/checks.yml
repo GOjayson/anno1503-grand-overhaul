@@ -20,5 +20,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: python -B -m unittest discover -s tests -v
       - run: python -B tools/check_repository.py
-      - run: python -m pip install -e .
+      - run: python -m pip install -e ".[culture-buildings]"
+      - run: python -B -m unittest discover -s tests -p test_culture_buildings.py -v
+      - run: python -B -m anno1503_overhaul.culture_buildings --help
       - run: python -B -m anno1503_overhaul features
