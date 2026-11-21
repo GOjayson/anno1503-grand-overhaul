@@ -6,7 +6,8 @@
 #endif
 #define WS_PRESET_MAX_BYTES 4096u
 #define WS_PRESET_NAME_MAX 32u
-static const char wsPresetHeader[]="ANNO1503_WORLD_PRESET 5\nGENERATOR=" WS_WORLD_OPTIONS_GENERATOR "\n";
+static const char wsPresetHeader[]="ANNO1503_WORLD_PRESET 6\nGENERATOR=" WS_WORLD_OPTIONS_GENERATOR "\n";
+static const char wsPresetBetaHeader5[]="ANNO1503_WORLD_PRESET 5\nGENERATOR=ws6-a2d7e8ee018ab1e6a18a933efbb8482391c78e35a54e29b05523e5af24a6ea2e\n";
 /* Exact predecessors migrate in memory only. New generation options retain
  * the preceding selection path; added disaster choices use native Normal. */
 static const char wsPresetLegacyHeader4[]="ANNO1503_WORLD_PRESET 4\nGENERATOR=ws6-6113d0190fad378ad46a5a36c921b7d70b437f31359c6836ba3dd74c585f3327\n";
@@ -16,6 +17,7 @@ static const char wsPresetLegacyHeader5[]="ANNO1503_WORLD_PRESET 5\nGENERATOR=ws
 static const char wsPresetDev4Header5[]="ANNO1503_WORLD_PRESET 5\nGENERATOR=ws6-86ef692d92f3b8bcf7d1262a6a05a0c1f148e0fabf206733c3a37baf16957eac\n";
 typedef struct WSMenuPresetField {const char *name;size_t offset;int unsignedValue;} WSMenuPresetField;
 #define WS_PRESET_FIELD(name,isUnsigned) {#name,offsetof(WSWorldSettings,name),isUnsigned}
+#define WS_PRESET_ARRAY(name,index) {#name #index,offsetof(WSWorldSettings,name)+(index)*sizeof(int32_t),0}
 static const WSMenuPresetField wsPresetFields[]={
  WS_PRESET_FIELD(difficulty,0),WS_PRESET_FIELD(islandSize,0),
  WS_PRESET_FIELD(islandCount,0),WS_PRESET_FIELD(spacing,0),
@@ -37,9 +39,26 @@ static const WSMenuPresetField wsPresetFields[]={
  WS_PRESET_FIELD(minTemperate,0),WS_PRESET_FIELD(maxTemperate,0),
  WS_PRESET_FIELD(minTropical,0),WS_PRESET_FIELD(maxTropical,0),
  WS_PRESET_FIELD(disasterMask,1),WS_PRESET_FIELD(disasterFrequency,1),
- WS_PRESET_FIELD(disasterSeverity,1),WS_PRESET_FIELD(islandRotation,0)
+ WS_PRESET_FIELD(disasterSeverity,1),WS_PRESET_FIELD(islandRotation,0),
+ WS_PRESET_ARRAY(climateMin,0),WS_PRESET_ARRAY(climateMin,1),WS_PRESET_ARRAY(climateMin,2),
+ WS_PRESET_ARRAY(climateMin,3),WS_PRESET_ARRAY(climateMin,4),WS_PRESET_ARRAY(climateMin,5),
+ WS_PRESET_ARRAY(climateMax,0),WS_PRESET_ARRAY(climateMax,1),WS_PRESET_ARRAY(climateMax,2),
+ WS_PRESET_ARRAY(climateMax,3),WS_PRESET_ARRAY(climateMax,4),WS_PRESET_ARRAY(climateMax,5),
+ WS_PRESET_ARRAY(islandSizeMin,0),WS_PRESET_ARRAY(islandSizeMin,1),WS_PRESET_ARRAY(islandSizeMin,2),
+ WS_PRESET_ARRAY(islandSizeMin,3),WS_PRESET_ARRAY(islandSizeMin,4),WS_PRESET_ARRAY(islandSizeMin,5),
+ WS_PRESET_ARRAY(islandSizeMin,6),WS_PRESET_ARRAY(islandSizeMin,7),WS_PRESET_ARRAY(islandSizeMin,8),
+ WS_PRESET_ARRAY(islandSizeMin,9),WS_PRESET_ARRAY(islandSizeMin,10),WS_PRESET_ARRAY(islandSizeMin,11),
+ WS_PRESET_ARRAY(islandSizeMin,12),WS_PRESET_ARRAY(islandSizeMin,13),WS_PRESET_ARRAY(islandSizeMin,14),
+ WS_PRESET_ARRAY(islandSizeMin,15),WS_PRESET_ARRAY(islandSizeMin,16),WS_PRESET_ARRAY(islandSizeMin,17),
+ WS_PRESET_ARRAY(islandSizeMax,0),WS_PRESET_ARRAY(islandSizeMax,1),WS_PRESET_ARRAY(islandSizeMax,2),
+ WS_PRESET_ARRAY(islandSizeMax,3),WS_PRESET_ARRAY(islandSizeMax,4),WS_PRESET_ARRAY(islandSizeMax,5),
+ WS_PRESET_ARRAY(islandSizeMax,6),WS_PRESET_ARRAY(islandSizeMax,7),WS_PRESET_ARRAY(islandSizeMax,8),
+ WS_PRESET_ARRAY(islandSizeMax,9),WS_PRESET_ARRAY(islandSizeMax,10),WS_PRESET_ARRAY(islandSizeMax,11),
+ WS_PRESET_ARRAY(islandSizeMax,12),WS_PRESET_ARRAY(islandSizeMax,13),WS_PRESET_ARRAY(islandSizeMax,14),
+ WS_PRESET_ARRAY(islandSizeMax,15),WS_PRESET_ARRAY(islandSizeMax,16),WS_PRESET_ARRAY(islandSizeMax,17)
 };
 #undef WS_PRESET_FIELD
+#undef WS_PRESET_ARRAY
 
 static int wsMenuUnsigned(const char *text,size_t length,uint32_t *out){
  if(!text||!out||!length||length>10u)return 0;
@@ -96,6 +115,8 @@ static int wsPresetDecode(const char *data,uint32_t length,WSWorldSettings *out)
  canonical[n]=0;size_t at=sizeof(wsPresetHeader)-1;
  size_t fields=sizeof(wsPresetFields)/sizeof(wsPresetFields[0]);
  if(at>n||memcmp(canonical,wsPresetHeader,at)){
+  at=sizeof(wsPresetBetaHeader5)-1;fields=43u;
+  if(at>n||memcmp(canonical,wsPresetBetaHeader5,at)){
   at=sizeof(wsPresetDev4Header5)-1;
   if(at>n||memcmp(canonical,wsPresetDev4Header5,at)){
   at=sizeof(wsPresetLegacyHeader5)-1;
@@ -107,10 +128,13 @@ static int wsPresetDecode(const char *data,uint32_t length,WSWorldSettings *out)
   }
   }
   }
+  }
  }
  WSWorldSettings result={0};result.size=sizeof result;
  result.pirateFrequency=result.pirateStrength=result.merchantFrequency=1;
  result.maxPolar=result.maxTemperate=result.maxTropical=128;
+ for(uint32_t i=0;i<6u;i++)result.climateMax[i]=128;
+ for(uint32_t i=0;i<18u;i++)result.islandSizeMax[i]=128;
  result.disasterMask=31;result.disasterFrequency=result.disasterSeverity=341;
  for(size_t i=0;i<fields;i++){
   const WSMenuPresetField *field=&wsPresetFields[i];size_t key=strlen(field->name);

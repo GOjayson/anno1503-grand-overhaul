@@ -81,7 +81,9 @@ class Settings(C.Structure):
                              'pirateStrength', 'merchantFrequency', 'islandVariety',
                              'minPolar', 'maxPolar', 'minTemperate', 'maxTemperate',
                              'minTropical', 'maxTropical', 'disasterMask',
-                             'disasterFrequency', 'disasterSeverity', 'islandRotation')]
+                             'disasterFrequency', 'disasterSeverity', 'islandRotation')] + [
+                    ('climateMin', C.c_int32*6), ('climateMax', C.c_int32*6),
+                    ('islandSizeMin', C.c_int32*18), ('islandSizeMax', C.c_int32*18)]
 
 
 class Island(C.Structure):
@@ -100,8 +102,13 @@ def settings(**overrides):
                       pirateFrequency=1, pirateStrength=1, merchantFrequency=1,
                       maxPolar=128, maxTemperate=128, maxTropical=128,
                       disasterMask=31, disasterFrequency=341, disasterSeverity=341)
+    result.climateMax[:] = [128]*6
+    result.islandSizeMax[:] = [128]*18
     for key, value in overrides.items():
-        setattr(result, key, value)
+        if isinstance(getattr(result, key), C.Array):
+            getattr(result, key)[:] = value
+        else:
+            setattr(result, key, value)
     return result
 
 
@@ -174,6 +181,12 @@ __declspec(dllexport) uint32_t FixtureTemplateInfo(uint32_t index,uint32_t*out){
  out[0]=t->climate;out[1]=t->cultures;out[2]=wsTemplateFaction(t);out[3]=wsTemplateShapeIds[index];return 1;
 }
 __declspec(dllexport) int FixtureQuotaCertificate(const WSWorldSettings*s,const WSPlanIsland*input,uint32_t count){return wsClimateQuotaCertificate(s,input,count);}
+__declspec(dllexport) int FixtureQuotaSettings(const WSWorldSettings*s,char*error){
+ const char*reason=wsIslandQuotaSettingsError(s);if(error)snprintf(error,512,"%s",reason?reason:"");return reason==NULL;
+}
+__declspec(dllexport) int FixtureQuotaCatalogue(const WSWorldSettings*s,char*error){
+ return wsConfigureWorldSize(s)&&wsIslandQuotaCatalogue(s,error,512);
+}
 __declspec(dllexport) int FixtureRotationEligible(uint32_t index){return wsIslandRotationEligible(index);}
 __declspec(dllexport) int FixtureRotationValidate(const WSWorldSettings*s,const WSPlanIsland*rows,uint32_t count){return wsIslandRotationsValid(s,rows,count);}
 __declspec(dllexport) int FixtureRotationAssign(const WSWorldSettings*s,uint32_t seed,WSPlanIsland*rows,uint32_t count){
@@ -204,6 +217,8 @@ __declspec(dllexport) int FixtureRotationSource(uint32_t r,uint32_t width,uint32
         cls.lib.FixtureTemplateInfo.restype = C.c_uint32
         cls.lib.FixtureQuotaCertificate.argtypes = [C.POINTER(Settings), C.POINTER(Island), C.c_uint32]
         cls.lib.FixtureQuotaCertificate.restype = C.c_int
+        cls.lib.FixtureQuotaSettings.argtypes = [C.POINTER(Settings), C.c_char_p]
+        cls.lib.FixtureQuotaCatalogue.argtypes = [C.POINTER(Settings), C.c_char_p]
         cls.lib.FixtureRotationEligible.argtypes = [C.c_uint32]
         cls.lib.FixtureRotationEligible.restype = C.c_int
         cls.lib.FixtureRotationValidate.argtypes = [C.POINTER(Settings), C.POINTER(Island), C.c_uint32]
@@ -254,7 +269,7 @@ __declspec(dllexport) int FixtureRotationSource(uint32_t r,uint32_t width,uint32
         return list(out[:count])
 
     def test_native_abi_and_weighted_climate_targets(self):
-        self.assertEqual(self.lib.FixtureABI(), 176)
+        self.assertEqual(self.lib.FixtureABI(), 368)
         self.assertEqual(Settings.pirateFrequency.offset, 120)
         self.assertEqual(Settings.pirateStrength.offset, 124)
         self.assertEqual(Settings.merchantFrequency.offset, 128)
@@ -404,6 +419,98 @@ __declspec(dllexport) int FixtureRotationSource(uint32_t r,uint32_t width,uint32
                 C.memset(C.byref(out), 0xa5, C.sizeof(out));before = bytes(out)
                 self.assertEqual(self.lib.SelectPlan(C.byref(value), value.mapSeed, out, C.byref(attempt)), 0)
                 self.assertEqual((bytes(out), attempt.value), (before, 0xcccccccc))
+
+    def test_six_climates_and_all_size_cells_are_independent_hard_counts(self):
+        counts = [2,3,5,4,6,4]
+        sizes = [1,1,0, 1,1,1, 1,3,1, 2,2,0, 2,3,1, 1,2,1]
+        for mode in range(3):
+            for seed in (3719,123456789,0xffffffff):
+                with self.subTest(mode=mode, seed=seed):
+                    value = settings(worldSize=2048, spacing=0, mapSeed=seed, islandVariety=mode,
+                        climateMin=counts, climateMax=counts, islandSizeMin=sizes, islandSizeMax=sizes)
+                    rows = self.native_plan(value)
+                    self.assert_geometry(value, rows)
+                    self.assertEqual([sum(p.climate == c for p in rows) for c in range(6)], counts)
+                    cells = Counter((p.climate, 0 if max(p.width,p.height)<128 else 1 if max(p.width,p.height)==128 else 2) for p in rows)
+                    self.assertEqual([cells[c,z] for c in range(6) for z in range(3)], sizes)
+                    cultures = crops = minerals = special = 0
+                    for row in rows:
+                        cultures |= row.cultures; crops |= row.cropMask; minerals |= row.mineralMask
+                        info = (C.c_uint32*4)();self.lib.FixtureTemplateInfo(row.templateIndex,info);special |= info[2]
+                    self.assertEqual((cultures,crops,minerals&0x2f,special),(255,0x1ffff,0x2f,3))
+                    source = (Island*24)(*rows)
+                    self.assertEqual(self.lib.FixtureQuotaCertificate(C.byref(value),source,24),1)
+                    source[0].width = source[0].height = 256 if source[0].width < 256 else 64
+                    self.assertEqual(self.lib.FixtureQuotaCertificate(C.byref(value),source,24),0)
+
+    def test_size_and_separate_climate_minima_survive_the_variety_fallback(self):
+        counts = [2,3,5,4,6,4]
+        sizes = [1,1,0, 1,1,1, 1,3,1, 2,2,0, 2,3,1, 1,2,1]
+        for seed in (3719,123456789):
+            value = settings(worldSize=2048, spacing=0, mapSeed=seed,
+                climateMin=counts, climateMax=counts, islandSizeMin=sizes, islandSizeMax=sizes)
+            expected = [bytes(p) for p in self.native_plan(value)]
+            for mode in (1,2):
+                value.islandVariety = mode;out,attempt=(Island*128)(),C.c_uint32()
+                self.assertEqual(self.lib.FixtureForceVarietyFallback(C.byref(value),seed,out,C.byref(attempt)),24)
+                self.assertGreaterEqual(attempt.value,32)
+                self.assertEqual([bytes(p) for p in out[:24]],expected)
+
+    def test_individual_minimum_and_maximum_ranges_hold_for_every_layout(self):
+        minimum=[1,2,3,2,4,3];maximum=[3,5,7,6,8,6]
+        for style in range(3):
+            for seed in (0,3719,123456789,0xffffffff):
+                value=settings(worldSize=2048,spacing=0,mapSeed=seed,layoutStyle=style,
+                    climateMin=minimum,climateMax=maximum)
+                value.islandSizeMin[4*3]=2;value.islandSizeMin[2*3+1]=2;value.islandSizeMin[5*3+2]=1
+                value.islandSizeMax[0*3+2]=value.islandSizeMax[3*3+2]=0
+                value.islandSizeMax[2*3]=value.islandSizeMax[1*3]=2
+                with self.subTest(style=style,seed=seed):
+                    rows=self.native_plan(value);self.assert_geometry(value,rows)
+                    counts=[sum(p.climate==c for p in rows) for c in range(6)]
+                    self.assertTrue(all(minimum[c]<=counts[c]<=maximum[c] for c in range(6)),counts)
+                    cells=Counter((p.climate,0 if max(p.width,p.height)<128 else 1 if max(p.width,p.height)==128 else 2) for p in rows)
+                    self.assertTrue(all(value.islandSizeMin[c*3+z]<=cells[c,z]<=value.islandSizeMax[c*3+z] for c in range(6) for z in range(3)))
+                    self.assertEqual(self.lib.FixtureQuotaCertificate(C.byref(value),(Island*24)(*rows),24),1)
+
+    def test_unavailable_size_cells_and_global_filter_conflicts_have_a_reason(self):
+        for climate, size, global_size, fragment in ((0,2,3,'Polar large'), (4,0,1,'Jungle small')):
+            value = settings(islandSize=global_size, worldSize=2048)
+            value.islandSizeMin[climate*3+size] = 1
+            error = C.create_string_buffer(512)
+            self.assertEqual(self.lib.FixtureQuotaSettings(C.byref(value),error),1,error.value.decode())
+            self.assertEqual(self.lib.FixtureQuotaCatalogue(C.byref(value),error),0)
+            self.assertIn(fragment,error.value.decode())
+            out,attempt=(Island*128)(),C.c_uint32(0xcccccccc)
+            C.memset(C.byref(out),0xa5,C.sizeof(out));before=bytes(out)
+            self.assertEqual(self.lib.SelectPlan(C.byref(value),value.mapSeed,out,C.byref(attempt)),0)
+            self.assertEqual((bytes(out),attempt.value),(before,0xcccccccc))
+
+    def test_conflicting_individual_climate_and_size_intervals_fail_before_selection(self):
+        cases = (
+            ('climateMin',0,-1),('climateMax',0,0),('climateMax',3,129),
+            ('islandSizeMin',1,-1),('islandSizeMax',4,-1),('islandSizeMax',15,129),
+        )
+        for field,index,number in cases:
+            value=settings();getattr(value,field)[index]=number
+            with self.subTest(field=field,index=index,number=number):
+                error=C.create_string_buffer(512)
+                self.assertEqual(self.lib.FixtureQuotaSettings(C.byref(value),error),0)
+                self.assertTrue(error.value)
+        for limits in (
+            dict(climateMin=[5]*6),
+            dict(climateMax=[2]*6),
+            dict(climateMin=[5,0,0,0,0,0],islandSizeMax=[1,1,0]+[128]*15),
+            dict(climateMax=[2,128,128,128,128,128],islandSizeMin=[2,2,0]+[0]*15),
+            dict(minPolar=8,climateMax=[2,2,128,128,128,128]),
+        ):
+            value=settings(**limits);error=C.create_string_buffer(512)
+            with self.subTest(limits=limits):
+                self.assertEqual(self.lib.FixtureQuotaSettings(C.byref(value),error),0)
+                out,attempt=(Island*128)(),C.c_uint32(0xcccccccc)
+                C.memset(C.byref(out),0xa5,C.sizeof(out));before=bytes(out)
+                self.assertEqual(self.lib.SelectPlan(C.byref(value),value.mapSeed,out,C.byref(attempt)),0)
+                self.assertEqual((bytes(out),attempt.value),(before,0xcccccccc))
 
     def test_world_fit_fallback_keeps_hard_quotas_and_replays_allow_repeats_search(self):
         for size in (3,4):

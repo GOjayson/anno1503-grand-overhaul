@@ -30,6 +30,46 @@ static void wsMenuPage(DialogState*d,int page){
  for(int i=0;i<8;i++)SendDlgItemMessageA(d->window,ID_TAB_WORLD+i,BM_SETSTATE,i==page,0);
 }
 static void wsMenuPutNumber(DialogState*d,int id,int32_t value){char text[32];snprintf(text,sizeof text,"%d",value);SetDlgItemTextA(d->window,id,text);}
+static int wsMenuReadSizeLimits(DialogState*d){
+ if(d->quotaClimate<0||d->quotaClimate>=6)return 0;
+ int32_t minimum[3],maximum[3];
+ for(uint32_t i=0;i<3u;i++)if(!integer(d->window,ID_SIZE_MIN+(int)i,&minimum[i])||
+    !integer(d->window,ID_SIZE_MAX+(int)i,&maximum[i])||minimum[i]<0||minimum[i]>128||maximum[i]<0||maximum[i]>128){
+  status(d,"Enter whole island-size limits from 0 to 128 before changing climate.");return 0;
+ }
+ for(uint32_t i=0;i<3u;i++){uint32_t at=(uint32_t)d->quotaClimate*3u+i;d->quotaSizeMin[at]=minimum[i];d->quotaSizeMax[at]=maximum[i];}
+ return 1;
+}
+static void wsMenuShowSizeLimits(DialogState*d){
+ if(d->quotaClimate<0||d->quotaClimate>=6)return;
+ int creating=d->creating;d->creating=1;
+ SendDlgItemMessageA(d->window,ID_SIZE_CLIMATE,CB_SETCURSEL,d->quotaClimate,0);
+ for(uint32_t i=0;i<3u;i++){uint32_t at=(uint32_t)d->quotaClimate*3u+i;
+  wsMenuPutNumber(d,ID_SIZE_MIN+(int)i,d->quotaSizeMin[at]);wsMenuPutNumber(d,ID_SIZE_MAX+(int)i,d->quotaSizeMax[at]);
+ }
+ d->creating=creating;
+}
+static int wsMenuChangeSizeClimate(DialogState*d,int selected){
+ if(d->creating)return 1;
+ if(selected<0||selected>=6||!wsMenuReadSizeLimits(d)){
+  int creating=d->creating;d->creating=1;
+  SendDlgItemMessageA(d->window,ID_SIZE_CLIMATE,CB_SETCURSEL,d->quotaClimate,0);d->creating=creating;return 0;
+ }
+ d->quotaClimate=selected;wsMenuShowSizeLimits(d);return 1;
+}
+static void wsMenuLegacyLimits(DialogState*d){
+ const WSSettings*s=&d->settings;char text[256];
+ int active=s->minPolar||s->minTemperate||s->minTropical||s->maxPolar!=128||s->maxTemperate!=128||s->maxTropical!=128;
+ if(active)snprintf(text,sizeof text,"Old pairs: Polar/Tundra %d-%d; North/Prairie %d-%d; Jungle/Steppe %d-%d.",
+  s->minPolar,s->maxPolar,s->minTemperate,s->maxTemperate,s->minTropical,s->maxTropical);
+ else snprintf(text,sizeof text,"Small: 64/80 tiles; medium: 128; large: 256. Polar has no large template.");
+ SetDlgItemTextA(d->window,ID_LEGACY_LIMITS,text);EnableWindow(GetDlgItem(d->window,ID_CLEAR_LEGACY_LIMITS),active);
+}
+static void wsMenuClearPairedLimits(DialogState*d){
+ d->settings.minPolar=d->settings.minTemperate=d->settings.minTropical=0;
+ d->settings.maxPolar=d->settings.maxTemperate=d->settings.maxTropical=128;
+ wsMenuLegacyLimits(d);
+}
 static void wsMenuPutSeed(DialogState*d,uint32_t value){char text[16];snprintf(text,sizeof text,"%u",value);SetDlgItemTextA(d->window,ID_SEED,text);}
 static int wsMenuReadSeed(DialogState*d,uint32_t*out){
  char text[16];int length=GetWindowTextLengthA(GetDlgItem(d->window,ID_SEED));
@@ -70,9 +110,9 @@ static void wsMenuIslandInfo(DialogState*d){
   EnableWindow(GetDlgItem(d->window,ID_USE_ISLAND),FALSE);return;
  }
  if(d->previewValid&&d->previewCount<=128u){
-  uint32_t counts[3]={0};char climateSummary[128];
-  for(uint32_t i=0;i<d->previewCount;i++)if(d->previewIslands[i].climate<6u)counts[d->previewIslands[i].climate/2u]++;
-  snprintf(climateSummary,sizeof climateSummary,"Preview: %u polar, %u temperate, %u tropical islands.",counts[0],counts[1],counts[2]);
+  uint32_t counts[6]={0};char climateSummary[192];
+  for(uint32_t i=0;i<d->previewCount;i++)if(d->previewIslands[i].climate<6u)counts[d->previewIslands[i].climate]++;
+  snprintf(climateSummary,sizeof climateSummary,"Preview: Polar %u; Tundra %u; Northern %u; Prairie %u; Jungle %u; Steppe %u.",counts[0],counts[1],counts[2],counts[3],counts[4],counts[5]);
   SetDlgItemTextA(d->window,ID_CLIMATE_SUMMARY,climateSummary);
  }else SetDlgItemTextA(d->window,ID_CLIMATE_SUMMARY,"Climate counts appear when the preview is ready.");
  int selected=d->previewValid&&d->inspectedIsland>=0&&(uint32_t)d->inspectedIsland<d->previewCount;
@@ -108,11 +148,18 @@ static int wsMenuCollectAdvanced(DialogState*d,WSSettings*s){
  s->merchantFrequency=(int)SendDlgItemMessageA(d->window,ID_MERCHANT_FREQUENCY,CB_GETCURSEL,0,0);
  s->islandVariety=(int)SendDlgItemMessageA(d->window,ID_ISLAND_VARIETY,CB_GETCURSEL,0,0);
  s->islandRotation=SendDlgItemMessageA(d->window,ID_ISLAND_ROTATION,BM_GETCHECK,0,0)==BST_CHECKED;
- if(!integer(d->window,ID_MIN_POLAR,&s->minPolar)||!integer(d->window,ID_MAX_POLAR,&s->maxPolar)||
-    !integer(d->window,ID_MIN_TEMPERATE,&s->minTemperate)||!integer(d->window,ID_MAX_TEMPERATE,&s->maxTemperate)||
-    !integer(d->window,ID_MIN_TROPICAL,&s->minTropical)||!integer(d->window,ID_MAX_TROPICAL,&s->maxTropical)){
+ /* Old paired limits are carried only by imported presets, never inferred
+  * from the six independent rows. The explicit clear button removes them. */
+ s->minPolar=d->settings.minPolar;s->maxPolar=d->settings.maxPolar;
+ s->minTemperate=d->settings.minTemperate;s->maxTemperate=d->settings.maxTemperate;
+ s->minTropical=d->settings.minTropical;s->maxTropical=d->settings.maxTropical;
+ for(uint32_t i=0;i<6u;i++)if(!integer(d->window,ID_CLIMATE_MIN+(int)i,&s->climateMin[i])||
+    !integer(d->window,ID_CLIMATE_MAX+(int)i,&s->climateMax[i])){
   status(d,"Enter a whole number from 0 to 128 for every climate minimum and maximum.");return 0;
  }
+ if(!wsMenuReadSizeLimits(d))return 0;
+ memcpy(s->islandSizeMin,d->quotaSizeMin,sizeof s->islandSizeMin);
+ memcpy(s->islandSizeMax,d->quotaSizeMax,sizeof s->islandSizeMax);
  s->disasterMask=s->disasterFrequency=s->disasterSeverity=0;
  for(uint32_t i=0;i<5u;i++){
   if(SendDlgItemMessageA(d->window,ID_DISASTER_ENABLE+(int)i,BM_GETCHECK,0,0)==BST_CHECKED)s->disasterMask|=1u<<i;
@@ -171,11 +218,11 @@ static void wsMenuApplySettings(DialogState*d,const WSSettings*s){
  SendDlgItemMessageA(d->window,ID_GUARANTEE_BASICS,BM_SETCHECK,s->guaranteeBasics?BST_CHECKED:BST_UNCHECKED,0);
  wsMenuPutNumber(d,ID_COUNT,s->islandCount);wsMenuPutNumber(d,ID_SPACING,s->spacing);
  wsMenuPutNumber(d,ID_CARGO_TOOLS,s->cargoTools);wsMenuPutNumber(d,ID_CARGO_WOOD,s->cargoWood);wsMenuPutNumber(d,ID_CARGO_FOOD,s->cargoFood);
- wsMenuPutNumber(d,ID_MIN_POLAR,s->minPolar);wsMenuPutNumber(d,ID_MAX_POLAR,s->maxPolar);
- wsMenuPutNumber(d,ID_MIN_TEMPERATE,s->minTemperate);wsMenuPutNumber(d,ID_MAX_TEMPERATE,s->maxTemperate);
- wsMenuPutNumber(d,ID_MIN_TROPICAL,s->minTropical);wsMenuPutNumber(d,ID_MAX_TROPICAL,s->maxTropical);
+ for(uint32_t i=0;i<6u;i++){wsMenuPutNumber(d,ID_CLIMATE_MIN+(int)i,s->climateMin[i]);wsMenuPutNumber(d,ID_CLIMATE_MAX+(int)i,s->climateMax[i]);}
+ memcpy(d->quotaSizeMin,s->islandSizeMin,sizeof d->quotaSizeMin);memcpy(d->quotaSizeMax,s->islandSizeMax,sizeof d->quotaSizeMax);
+ d->quotaClimate=0;wsMenuShowSizeLimits(d);
  wsMenuPutSeed(d,s->mapSeed);d->previewSeed=s->mapSeed;d->preferredIsland=s->startIsland;d->settings=*s;
- d->inspectedIsland=-1;wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuDisasterControls(d);wsMenuStartHint(d);d->creating=0;
+ d->inspectedIsland=-1;wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuDisasterControls(d);wsMenuLegacyLimits(d);wsMenuStartHint(d);d->creating=0;
 }
 static void wsMenuCopySeed(DialogState*d){
  uint32_t seed;if(!wsMenuReadSeed(d,&seed))return;wchar_t text[16];swprintf(text,16,L"%u",seed);
@@ -258,6 +305,11 @@ static void wsMenuSavePreset(DialogState*d){
  wsPresetRefresh(d,name);status(d,"Preset saved, including the seed and every world setting.");
 }
 static int wsMenuCommand(DialogState*d,int id,int notice){
+ if(id==ID_SIZE_CLIMATE&&notice==CBN_SELCHANGE){wsMenuChangeSizeClimate(d,(int)SendDlgItemMessageA(d->window,ID_SIZE_CLIMATE,CB_GETCURSEL,0,0));return 1;}
+ if(id==ID_CLEAR_LEGACY_LIMITS&&notice==BN_CLICKED){
+  wsMenuClearPairedLimits(d);d->preferredIsland=d->inspectedIsland=-1;
+  invalidatePreview(d);SetTimer(d->window,WS_PREVIEW_TIMER,50,NULL);return 1;
+ }
  if(id>=ID_TAB_WORLD&&id<ID_TAB_WORLD+8&&notice==BN_CLICKED){wsMenuPage(d,id-ID_TAB_WORLD);return 1;}
  if(id==ID_USE_ISLAND&&notice==BN_CLICKED){
   if(wsMenuMapConcealed(d)){status(d,"Terra incognita keeps island selection hidden. Choose a preferred climate instead.");return 1;}

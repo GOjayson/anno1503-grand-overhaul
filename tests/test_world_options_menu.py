@@ -17,7 +17,7 @@ from anno1503_overhaul.world_runtime_build import RuntimeBuildError
 
 FROZEN = ROOT / 'legacy/world_settings'
 NATIVE = ROOT / 'src/anno1503_overhaul/native/world_options'
-FIELDS = ('difficulty', 'islandSize', 'islandCount', 'spacing', 'aiCount',
+LEGACY_FIELDS = ('difficulty', 'islandSize', 'islandCount', 'spacing', 'aiCount',
           'cultures', 'factions', 'startingMoney', 'startingFleet', 'aiDifficulty',
           'plantFertility', 'mineralFertility', 'worldSize', 'mapSeed',
           'startClimate', 'startIsland', 'cargoMode', 'cargoTools', 'cargoWood',
@@ -26,6 +26,16 @@ FIELDS = ('difficulty', 'islandSize', 'islandCount', 'spacing', 'aiCount',
           'mapVisibility', 'enemyVisibility', 'pirateFrequency', 'pirateStrength', 'merchantFrequency',
           'islandVariety', 'minPolar', 'maxPolar', 'minTemperate', 'maxTemperate', 'minTropical', 'maxTropical',
           'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation')
+QUOTA_FIELDS = tuple(f'{name}{index}' for name, count in
+                    (('climateMin',6),('climateMax',6),('islandSizeMin',18),('islandSizeMax',18))
+                    for index in range(count))
+FIELDS = LEGACY_FIELDS + QUOTA_FIELDS
+QUOTA_DEFAULTS = {name: 128 if 'Max' in name else 0 for name in QUOTA_FIELDS}
+
+
+def legacy_schema(data):
+    return b''.join(line for line in data.splitlines(keepends=True)
+                    if not any(line.startswith(name.encode()+b'=') for name in QUOTA_FIELDS))
 
 DRIVER = r'''
 #include <stdint.h>
@@ -47,6 +57,7 @@ typedef struct WSWorldSettings {
  int32_t islandVariety,minPolar,maxPolar,minTemperate,maxTemperate,minTropical,maxTropical;
  uint32_t disasterMask,disasterFrequency,disasterSeverity;
  int32_t islandRotation;
+ int32_t climateMin[6],climateMax[6],islandSizeMin[18],islandSizeMax[18];
 } WSWorldSettings;
 typedef struct WSPlanIsland {uint32_t id,x,y,width,height,templateIndex,cropMask,mineralMask,cultures,climate,rotation;} WSPlanIsland;
 typedef struct WSIslandDetails {uint32_t size,index,fertileLand,oreSlots,whales,faction,startEligible;int32_t startOwner;uint32_t nearbyCrops,nearbyMinerals,resourceRadius;} WSIslandDetails;
@@ -79,6 +90,8 @@ int main(int argc,char**argv){
   .pirateFrequency=0,.pirateStrength=2,.merchantFrequency=1,
   .islandVariety=2,.minPolar=2,.maxPolar=8,.minTemperate=4,.maxTemperate=12,.minTropical=4,.maxTropical=14,
   .disasterMask=21,.disasterFrequency=548,.disasterSeverity=389,.islandRotation=1};
+ for(uint32_t i=0;i<6u;i++){value.climateMin[i]=(int32_t)i;value.climateMax[i]=128-(int32_t)i;}
+ for(uint32_t i=0;i<18u;i++){value.islandSizeMin[i]=(int32_t)i;value.islandSizeMax[i]=128-(int32_t)i;}
  char data[WS_PRESET_MAX_BYTES+1];uint32_t length=0;
  if(!strcmp(argv[1],"encode")){if(!wsPresetEncode(&value,data,WS_PRESET_MAX_BYTES,&length))return 8;fwrite(data,1,length,stdout);return 0;}
  if(strcmp(argv[1],"decode"))return 9;
@@ -282,7 +295,7 @@ class NativePresetCodecTests(unittest.TestCase):
     def test_round_trip_keeps_every_setting_and_unsigned_seed(self):
         value = self.decoded()
         self.assertEqual(set(value), {'size', *FIELDS})
-        self.assertEqual(value['size'], 176)
+        self.assertEqual(value['size'], 368)
         self.assertEqual(value['mapSeed'], 4294967295)
         self.assertEqual(value['startClimate'], -1)
         self.assertEqual(value['startIsland'], 127)
@@ -306,7 +319,31 @@ class NativePresetCodecTests(unittest.TestCase):
         self.assertEqual(value['disasterFrequency'], 548)
         self.assertEqual(value['disasterSeverity'], 389)
         self.assertEqual(value['islandRotation'], 1)
+        for i in range(6):
+            self.assertEqual((value[f'climateMin{i}'],value[f'climateMax{i}']), (i,128-i))
+        for i in range(18):
+            self.assertEqual((value[f'islandSizeMin{i}'],value[f'islandSizeMax{i}']), (i,128-i))
         self.assertEqual(value, self.decoded(self.encoded.replace(b'\n', b'\r\n')))
+
+    def test_exact_beta_v5_migrates_all_new_limits_without_rewriting(self):
+        header = b'ANNO1503_WORLD_PRESET 6\nGENERATOR=menu-codec-native-fixture-v1\n'
+        prior = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=ws6-a2d7e8ee018ab1e6a18a933efbb8482391c78e35a54e29b05523e5af24a6ea2e\n'
+        legacy = legacy_schema(self.encoded.replace(header,prior))
+        original = bytes(legacy)
+        self.assertEqual(self.decoded(legacy), dict(self.decoded(), **QUOTA_DEFAULTS))
+        self.assertEqual(self.decoded(legacy.replace(b'\n',b'\r\n')), dict(self.decoded(), **QUOTA_DEFAULTS))
+        self.assertEqual(legacy,original)
+        self.assert_rejected(legacy.replace(b'ws6-a2d7',b'ws6-b2d7'))
+
+    def test_every_new_quota_field_is_mandatory_ordered_and_unique(self):
+        for name in QUOTA_FIELDS:
+            line = next(line for line in self.encoded.splitlines(keepends=True)
+                        if line.startswith(name.encode()+b'='))
+            with self.subTest(field=name):
+                self.assert_rejected(self.encoded.replace(line,b''))
+                self.assert_rejected(self.encoded.replace(line,line+line))
+        self.assert_rejected(self.encoded.replace(b'climateMin0=0\nclimateMin1=1\n',
+                                                b'climateMin1=1\nclimateMin0=0\n'))
 
     def test_seed_zero_and_high_bit_values_are_not_signed_or_replaced(self):
         for seed in (0, 1, 2147483648, 4294967295):
@@ -316,7 +353,7 @@ class NativePresetCodecTests(unittest.TestCase):
 
     def test_rejects_invalid_numbers_and_incomplete_or_extra_schema(self):
         cases = [self.encoded[:-1], self.encoded + b'extra\n', b'\0' + self.encoded,
-                 self.encoded.replace(b'PRESET 5\n', b'PRESET 2\n'),
+                 self.encoded.replace(b'PRESET 6\n', b'PRESET 2\n'),
                  self.encoded.replace(b'menu-codec-native-fixture-v1', b'another-generator'),
                  self.encoded.replace(b'mapSeed=4294967295', b'mapSeed=4294967296'),
                  self.encoded.replace(b'mapSeed=4294967295', b'mapSeed=-1'),
@@ -343,9 +380,9 @@ class NativePresetCodecTests(unittest.TestCase):
                 self.assert_rejected(data)
 
     def test_exact_predecessor_migrates_activity_defaults_without_changing_old_options(self):
-        header = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=menu-codec-native-fixture-v1\n'
+        header = b'ANNO1503_WORLD_PRESET 6\nGENERATOR=menu-codec-native-fixture-v1\n'
         predecessor = b'ANNO1503_WORLD_PRESET 3\nGENERATOR=ws6-e980d1f2563739790004625336b4a6f243c94fb0e00bc59bb80662f4546693ae\n'
-        legacy = self.encoded.replace(header, predecessor)
+        legacy = legacy_schema(self.encoded.replace(header, predecessor))
         for line in (b'pirateFrequency=0\n', b'pirateStrength=2\n', b'merchantFrequency=1\n',
                      b'islandVariety=2\n', b'minPolar=2\n', b'maxPolar=8\n',
                      b'minTemperate=4\n', b'maxTemperate=12\n', b'minTropical=4\n', b'maxTropical=14\n',
@@ -353,6 +390,7 @@ class NativePresetCodecTests(unittest.TestCase):
             legacy = legacy.replace(line, b'')
         before = bytes(legacy)
         expected = self.decoded()
+        expected.update(QUOTA_DEFAULTS)
         expected.update(pirateFrequency=1, pirateStrength=1, merchantFrequency=1)
         expected.update(islandVariety=0, minPolar=0, maxPolar=128, minTemperate=0, maxTemperate=128,
                         minTropical=0, maxTropical=128, disasterMask=31, disasterFrequency=341, disasterSeverity=341, islandRotation=0)
@@ -368,22 +406,22 @@ class NativePresetCodecTests(unittest.TestCase):
                 self.assert_rejected(invalid)
 
     def test_exact_dev3_v5_keeps_all_environment_choices_without_rewriting(self):
-        header = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=menu-codec-native-fixture-v1\n'
+        header = b'ANNO1503_WORLD_PRESET 6\nGENERATOR=menu-codec-native-fixture-v1\n'
         prior = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=ws6-601be2d158e48f8b09bea0b310e4e9ecd2cab3c5ece5647d035af668e7c67f02\n'
-        legacy = self.encoded.replace(header, prior)
+        legacy = legacy_schema(self.encoded.replace(header, prior))
         before = bytes(legacy)
-        self.assertEqual(self.decoded(legacy), self.decoded(self.encoded))
-        self.assertEqual(self.decoded(legacy.replace(b'\n', b'\r\n')), self.decoded(self.encoded))
+        self.assertEqual(self.decoded(legacy), dict(self.decoded(), **QUOTA_DEFAULTS))
+        self.assertEqual(self.decoded(legacy.replace(b'\n', b'\r\n')), dict(self.decoded(), **QUOTA_DEFAULTS))
         self.assertEqual(legacy, before)
         self.assert_rejected(legacy.replace(b'ws6-601b', b'ws6-701b'))
 
     def test_exact_dev4_v5_preserves_all_fields_and_environment1(self):
-        header = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=menu-codec-native-fixture-v1\n'
+        header = b'ANNO1503_WORLD_PRESET 6\nGENERATOR=menu-codec-native-fixture-v1\n'
         prior = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=ws6-86ef692d92f3b8bcf7d1262a6a05a0c1f148e0fabf206733c3a37baf16957eac\n'
-        legacy = self.encoded.replace(header, prior)
+        legacy = legacy_schema(self.encoded.replace(header, prior))
         before = bytes(legacy)
-        self.assertEqual(self.decoded(legacy), self.decoded())
-        self.assertEqual(self.decoded(legacy.replace(b'\n', b'\r\n')), self.decoded())
+        self.assertEqual(self.decoded(legacy), dict(self.decoded(), **QUOTA_DEFAULTS))
+        self.assertEqual(self.decoded(legacy.replace(b'\n', b'\r\n')), dict(self.decoded(), **QUOTA_DEFAULTS))
         self.assertEqual(legacy, before)
         self.assert_rejected(legacy.replace(b'ws6-86ef', b'ws6-96ef'))
         environment = dict(difficulty=1, islandSize=3, islandCount=24, spacing=0, aiCount=0,
@@ -396,21 +434,22 @@ class NativePresetCodecTests(unittest.TestCase):
             islandVariety=2, minPolar=6, maxPolar=6, minTemperate=8, maxTemperate=8,
             minTropical=10, maxTropical=10, disasterMask=21, disasterFrequency=582,
             disasterSeverity=101, islandRotation=1)
-        self.assertEqual(set(environment), set(FIELDS))
-        env1 = prior + b''.join(f'{name}={environment[name]}\n'.encode() for name in FIELDS) + b'END\n'
+        self.assertEqual(set(environment), set(LEGACY_FIELDS))
+        env1 = prior + b''.join(f'{name}={environment[name]}\n'.encode() for name in LEGACY_FIELDS) + b'END\n'
         original = bytes(env1)
-        self.assertEqual(self.decoded(env1), dict(size=176, **environment))
+        self.assertEqual(self.decoded(env1), dict(size=368, **environment, **QUOTA_DEFAULTS))
         self.assertEqual(env1, original)
         self.assert_rejected(env1.replace(b'ws6-86ef', b'ws6-86ee'))
 
     def test_exact_v4_predecessor_keeps_activity_and_defaults_new_policies(self):
-        header = b'ANNO1503_WORLD_PRESET 5\nGENERATOR=menu-codec-native-fixture-v1\n'
+        header = b'ANNO1503_WORLD_PRESET 6\nGENERATOR=menu-codec-native-fixture-v1\n'
         predecessor = b'ANNO1503_WORLD_PRESET 4\nGENERATOR=ws6-6113d0190fad378ad46a5a36c921b7d70b437f31359c6836ba3dd74c585f3327\n'
         legacy = self.encoded.replace(header, predecessor)
         for key in FIELDS[32:]:
             legacy = b''.join(line for line in legacy.splitlines(keepends=True) if not line.startswith(key.encode()+b'='))
         before = bytes(legacy)
         expected = self.decoded()
+        expected.update(QUOTA_DEFAULTS)
         expected.update(islandVariety=0, minPolar=0, maxPolar=128, minTemperate=0, maxTemperate=128,
                         minTropical=0, maxTropical=128, disasterMask=31, disasterFrequency=341, disasterSeverity=341, islandRotation=0)
         self.assertEqual(self.decoded(legacy), expected)
@@ -549,19 +588,21 @@ ACTIVITY_SPY = r'''
 typedef uintptr_t HWND;
 typedef intptr_t LRESULT;
 typedef WSWorldSettings WSSettings;
-typedef struct DialogState {HWND window;int32_t preferredIsland;} DialogState;
+typedef struct DialogState {HWND window;int32_t preferredIsland;WSSettings settings;int creating;
+ int32_t quotaSizeMin[18],quotaSizeMax[18];int quotaClimate;} DialogState;
 enum {ID_START_CLIMATE=1,ID_CARGO_MODE,ID_CARGO_TOOLS,ID_CARGO_WOOD,ID_CARGO_FOOD,
  ID_CLIMATE_BALANCE,ID_LAYOUT_STYLE,ID_DISASTERS,ID_FAIR_STARTS,ID_START_SEPARATION,
  ID_RESOURCE_DISTRIBUTION,ID_GUARANTEE_BASICS,ID_MAP_VISIBILITY,ID_ENEMY_VISIBILITY,
  ID_FACTION=100,ID_PIRATE_FREQUENCY=102,ID_PIRATE_STRENGTH,ID_MERCHANT_FREQUENCY,
  ID_ISLAND_VARIETY=250,ID_MIN_POLAR,ID_MAX_POLAR,ID_MIN_TEMPERATE,ID_MAX_TEMPERATE,ID_MIN_TROPICAL,ID_MAX_TROPICAL,ID_ISLAND_ROTATION,
- ID_DISASTER_ENABLE=270,ID_DISASTER_FREQUENCY=280,ID_DISASTER_SEVERITY=290};
+ ID_DISASTER_ENABLE=270,ID_DISASTER_FREQUENCY=280,ID_DISASTER_SEVERITY=290,
+ ID_CLIMATE_MIN=320,ID_CLIMATE_MAX=330,ID_SIZE_CLIMATE=340,ID_SIZE_MIN=350,ID_SIZE_MAX=360};
 enum {BM_GETCHECK=1,CB_GETCURSEL=2,CB_SETCURSEL=3,BST_CHECKED=1};
 static int choices[512],numbers[512],factions,enabled,selectionWrites,master=1,rotation;
 static uint32_t disasterMask=31,disasterChecks,disasterFrequencies,disasterSeverities;
 static LRESULT SendDlgItemMessageA(HWND window,int id,int message,intptr_t a,intptr_t b){
  (void)window;(void)a;(void)b;
- if(message==CB_SETCURSEL){selectionWrites++;return 0;}
+ if(message==CB_SETCURSEL){choices[id]=(int)a;selectionWrites++;return 0;}
  if(message==BM_GETCHECK){
   if(id==ID_FACTION)return (factions&1)!=0;
   if(id==ID_FACTION+1)return (factions&2)!=0;
@@ -588,6 +629,8 @@ int main(int argc,char**argv){
  for(int i=0;i<3;i++)choices[ID_PIRATE_FREQUENCY+i]=atoi(argv[1+i]);
  for(int i=0;i<3;i++)numbers[ID_CARGO_TOOLS+i]=40;
  for(int i=0;i<3;i++)numbers[ID_MAX_POLAR+i*2]=128;
+ for(int i=0;i<6;i++)numbers[ID_CLIMATE_MAX+i]=128;
+ for(int i=0;i<3;i++)numbers[ID_SIZE_MAX+i]=128;
  for(int i=0;i<5;i++)choices[ID_DISASTER_FREQUENCY+i]=choices[ID_DISASTER_SEVERITY+i]=1;
  if(argc==17){
   choices[ID_ISLAND_VARIETY]=atoi(argv[5]);
@@ -600,6 +643,10 @@ int main(int argc,char**argv){
  }
  choices[ID_MAP_VISIBILITY]=1;factions=atoi(argv[4]);
  DialogState d={.window=1,.preferredIsland=-1};WSSettings s={.size=sizeof s,.islandCount=24};
+ d.settings.minPolar=numbers[ID_MIN_POLAR];d.settings.maxPolar=numbers[ID_MAX_POLAR];
+ d.settings.minTemperate=numbers[ID_MIN_TEMPERATE];d.settings.maxTemperate=numbers[ID_MAX_TEMPERATE];
+ d.settings.minTropical=numbers[ID_MIN_TROPICAL];d.settings.maxTropical=numbers[ID_MAX_TROPICAL];
+ for(int i=0;i<18;i++)d.quotaSizeMax[i]=128;
  wsMenuActivityControls(&d);wsMenuDisasterControls(&d);int collected=wsMenuCollectAdvanced(&d,&s);char error[512];
  int valid=collected&&wsAdvancedValidateSettings(&s,error,sizeof error);
  if(argc==17){
@@ -621,7 +668,7 @@ class NativeActivityMenuTests(unittest.TestCase):
     def setUpClass(cls):
         values = (NATIVE / 'menu_values.inc').read_text()
         functions = '\n'.join(c_function(values, name) for name in
-                              ('wsMenuActivityControls', 'wsMenuDisasterControls', 'wsMenuCollectAdvanced'))
+                              ('wsMenuActivityControls', 'wsMenuDisasterControls', 'wsMenuReadSizeLimits', 'wsMenuCollectAdvanced'))
         # Share only the existing fixture's type declarations. The tested
         # functions and range validator come directly from production source.
         prefix = DRIVER.split('#define WS_WORLD_OPTIONS_GENERATOR', 1)[0]
@@ -730,6 +777,111 @@ class NativeActivityMenuTests(unittest.TestCase):
                 word = (341 & ~(3 << (i*2))) | mode << (i*2)
                 with self.subTest(invalid_severity_type=i, mode=mode):
                     self.assertEqual(self.advanced(severity=word, mask=0, master=0)['valid'], 0)
+
+
+QUOTA_MENU_MAIN = r'''
+static int legacyEnabled;static char legacyText[256];
+static int SetDlgItemTextA(HWND window,int id,const char*text){
+ (void)window;if(id==ID_LEGACY_LIMITS)snprintf(legacyText,sizeof legacyText,"%s",text);
+ else numbers[id]=(int)strtol(text,NULL,10);return 1;
+}
+@QUOTA_FUNCTIONS@
+int main(int argc,char**argv){
+ if(argc!=2)return 9;
+ DialogState d={.window=1,.preferredIsland=-1};d.settings.maxPolar=d.settings.maxTemperate=d.settings.maxTropical=128;
+ for(uint32_t i=0;i<6;i++){numbers[ID_CLIMATE_MIN+i]=(int)i;numbers[ID_CLIMATE_MAX+i]=128-(int)i;}
+ for(uint32_t i=0;i<18;i++)d.quotaSizeMax[i]=128;
+ for(uint32_t i=0;i<3;i++)numbers[ID_CARGO_TOOLS+i]=40;
+ for(uint32_t i=0;i<5;i++)choices[ID_DISASTER_FREQUENCY+i]=choices[ID_DISASTER_SEVERITY+i]=1;
+ choices[ID_MAP_VISIBILITY]=1;factions=3;wsMenuActivityControls(&d);wsMenuDisasterControls(&d);wsMenuShowSizeLimits(&d);
+ if(!strcmp(argv[1],"switch")){
+  for(int c=0;c<6;c++){
+   for(int j=0;j<3;j++){numbers[ID_SIZE_MIN+j]=c+j;numbers[ID_SIZE_MAX+j]=100+c*3+j;}
+   if(!wsMenuChangeSizeClimate(&d,(c+1)%6))return 10;
+  }
+  if(d.quotaClimate||numbers[ID_SIZE_MIN]!=0||numbers[ID_SIZE_MIN+1]!=1||numbers[ID_SIZE_MAX+2]!=102)return 11;
+  WSSettings s={.size=sizeof s,.islandCount=128};if(!wsMenuCollectAdvanced(&d,&s))return 12;
+  printf("{\"climate\":%d",d.quotaClimate);
+  for(uint32_t i=0;i<6;i++)printf(",\"climateMin%u\":%d,\"climateMax%u\":%d",i,s.climateMin[i],i,s.climateMax[i]);
+  for(uint32_t i=0;i<18;i++)printf(",\"islandSizeMin%u\":%d,\"islandSizeMax%u\":%d",i,s.islandSizeMin[i],i,s.islandSizeMax[i]);
+  puts("}");return 0;
+ }
+ if(!strcmp(argv[1],"legacy")){
+  d.settings.minPolar=6;d.settings.maxPolar=6;d.settings.minTemperate=8;d.settings.maxTemperate=8;d.settings.minTropical=10;d.settings.maxTropical=10;
+  d.quotaSizeMin[17]=7;d.quotaSizeMax[17]=9;wsMenuLegacyLimits(&d);
+  if(!legacyEnabled||!strstr(legacyText,"Polar/Tundra 6-6")||!strstr(legacyText,"North/Prairie 8-8")||!strstr(legacyText,"Jungle/Steppe 10-10"))return 13;
+  wsMenuClearPairedLimits(&d);
+  if(legacyEnabled||d.settings.minPolar||d.settings.minTemperate||d.settings.minTropical||d.settings.maxPolar!=128||d.settings.maxTemperate!=128||d.settings.maxTropical!=128||d.quotaSizeMin[17]!=7||d.quotaSizeMax[17]!=9)return 14;
+  puts("{\"cleared\":true}");return 0;
+ }
+ int selected=2;
+ if(!strcmp(argv[1],"invalid"))numbers[ID_SIZE_MIN+1]=INT32_MIN;
+ else if(!strcmp(argv[1],"range"))numbers[ID_SIZE_MAX+2]=129;
+ else if(!strcmp(argv[1],"invalid_selection"))selected=-1;
+ else if(!strcmp(argv[1],"high_selection"))selected=6;
+ else if(!strcmp(argv[1],"creating"))d.creating=1;
+ else return 9;
+ int32_t beforeMin[18],beforeMax[18];memcpy(beforeMin,d.quotaSizeMin,sizeof beforeMin);memcpy(beforeMax,d.quotaSizeMax,sizeof beforeMax);
+ int changed=wsMenuChangeSizeClimate(&d,selected);
+ printf("{\"changed\":%d,\"climate\":%d,\"selection\":%d,\"unchanged\":%s}\n",changed,d.quotaClimate,choices[ID_SIZE_CLIMATE],
+  !memcmp(beforeMin,d.quotaSizeMin,sizeof beforeMin)&&!memcmp(beforeMax,d.quotaSizeMax,sizeof beforeMax)?"true":"false");return 0;
+}
+'''
+
+
+class NativeClimateQuotaMenuTests(unittest.TestCase):
+    """Execute actual quota collectors and switching with bounded control spies."""
+
+    @classmethod
+    def setUpClass(cls):
+        values = (NATIVE / 'menu_values.inc').read_text()
+        functions = '\n'.join(c_function(values,name) for name in
+            ('wsMenuPutNumber','wsMenuReadSizeLimits','wsMenuShowSizeLimits','wsMenuChangeSizeClimate',
+             'wsMenuLegacyLimits','wsMenuClearPairedLimits','wsMenuActivityControls','wsMenuDisasterControls','wsMenuCollectAdvanced'))
+        prefix = DRIVER.split('#define WS_WORLD_OPTIONS_GENERATOR',1)[0]
+        spy = ACTIVITY_SPY.split('@FUNCTIONS@',1)[0]
+        spy = spy.replace('ID_SIZE_MAX=360};','ID_SIZE_MAX=360,ID_LEGACY_LIMITS=370,ID_CLEAR_LEGACY_LIMITS};')
+        spy = spy.replace('static int choices[512]', 'static int legacyEnabled;static int choices[512]')
+        spy = spy.replace('if(active&&window>=ID_PIRATE_FREQUENCY',
+                          'if(window==ID_CLEAR_LEGACY_LIMITS)legacyEnabled=active;\n if(active&&window>=ID_PIRATE_FREQUENCY')
+        spy = spy.replace('*out=numbers[id];return 1;', '*out=numbers[id];return numbers[id]!=INT32_MIN;')
+        main = QUOTA_MENU_MAIN.replace('static int legacyEnabled;','').replace('@QUOTA_FUNCTIONS@',functions)
+        cls.temporary = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.temporary.cleanup)
+        source = Path(cls.temporary.name)/'quota_menu.c'
+        source.write_text(prefix+spy+main,encoding='utf-8')
+        cls.exe = source.with_suffix('.exe' if os.name=='nt' else '')
+        result = subprocess.run([*native_compiler(),'-std=c11','-O2','-Wall','-Wextra','-Werror',
+            '-Wno-misleading-indentation','-I',str(NATIVE),str(source),'-o',str(cls.exe)],
+            capture_output=True,text=True,timeout=90)
+        if result.returncode:
+            raise AssertionError('Native climate quota-menu fixture compilation failed:\n'+result.stderr)
+
+    def observed(self,mode):
+        result = subprocess.run([str(self.exe),mode],capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stderr+result.stdout)
+        return json.loads(result.stdout)
+
+    def test_switching_every_climate_keeps_all_48_values_and_collects_the_displayed_climate(self):
+        value = self.observed('switch')
+        self.assertEqual(value.pop('climate'),0)
+        for c in range(6):
+            self.assertEqual((value[f'climateMin{c}'],value[f'climateMax{c}']),(c,128-c))
+            for size in range(3):
+                index=c*3+size
+                self.assertEqual((value[f'islandSizeMin{index}'],value[f'islandSizeMax{index}']),
+                                 (c+size,100+c*3+size))
+
+    def test_bad_numbers_and_invalid_selections_never_lose_the_current_climate(self):
+        for mode in ('invalid','range','invalid_selection','high_selection'):
+            with self.subTest(mode=mode):
+                self.assertEqual(self.observed(mode),dict(changed=0,climate=0,selection=0,unchanged=True))
+
+    def test_preset_application_notifications_do_not_switch_climates(self):
+        self.assertEqual(self.observed('creating'),dict(changed=1,climate=0,selection=0,unchanged=True))
+
+    def test_imported_pair_constraints_are_visible_and_can_be_cleared_independently(self):
+        self.assertEqual(self.observed('legacy'),dict(cleared=True))
 
 
 if __name__ == '__main__':

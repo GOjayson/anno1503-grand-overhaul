@@ -1,4 +1,64 @@
-# Island variety, climate limits, rotation and disasters
+# Island counts, sizes, variety, rotation and disasters
+
+## Current source update: separate climates and island sizes
+
+The in-game Islands page now treats the six engine climates separately:
+**Polar, Tundra, Northern, Prairie, Jungle and Steppe**. Each climate has its
+own minimum and maximum island count, plus independent minimum and maximum
+counts for small, medium and large islands in that climate. Set a minimum and
+maximum to the same number for an exact count. A range of 0–128 leaves a limit
+unrestricted; the existing essential-resource checks still require at least
+one island of every climate.
+
+Size refers to the template's longest dimension: small is 64 or 80 tiles,
+medium is 128 tiles, and large is 256 tiles. These limits refine the overall
+Island size choice on Map; choose **Mixed** to allow every size. The Polar
+catalogue has no large template, so a positive minimum for large Polar islands
+cannot be satisfied. Large Prairie templates exist in the source catalogue,
+but the reviewed ordinary-world eligibility rules exclude them; a positive
+large Prairie minimum is also refused. Counts include native cultures, Pirates and Venetians.
+Rotation changes orientation, not size class.
+
+The planner rejects conflicting ranges, counts that do not fit the total,
+unavailable eligible template sizes and choices that would lose essential
+resources. A valid mathematical range does not guarantee enough physical map
+space: world dimensions, spacing, cultures and special factions still apply.
+Variety preferences may relax during bounded retries; climate and size limits
+remain hard constraints.
+
+The settings ABI retains its original 176-byte prefix and appends the new
+limits, giving 368-byte settings and a 6,016-byte preview snapshot. New presets
+use version 6. Supported preceding presets migrate in memory with unrestricted
+new limits; their files and the preceding pairwise climate constraints remain
+preserved. Imported paired constraints are shown in the menu and can be
+removed with **Clear old paired limits**, without changing the independent
+limits. Reusing a seed across a generator change does not promise the same
+islands.
+
+The historical game checks below apply to the preceding environment build.
+They do not establish live acceptance or long-session stability for the new
+independent climate and size limits.
+
+Offline validation for this source update compiled four AMD64 candidates:
+World-only, preserved Food 0.5, Food 0.6 and Food 0.6 with the population
+announcement fix. Each retained all 43 immutable imported compiled inputs and
+verified its existing nine hook sites and 173 engine edits. The generator
+change adds no engine patch addresses. All four compiled DLLs passed 13
+isolated planning checks each, including exact six-climate/18-size counts,
+seed replay, resources, balanced human starts and invalid-request rejection.
+Matching settings produced identical plans across the four profiles. These
+checks call local generator exports; they do not activate hooks, stage a scene,
+run AI players or start Anno. Actual menu rendering, world loading and save/reload
+checks for this update remain pending. Existing installed copies and releases
+have not been updated by these checks.
+
+The full local regression run completed 928 tests: 923 passed and five were
+skipped. A fresh public-input build with the reviewed-runtime guard enabled
+also reproduced the exact World-only candidate. Audit monitoring refused
+access to private baseline/runtime stores and recorded zero access attempts;
+previous input caches were preserved.
+
+## Preserved environment build
 
 World Settings 0.8.0-dev.4 adds these choices inside Anno. This is a development
 candidate: compilation and native fixtures are separate from actual game
@@ -85,7 +145,7 @@ already active disaster through the game's own loader is not yet established.
 
 ## Compatibility and checks
 
-Settings extend the unchanged 132-byte prefix to 176 bytes. Preview islands
+In the preceding environment build, settings extend the unchanged 132-byte prefix to 176 bytes. Preview islands
 extend their unchanged 40-byte prefix to 44 bytes; the full snapshot is 5,824
 bytes. Named presets use version 5. Exact preceding version-4 and version-3
 generator identities migrate in memory with the new choices defaulted; their

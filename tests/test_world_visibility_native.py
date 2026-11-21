@@ -35,9 +35,11 @@ typedef struct WSWorldSettings {
  int32_t islandVariety,minPolar,maxPolar,minTemperate,maxTemperate,minTropical,maxTropical;
  uint32_t disasterMask,disasterFrequency,disasterSeverity;
  int32_t islandRotation;
+ int32_t climateMin[6],climateMax[6],islandSizeMin[18],islandSizeMax[18];
 } WSWorldSettings;
-_Static_assert(sizeof(WSWorldSettings)==176,"The visibility fixture must retain the full current settings ABI");
+_Static_assert(sizeof(WSWorldSettings)==368,"The visibility fixture must retain the full current settings ABI");
 _Static_assert(offsetof(WSWorldSettings,pirateFrequency)==120,"Existing settings prefix differs");
+_Static_assert(offsetof(WSWorldSettings,climateMin)==176,"Appended quota field offset differs");
 typedef struct WSBuffer {unsigned char*data;uint32_t size,capacity;} WSBuffer;
 static uint16_t wsU16(const void*p){uint16_t n;memcpy(&n,p,2);return n;}
 static uint32_t wsU32(const void*p){uint32_t n;memcpy(&n,p,4);return n;}
@@ -54,6 +56,8 @@ __declspec(dllexport) int scene(int32_t map,int32_t enemy,uint32_t before,uint32
   .pirateFrequency=1,.pirateStrength=1,.merchantFrequency=1,
   .maxPolar=128,.maxTemperate=128,.maxTropical=128,
   .disasterMask=31,.disasterFrequency=341,.disasterSeverity=341};char error[128];
+ for(uint32_t i=0;i<6u;i++)s.climateMax[i]=128;
+ for(uint32_t i=0;i<18u;i++)s.islandSizeMax[i]=128;
  memcpy(raw+32,"HEAD",4);wsPut32(raw+44,32);wsPut32(raw+64,before);
  if(malformed==1)wsPut32(raw+44,31);
  if(malformed==2)b.size=79;

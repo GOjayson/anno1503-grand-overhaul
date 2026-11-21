@@ -12,6 +12,22 @@ static uint32_t wsClimateWeight(const WSWorldSettings*s,uint32_t climate){
 }
 static int wsChooseBalancedFill(const WSWorldSettings*s,uint32_t count){
  if(count>=WS_LIMIT||s->climateBalance<0||s->climateBalance>3)return -1;
+ /* Fulfil explicit size minima before ordinary weighted filler. The normal
+  * chooser still applies native eligibility, ranks and variety preferences. */
+ if(wsClimateQuotasActive(s)){
+  uint32_t cells[18],cellCount=0;int missing=0;
+  for(uint32_t cell=0;cell<18u;cell++)if(wsSelectedSizes[cell]<(uint32_t)s->islandSizeMin[cell]){
+   missing=1;
+   for(uint32_t i=0;i<WS_COUNT;i++)if(wsIslandQuotaCell(&wsTemplates[i])==cell&&wsSelectionMatch(i,s,0,-1,0,0,1,0)){
+    cells[cellCount++]=cell;break;
+   }
+  }
+  if(missing){
+   if(!cellCount)return -1;
+   uint32_t cell=cells[wsRandom()%cellCount];wsQuotaFillCell=(int)cell;
+   int selected=wsChoose(s,0,(int)(cell/3u),0,0,1,0);wsQuotaFillCell=-1;return selected;
+  }
+ }
  uint32_t climates[6]={0},available[6]={0},choices[6],choiceCount=0,best=0;
  for(uint32_t i=0;i<count;i++){
   if(planned[i].climate>=6)return -1;

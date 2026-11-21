@@ -5,7 +5,7 @@
 #define WS_WORLD_OPTIONS_GENERATOR "pending-build"
 
 /* The original 56-byte prefix retains every native bridge field offset. */
-_Static_assert(sizeof(WSWorldSettings)==176,"Advanced settings ABI differs");
+_Static_assert(sizeof(WSWorldSettings)==368,"Advanced settings ABI differs");
 _Static_assert(sizeof(WSPlanIsland)==44,"Preview island orientation ABI differs");
 _Static_assert(offsetof(WSWorldSettings,pirateFrequency)==120,"Existing settings prefix differs");
 _Static_assert(offsetof(WSWorldSettings,pirateStrength)==124,"Pirate strength offset differs");
@@ -15,7 +15,12 @@ _Static_assert(offsetof(WSWorldSettings,maxTropical)==156,"Climate quota offsets
 _Static_assert(offsetof(WSWorldSettings,disasterMask)==160,"Disaster policy offsets differ");
 _Static_assert(offsetof(WSWorldSettings,disasterSeverity)==168,"Disaster severity offset differs");
 _Static_assert(offsetof(WSWorldSettings,islandRotation)==172,"Island rotation offset differs");
+_Static_assert(offsetof(WSWorldSettings,climateMin)==176,"Six-climate quota offset differs");
+_Static_assert(offsetof(WSWorldSettings,climateMax)==200,"Six-climate maximum offset differs");
+_Static_assert(offsetof(WSWorldSettings,islandSizeMin)==224,"Climate size minimum offset differs");
+_Static_assert(offsetof(WSWorldSettings,islandSizeMax)==296,"Climate size maximum offset differs");
 _Static_assert(sizeof(WSIslandDetails)==44,"Island details ABI differs");
+#include "island_quotas.h"
 static inline int wsAdvancedValidateSettings(const WSWorldSettings*s,char*error,uint32_t cap){
  const char*reason=NULL;
  if(!s||s->size!=sizeof(*s))reason="Invalid World Settings structure.";
@@ -42,15 +47,7 @@ static inline int wsAdvancedValidateSettings(const WSWorldSettings*s,char*error,
  if(!reason&&(s->pirateStrength<0||s->pirateStrength>2))reason="Choose weak, normal or strong pirate ships.";
  if(!reason&&(s->merchantFrequency<0||s->merchantFrequency>2))reason="Choose rare, normal or frequent neutral merchant visits.";
  if(!reason&&(s->islandVariety<0||s->islandVariety>2))reason="Choose allowed repeats, unique templates or varied island shapes.";
- if(!reason&&(s->minPolar<0||s->maxPolar>128||s->minPolar>s->maxPolar||
-              s->minTemperate<0||s->maxTemperate>128||s->minTemperate>s->maxTemperate||
-              s->minTropical<0||s->maxTropical>128||s->minTropical>s->maxTropical))
-  reason="Each climate range needs a minimum and maximum from 0 to 128, with minimum no greater than maximum.";
- if(!reason&&(s->maxPolar<2||s->maxTemperate<2||s->maxTropical<2))
-  reason="Each climate group must allow at least two islands to preserve all six climates and essential resources.";
- if(!reason&&(s->minPolar+s->minTemperate+s->minTropical>s->islandCount||
-              s->maxPolar+s->maxTemperate+s->maxTropical<s->islandCount))
-  reason="The climate ranges must accommodate the selected total island count.";
+ if(!reason)reason=wsIslandQuotaSettingsError(s);
  if(!reason&&((s->disasterMask&~31u)||(s->disasterFrequency&~1023u)||(s->disasterSeverity&~1023u)))
   reason="The disaster policy contains an unsupported type or setting.";
  for(uint32_t i=0;!reason&&i<5u;i++)if(((s->disasterFrequency>>(i*2u))&3u)>2u||((s->disasterSeverity>>(i*2u))&3u)>2u)

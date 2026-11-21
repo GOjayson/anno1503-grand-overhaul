@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Replace the three paired climate controls with separate limits for Polar, Tundra, Northern, Prairie, Jungle and Steppe.
+- Add minimum and maximum small, medium and large island counts within each climate, including native and faction islands.
+- Validate totals, size availability and climate/size intersections while preserving essential resources, overlap checks and existing presets.
+
+This source update is separate from the published installer. The preceding
+game checks remain bound to their original builds; see the [environment
+options guide](WORLD_ENVIRONMENT_OPTIONS.md).
+
 ## 0.10.0-beta.1
 
 - Include optional Food 0.6 and Bug Fixes in the standalone Windows installer, alongside World Settings. All three can be selected together.

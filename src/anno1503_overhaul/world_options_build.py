@@ -24,10 +24,10 @@ from .world_options_disasters import DISASTER_CALLS, verify_disaster_preimages
 
 
 PINNED_RUNTIMES = {
-    'world-only': '91f0d2acbd3ad17f23cd4bfe4e0813c5e55c394ca06426b835b0015b3b926140',
-    'food-world': '1b7248098910f550d7cb5ffc74bcb415f41b47a34f6ac8585bd67f9b79869677',
+    'world-only': '9a55e5bd6450bee84043f3dfe977defbc40fda10fd7ef9bae7422a964d08f362',
+    'food-world': 'a73a048002265774a1007a621822e230981819f19c391c646857ea23739291b8',
 }
-PINNED_GENERATOR = 'ws6-a2d7e8ee018ab1e6a18a933efbb8482391c78e35a54e29b05523e5af24a6ea2e'
+PINNED_GENERATOR = 'ws6-eb699b0c8b3d23da9c9d3e197e8ad0e2b961562bc51e83d0ef3ad8b03a567a1c'
 REQUIRED_EXPORTS = old.REQUIRED_EXPORTS | {'WorldSettingsSettingsSize', 'WorldSettingsBuildPlan',
     'WorldSettingsPlanCount', 'WorldSettingsPlanIsland', 'WorldSettingsStartingIslandEligible',
     'WorldSettingsStartingIslandChosen', 'WorldSettingsIslandDetails',

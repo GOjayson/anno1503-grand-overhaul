@@ -12,15 +12,19 @@ from .world_runtime_build import RuntimeBuildError
 
 ROOT = Path(__file__).resolve().parents[2]
 PRIVATE = 'developer/source/engine_resume/ai_food/experiment_runtime/'
-SETTINGS_SIZE = 176
-PREVIEW_SIZE = 5824
+SETTINGS_SIZE = 368
+PREVIEW_SIZE = 6016
+QUOTA_FIELDS = tuple(f'{name}{index}' for name, count in
+                    (('climateMin', 6), ('climateMax', 6),
+                     ('islandSizeMin', 18), ('islandSizeMax', 18))
+                    for index in range(count))
 FIELDS = ('mapSeed', 'startClimate', 'startIsland', 'cargoMode', 'cargoTools',
           'cargoWood', 'cargoFood', 'climateBalance', 'layoutStyle', 'disasters',
           'fairStarts', 'startSeparation', 'resourceDistribution', 'guaranteeBasics',
           'mapVisibility', 'enemyVisibility', 'pirateFrequency', 'pirateStrength',
           'merchantFrequency', 'islandVariety', 'minPolar', 'maxPolar',
           'minTemperate', 'maxTemperate', 'minTropical', 'maxTropical',
-          'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation')
+          'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation') + QUOTA_FIELDS
 VERSION = '0.9.0-beta.1'
 
 
@@ -75,7 +79,8 @@ def apply_common(files: dict[str, bytes]) -> None:
         b' int32_t pirateFrequency,pirateStrength,merchantFrequency;\n'
         b' int32_t islandVariety,minPolar,maxPolar,minTemperate,maxTemperate,minTropical,maxTropical;\n'
         b' uint32_t disasterMask,disasterFrequency,disasterSeverity;\n'
-        b' int32_t islandRotation;', 'settings extension')
+        b' int32_t islandRotation;\n'
+        b' int32_t climateMin[6],climateMax[6],islandSizeMin[18],islandSizeMax[18];', 'settings extension')
     files[header] = replace(files[header],
         b' uint32_t id,x,y,width,height,templateIndex,cropMask,mineralMask,cultures,climate;',
         b' uint32_t id,x,y,width,height,templateIndex,cropMask,mineralMask,cultures,climate,rotation;',
@@ -93,16 +98,17 @@ def apply_common(files: dict[str, bytes]) -> None:
     files[header] = replace(files[header], b'#endif',
         b'#include "advanced_settings.h"\n#endif', 'shared settings validation')
     files[PRIVATE + 'advanced_settings.h'] = authored('advanced_settings.h')
+    files[PRIVATE + 'island_quotas.h'] = authored('island_quotas.h')
     reserves = PRIVATE + 'world_ship_reserves.h'
     if reserves in files:
         files[reserves] = orient_ship_reserves(files[reserves])
     preview = PRIVATE + 'preview_state.inc'
     files[preview] = replace(files[preview], b'sizeof(WSWorldSettings)==56',
-                             b'sizeof(WSWorldSettings)==176', 'settings ABI assertion')
+                             b'sizeof(WSWorldSettings)==368', 'settings ABI assertion')
     files[preview] = replace(files[preview], b'sizeof(WSPlanIsland)==40',
                              b'sizeof(WSPlanIsland)==44', 'explicit island orientation ABI assertion')
     files[preview] = replace(files[preview], b'sizeof(WSPreviewSnapshot)==5192',
-                             b'sizeof(WSPreviewSnapshot)==5824', 'snapshot ABI assertion')
+                             b'sizeof(WSPreviewSnapshot)==6016', 'snapshot ABI assertion')
     backend = PRIVATE + 'world_backend.c'
     files[backend] = replace(files[backend], b' wsPreviewClear();\n planCount=0;',
         b' wsPreviewClear();\n planCount=0;\n'

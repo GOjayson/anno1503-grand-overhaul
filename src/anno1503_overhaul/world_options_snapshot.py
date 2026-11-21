@@ -10,13 +10,50 @@ SETTINGS_FIELDS = ['size', 'difficulty', 'islandSize', 'islandCount', 'spacing',
     'mapVisibility', 'enemyVisibility', 'pirateFrequency', 'pirateStrength', 'merchantFrequency',
     'islandVariety', 'minPolar', 'maxPolar', 'minTemperate', 'maxTemperate', 'minTropical', 'maxTropical',
     'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation']
+SETTINGS_FIELDS += [f'{name}{index}' for name, count in
+                    (('climateMin', 6), ('climateMax', 6),
+                     ('islandSizeMin', 18), ('islandSizeMax', 18))
+                    for index in range(count)]
+SETTINGS_FORMAT = '<I5i2I6iI25i3Ii48i'
+CLIMATES = ('Polar', 'Tundra', 'Northern', 'Prairie', 'Jungle', 'Steppe')
 ISLAND_FIELDS = ['id', 'x', 'y', 'width', 'height', 'templateIndex', 'cropMask', 'mineralMask', 'cultures', 'climate', 'rotation']
-SETTINGS_SIZE = 176
+SETTINGS_SIZE = 368
 ROWS_OFFSET = 16 + SETTINGS_SIZE
 ISLAND_SIZE = 44
 SNAPSHOT_SIZE = ROWS_OFFSET + 128 * ISLAND_SIZE
 CATALOGUE_COUNT = 444
 STATES = ['absent', 'ready', 'staged', 'committed', 'cancelled-or-failed']
+
+
+def _quota_limits(settings, count):
+    """Independently check the nested size/climate/legacy-group intervals."""
+    lower, upper = [], []
+    for climate in range(6):
+        minimum, maximum = settings[f'climateMin{climate}'], settings[f'climateMax{climate}']
+        if not 0 <= minimum <= maximum <= 128 or maximum < 1:
+            raise ValueError('Each climate must permit an island for essential resources.')
+        sizes = [(settings[f'islandSizeMin{climate*3+size}'],
+                  settings[f'islandSizeMax{climate*3+size}']) for size in range(3)]
+        if any(not 0 <= low <= high <= 128 for low, high in sizes):
+            raise ValueError('Invalid per-climate island size limits.')
+        low, high = max(1, minimum, sum(v[0] for v in sizes)), min(maximum, sum(v[1] for v in sizes))
+        if low > high:
+            raise ValueError('Island size limits do not fit their climate limits.')
+        lower.append(low)
+        upper.append(high)
+    group_lower, group_upper = [], []
+    for group, name in enumerate(('Polar', 'Temperate', 'Tropical')):
+        minimum, maximum = settings['min'+name], settings['max'+name]
+        if not 0 <= minimum <= maximum <= 128:
+            raise ValueError('Invalid legacy climate group limits.')
+        low = max(minimum, sum(lower[group*2:group*2+2]))
+        high = min(maximum, sum(upper[group*2:group*2+2]))
+        if low > high:
+            raise ValueError('Independent climates conflict with legacy climate group limits.')
+        group_lower.append(low)
+        group_upper.append(high)
+    if not sum(group_lower) <= count <= sum(group_upper):
+        raise ValueError('Climate and size limits cannot accommodate the island count.')
 
 
 def decode(data):
@@ -25,7 +62,7 @@ def decode(data):
     size, state, seed, count = struct.unpack_from('<4I', data)
     if size != SNAPSHOT_SIZE or state >= len(STATES) or count > 128:
         raise ValueError('Invalid World options snapshot envelope.')
-    settings = dict(zip(SETTINGS_FIELDS, struct.unpack_from('<I5i2I6iI25i3Ii', data, 16)))
+    settings = dict(zip(SETTINGS_FIELDS, struct.unpack_from(SETTINGS_FORMAT, data, 16)))
     if state == 0:
         if count or seed or any(settings.values()) or any(data[ROWS_OFFSET:]):
             raise ValueError('An absent preview contains data.')
@@ -46,10 +83,6 @@ def decode(data):
           or not 0 <= settings['mapVisibility'] <= 2 or settings['enemyVisibility'] not in (0, 1)
           or any(not 0 <= settings[key] <= 2 for key in ('pirateFrequency', 'pirateStrength', 'merchantFrequency'))
           or not 0 <= settings['islandVariety'] <= 2
-          or any(not 0 <= settings['min'+group] <= settings['max'+group] <= 128 or settings['max'+group] < 2
-                 for group in ('Polar', 'Temperate', 'Tropical'))
-          or sum(settings['min'+group] for group in ('Polar', 'Temperate', 'Tropical')) > count
-          or sum(settings['max'+group] for group in ('Polar', 'Temperate', 'Tropical')) < count
           or settings['disasterMask'] & ~31 or settings['disasterFrequency'] & ~1023 or settings['disasterSeverity'] & ~1023
           or any((settings[key] >> (i*2) & 3) > 2 for key in ('disasterFrequency', 'disasterSeverity') for i in range(5))
           or settings['disasterSeverity'] & 15 != 5
@@ -57,6 +90,8 @@ def decode(data):
           or settings['mapVisibility'] == 0 and settings['startIsland'] >= 0
           or any(not 0 <= settings[key] <= 400 for key in ('cargoTools', 'cargoWood', 'cargoFood'))):
         raise ValueError('World options settings and preview disagree.')
+    if state:
+        _quota_limits(settings, count)
     if state and settings['cargoMode']:
         used = sum((settings[key] + 49) // 50 for key in ('cargoTools', 'cargoWood', 'cargoFood'))
         if used > (8 if settings['startingFleet'] == 1 else 4):
@@ -83,6 +118,18 @@ def decode(data):
         if any(not settings['min'+group] <= climate_counts[i] <= settings['max'+group]
                for i, group in enumerate(('Polar', 'Temperate', 'Tropical'))):
             raise ValueError('Preview island climates violate the selected limits.')
+        counts = [sum(row['climate'] == climate for row in islands) for climate in range(6)]
+        sizes = [0] * 18
+        for row in islands:
+            width = max(row['width'], row['height'])
+            size = 0 if width < 128 else 1 if width == 128 else 2
+            sizes[row['climate']*3+size] += 1
+        if any(not max(1, settings[f'climateMin{climate}']) <= counts[climate] <= settings[f'climateMax{climate}']
+               for climate in range(6)):
+            raise ValueError('Preview islands violate the independent climate limits.')
+        if any(not settings[f'islandSizeMin{cell}'] <= sizes[cell] <= settings[f'islandSizeMax{cell}']
+               for cell in range(18)):
+            raise ValueError('Preview islands violate the per-climate size limits.')
     return dict(state=state, state_name=STATES[state], seed=seed, count=count, settings=settings,
                 islands=islands, plan_sha256=hashlib.sha256(data[ROWS_OFFSET:ROWS_OFFSET + count * ISLAND_SIZE]).hexdigest(),
                 snapshot_sha256=hashlib.sha256(data).hexdigest(),

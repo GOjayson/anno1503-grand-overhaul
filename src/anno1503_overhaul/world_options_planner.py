@@ -47,7 +47,7 @@ def stage_selection_fixture(value: bytes) -> bytes:
         'shared native selection fixture')
     value = replace(value,
         b'if(!s||!out||!usedAttempt||s->islandCount<1||s->islandCount>WS_LIMIT||s->spacing<0||!wsConfigureWorldSize(s))return 0;',
-        b'if(!s||!out||!usedAttempt||!wsClimateQuotaSettings(s)||s->spacing<0||!wsConfigureWorldSize(s))return 0;',
+        b'if(!s||!out||!usedAttempt||!wsClimateQuotaSettings(s)||s->spacing<0||!wsConfigureWorldSize(s)||!wsIslandQuotaCatalogue(s,NULL,0))return 0;',
         'native fixture rejects malformed quota settings')
     return replace(value,
         b'  memcpy(out,planned,n*sizeof(*out));*usedAttempt=(uint32_t)attempt;return (int)n;',
@@ -76,13 +76,13 @@ def apply_planner(files: dict[str, bytes]) -> None:
         raise ValueError('Reviewed climate filler extent changed.')
     newline = b'\r\n' if b'\r\n' in value else b'\n'
     prefix = replace(prefix, b' wsSelectionInit();wsSelectionStage=0;wsSelectionSmallest=0;',
-        b' wsIslandSelectionReset((uint32_t)attempt);wsSelectionInit();wsSelectionStage=0;wsSelectionSmallest=0;',
+        b' wsIslandSelectionReset(s,(uint32_t)attempt);wsSelectionInit();wsSelectionStage=0;wsSelectionSmallest=0;',
         'reset quota and variety state on every bounded selection attempt')
     prefix = replace(prefix, b'uint32_t n=attempt<0?0u:(uint32_t)attempt;',
         b'uint32_t n=attempt<0?0u:(uint32_t)attempt%32u;',
         'retain the original lenient-size schedule in the soft-preference fallback')
     prefix = replace(prefix, b' if(!wsEligible(t,s)||wsTemplateFaction(t)!=(uint32_t)faction)return 0;',
-        b' if(!wsEligible(t,s)||wsTemplateFaction(t)!=(uint32_t)faction||!wsClimateQuotaCandidate(s,t->climate))return 0;',
+        b' if(!wsEligible(t,s)||wsTemplateFaction(t)!=(uint32_t)faction||!wsClimateQuotaCandidate(s,index))return 0;',
         'climate maxima and remaining mandatory slots apply to all candidates')
     prefix = replace(prefix,
         b'static int wsChoose(const WSWorldSettings*s,uint32_t requiredCulture,int climate,int ore,int whale,int empty,int faction){',
@@ -113,8 +113,9 @@ def apply_planner(files: dict[str, bytes]) -> None:
     files[backend] = stage_selection_attempts(files[backend])
     files[backend] = replace(files[backend],
         b' if(!wsConfigureWorldSize(s)){wsMessage(error,cap,"World size must be Small (256), Medium (512), Big (1024) or Huge (2048).");return 0;}',
-        b' if(!wsClimateQuotaSettings(s)){wsMessage(error,cap,"Climate minima/maxima must fit the island count and permit all six climates.");return 0;}\n'
-        b' if(!wsConfigureWorldSize(s)){wsMessage(error,cap,"World size must be Small (256), Medium (512), Big (1024) or Huge (2048).");return 0;}',
+        b' if(!wsClimateQuotaSettings(s)){wsMessage(error,cap,"Climate and size limits must fit the island count and permit all six climates.");return 0;}\n'
+        b' if(!wsConfigureWorldSize(s)){wsMessage(error,cap,"World size must be Small (256), Medium (512), Big (1024) or Huge (2048).");return 0;}\n'
+        b' if(!wsIslandQuotaCatalogue(s,error,cap))return 0;',
         'independent climate-quota input guard')
     files[backend] = replace(files[backend], b'wsPack(n,(uint32_t)s->spacing)',
                              b'wsPack(s,n,(uint32_t)s->spacing)', 'advanced layout call')
@@ -136,6 +137,6 @@ def apply_planner(files: dict[str, bytes]) -> None:
     files[backend] = replace(files[backend],
         b' if(pirates!=((s->factions&1u)!=0)',
         b' if(!wsValidateStartResources(s,error,cap))return 0;\n'
-        b' if(!wsClimateQuotaCertificate(s,planned,planCount)){wsMessage(error,cap,"The generated world does not satisfy its climate minima and maxima.");return 0;}\n'
+        b' if(!wsClimateQuotaCertificate(s,planned,planCount)){wsMessage(error,cap,"The generated world does not satisfy its climate and island-size minima and maxima.");return 0;}\n'
         b' if(pirates!=((s->factions&1u)!=0)', 'independent resource and nearby basics certificate')
     files[PRIVATE + 'resource_distribution.inc'] = authored('resource_distribution.inc')

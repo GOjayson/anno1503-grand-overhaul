@@ -4,7 +4,7 @@
 #include <stdio.h>
 static void wsSelectionFailure(const WSWorldSettings*s,char*out,uint32_t cap,const char*ordinary){
  if(out&&cap)snprintf(out,cap,"%s",wsClimateQuotasActive(s)?
-  "No valid world was found for these climate ranges, island sizes, cultures, factions and essential resources. Regenerate, increase a maximum or the total island count, or change those options.":ordinary);
+  "No valid world was found for these separate climate and island-size limits, cultures, factions and essential resources. Regenerate, increase a maximum or the total island count, or change those options.":ordinary);
 }
 static int wsSelectIslands(const WSWorldSettings*s,uint32_t*out,const char*const*cultureLabels,
  const char*const*climateLabels,char*message,uint32_t cap){

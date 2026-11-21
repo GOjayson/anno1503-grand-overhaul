@@ -29,9 +29,11 @@ typedef struct WSWorldSettings {
  int32_t fairStarts,startSeparation,resourceDistribution,guaranteeBasics,mapVisibility,enemyVisibility;
  int32_t pirateFrequency,pirateStrength,merchantFrequency,islandVariety,minPolar,maxPolar,minTemperate,maxTemperate,minTropical,maxTropical;
  uint32_t disasterMask,disasterFrequency,disasterSeverity;int32_t islandRotation;
+ int32_t climateMin[6],climateMax[6],islandSizeMin[18],islandSizeMax[18];
 } WSWorldSettings;
-_Static_assert(sizeof(WSWorldSettings)==176,"Current settings fixture ABI differs");
+_Static_assert(sizeof(WSWorldSettings)==368,"Current settings fixture ABI differs");
 _Static_assert(offsetof(WSWorldSettings,disasterMask)==160,"Disaster field offset differs");
+_Static_assert(offsetof(WSWorldSettings,climateMin)==176,"Appended quota field offset differs");
 #include "disaster_policy.inc"
 '''
 
@@ -57,6 +59,8 @@ static void disasterGraph(void){
 }
 __declspec(dllexport) int fixture_disaster_enable(uint32_t master,uint32_t mask,uint32_t frequency,uint32_t severity){
  WSWorldSettings s={0};s.size=sizeof s;s.disasters=(int32_t)master;s.disasterMask=mask;s.disasterFrequency=frequency;s.disasterSeverity=severity;
+ for(uint32_t i=0;i<6u;i++)s.climateMax[i]=128;
+ for(uint32_t i=0;i<18u;i++)s.islandSizeMax[i]=128;
  wsPut32(worldBytes+0x6eec,0x1000u|(master?0u:0x86u));WorldSettingsExpectDisasterOptions(&s);char e[256];
  int result=WorldSettingsBindDisasterOptions(worldBytes,e,sizeof e);WorldSettingsFinishDisasterAttempt(result);
  uint16_t flags=(uint16_t)wsU32(worldBytes+0x6eec);if(nativeSize>=50u)memcpy(nativeOutput+48,&flags,2);return result;

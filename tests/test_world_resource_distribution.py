@@ -34,7 +34,9 @@ FIELDS = ('size', 'difficulty', 'islandSize', 'islandCount', 'spacing', 'aiCount
 
 
 class Settings(C.Structure):
-    _fields_ = [(n, C.c_uint32 if n in {'size', 'cultures', 'factions', 'mapSeed', 'disasterMask', 'disasterFrequency', 'disasterSeverity'} else C.c_int32) for n in FIELDS]
+    _fields_ = [(n, C.c_uint32 if n in {'size', 'cultures', 'factions', 'mapSeed', 'disasterMask', 'disasterFrequency', 'disasterSeverity'} else C.c_int32) for n in FIELDS] + [
+        ('climateMin', C.c_int32*6), ('climateMax', C.c_int32*6),
+        ('islandSizeMin', C.c_int32*18), ('islandSizeMax', C.c_int32*18)]
 
 
 class Island(C.Structure):
@@ -51,8 +53,13 @@ def options(**values):
                       pirateFrequency=1, pirateStrength=1, merchantFrequency=1,
                       maxPolar=128, maxTemperate=128, maxTropical=128,
                       disasterMask=31, disasterFrequency=341, disasterSeverity=341)
+    result.climateMax[:] = [128]*6
+    result.islandSizeMax[:] = [128]*18
     for key, value in values.items():
-        setattr(result, key, value)
+        if isinstance(getattr(result, key), C.Array):
+            getattr(result, key)[:] = value
+        else:
+            setattr(result, key, value)
     return result
 
 
@@ -205,7 +212,7 @@ __declspec(dllexport) void ResourceNearby(uint32_t index,uint32_t*crops,uint32_t
         return result, list(out), error.value.decode()
 
     def test_real_catalogue_modes_preserve_census_geometry_and_special_islands(self):
-        self.assertEqual(C.sizeof(Settings),176)
+        self.assertEqual(C.sizeof(Settings),368)
         improved = 0
         for seed in (0,3719,123456789,0xffffffff):
             for fertility in range(4):
@@ -255,6 +262,27 @@ __declspec(dllexport) void ResourceNearby(uint32_t index,uint32_t*crops,uint32_t
             settings.pirateFrequency=0;settings.pirateStrength=2;settings.merchantFrequency=0
             changed,_=self.build(settings)
             self.assertEqual([bytes(p) for p in first],[bytes(p) for p in changed])
+
+    def test_resource_modes_preserve_individual_climate_and_size_counts(self):
+        counts=[2,3,5,4,6,4]
+        sizes=[1,1,0, 1,1,1, 1,3,1, 2,2,0, 2,3,1, 1,2,1]
+        for variety in range(3):
+            for distribution in range(3):
+                with self.subTest(variety=variety,distribution=distribution):
+                    value=options(worldSize=2048,spacing=0,mapSeed=123456789,
+                        climateMin=counts,climateMax=counts,islandSizeMin=sizes,islandSizeMax=sizes,
+                        islandVariety=variety,islandRotation=1,resourceDistribution=distribution)
+                    rows,ordinary=self.build(value)
+                    self.assertEqual([sum(p.climate==c for p in rows)for c in range(6)],counts)
+                    cells=[0]*18
+                    crops=minerals=cultures=0
+                    for row in rows:
+                        extent=max(row.width,row.height);size=0 if extent<128 else 1 if extent==128 else 2
+                        cells[row.climate*3+size]+=1
+                        crops|=row.cropMask;minerals|=row.mineralMask;cultures|=row.cultures
+                    self.assertEqual(cells,sizes)
+                    self.assertEqual((crops,minerals&0x2f,cultures),(0x1ffff,0x2f,255))
+                    self.assertTrue(any(ordinary))
 
     def test_specialised_regions_cluster_resources_on_compatible_islands(self):
         rows=[self.island(2,2,i,x,crops=0xf009,minerals=1 if i%2 else 4)

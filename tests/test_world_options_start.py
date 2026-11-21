@@ -85,7 +85,9 @@ class Settings(C.Structure):
         'startSeparation', 'resourceDistribution', 'guaranteeBasics', 'mapVisibility', 'enemyVisibility',
         'pirateFrequency', 'pirateStrength', 'merchantFrequency', 'islandVariety',
         'minPolar', 'maxPolar', 'minTemperate', 'maxTemperate', 'minTropical', 'maxTropical',
-        'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation')]
+        'disasterMask', 'disasterFrequency', 'disasterSeverity', 'islandRotation')] + [
+        ('climateMin', C.c_int32 * 6), ('climateMax', C.c_int32 * 6),
+        ('islandSizeMin', C.c_int32 * 18), ('islandSizeMax', C.c_int32 * 18)]
 
 
 class Island(C.Structure):
@@ -103,11 +105,14 @@ def settings(**changes):
     value = Settings()
     value.size = C.sizeof(value)
     value.worldSize = 1024
+    value.islandCount = 24
     value.startClimate = value.startIsland = -1
     value.disasters = 1
     value.mapVisibility = 1
     value.pirateFrequency = value.pirateStrength = value.merchantFrequency = 1
     value.maxPolar = value.maxTemperate = value.maxTropical = 128
+    value.climateMax[:] = [128] * 6
+    value.islandSizeMax[:] = [128] * 18
     value.disasterMask = 31
     value.disasterFrequency = value.disasterSeverity = 341
     for key, item in changes.items():
@@ -125,7 +130,7 @@ class NativeStartingOptionsTests(unittest.TestCase):
         files = staged()
         output = ROOT / '.local/validation' / ('options-start-' + uuid.uuid4().hex)
         output.mkdir(parents=True)
-        for name in ('advanced_settings.h', 'world_ship_reserves.h', 'start_position.inc',
+        for name in ('advanced_settings.h', 'island_quotas.h', 'world_ship_reserves.h', 'start_position.inc',
                      'start_cargo.inc', 'start_options.inc', 'native_faction_options.h', 'fair_starts.inc'):
             (output / name).write_bytes(files[PRIVATE + name])
         header = files[PRIVATE + 'world_backend.h'].decode()

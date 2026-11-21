@@ -22,6 +22,10 @@ static int wsCreateMenu(DialogState*d,HWND w){
  const char*severity[]={"Mild","Normal","Severe"};
  const char*tabs[]={"Map","Players","Start","Presets","Details","Explore","Islands","Disasters"};
  d->creatingPage=-1;d->preferredIsland=d->inspectedIsland=-1;d->pageControlCount=0;
+ d->quotaClimate=0;memset(d->quotaSizeMin,0,sizeof d->quotaSizeMin);
+ for(uint32_t i=0;i<18u;i++)d->quotaSizeMax[i]=128;
+ d->settings.minPolar=d->settings.minTemperate=d->settings.minTropical=0;
+ d->settings.maxPolar=d->settings.maxTemperate=d->settings.maxTropical=128;
  label(d,"Custom world",24,18,220,28);
  label(d,"Choose options below. The map updates automatically.",250,22,394,24);
  for(int i=0;i<8;i++)control(d,"BUTTON",tabs[i],BS_PUSHBUTTON|WS_TABSTOP,24+i*79,58,75,32,ID_TAB_WORLD+i);
@@ -95,20 +99,30 @@ static int wsCreateMenu(DialogState*d,HWND w){
  label(d,"Unexplored hides the preview, land and sea until your ships, settlements or deployed units explore them. Geography revealed shows island locations. Fully explored reveals the whole map.\r\n\r\nStrict line of sight shows moving enemies within 48 tiles. Buildings remain as last seen until you return. Reveal all activity shows current activity in charted areas. Unknown areas stay covered in both modes.\r\n\r\nUnexplored disables preview island selection; preferred climates and balanced starts still work.",24,332,620,248);
 
  d->creatingPage=6;
- label(d,"Island variety and climate limits",24,108,632,24);
- label(d,"Island variety",24,146,620,22);
- fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,172,620,150,ID_ISLAND_VARIETY),variety,3,0);
- control(d,"BUTTON","Randomly rotate uninhabited islands",BS_AUTOCHECKBOX|WS_TABSTOP,24,208,620,28,ID_ISLAND_ROTATION);
- label(d,"Unique templates prefers different islands; Varied shapes reduces repeated coastlines. Rotation uses quarter turns. Native towns, Pirates and Venetians keep their original orientation.",24,248,620,58);
- label(d,"Climate group",24,314,296,22);label(d,"Minimum",348,314,136,22);label(d,"Maximum",508,314,136,22);
- const char*groups[]={"Polar (Polar + Tundra)","Temperate (North + Prairie)","Tropical (Jungle + Steppe)"};
- for(int i=0;i<3;i++){
-  int y=350+i*60;label(d,groups[i],24,y+2,296,26);
-  control(d,"EDIT","0",WS_BORDER|ES_NUMBER|WS_TABSTOP,348,y,136,28,ID_MIN_POLAR+i*2);
-  control(d,"EDIT","128",WS_BORDER|ES_NUMBER|WS_TABSTOP,508,y,136,28,ID_MAX_POLAR+i*2);
+ label(d,"Island variety and individual climate limits",24,108,632,24);
+ label(d,"Island variety",24,140,620,20);
+ fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,24,162,620,150,ID_ISLAND_VARIETY),variety,3,0);
+ control(d,"BUTTON","Randomly rotate uninhabited islands",BS_AUTOCHECKBOX|WS_TABSTOP,24,198,620,28,ID_ISLAND_ROTATION);
+ label(d,"All islands count, including natives, Pirates and Venetians. Every climate is kept for resources. Overall Island size still applies; choose Mixed on Map for unrestricted sizes.",24,232,620,46);
+ label(d,"Climate",24,280,296,20);label(d,"Minimum",348,280,136,20);label(d,"Maximum",508,280,136,20);
+ const char*quotaClimates[]={"Polar","Tundra","Northern","Prairie","Jungle","Steppe"};
+ for(int i=0;i<6;i++){
+  int y=304+i*28;label(d,quotaClimates[i],24,y+2,296,24);
+  control(d,"EDIT","0",WS_BORDER|ES_NUMBER|WS_TABSTOP,348,y,136,25,ID_CLIMATE_MIN+i);
+  control(d,"EDIT","128",WS_BORDER|ES_NUMBER|WS_TABSTOP,508,y,136,25,ID_CLIMATE_MAX+i);
  }
- control(d,"STATIC","",SS_LEFT,24,518,620,24,ID_CLIMATE_SUMMARY);
- label(d,"Counts include natives, Pirates and Venetians. Leave 0 / 128 for automatic limits. Each group must allow at least two islands to keep all climates and essential resources; cultures may require more.",24,556,620,92);
+ control(d,"STATIC","",SS_LEFT,24,476,620,30,ID_CLIMATE_SUMMARY);
+ label(d,"Size limits for",24,514,176,22);
+ fillCombo(control(d,"COMBOBOX","",CBS_DROPDOWNLIST|WS_TABSTOP|WS_VSCROLL,200,510,444,180,ID_SIZE_CLIMATE),quotaClimates,6,0);
+ const char*quotaSizes[]={"Small","Medium","Large"};
+ label(d,"Minimum",24,572,120,22);label(d,"Maximum",24,604,120,22);
+ for(int i=0;i<3;i++){
+  int x=156+i*176;label(d,quotaSizes[i],x,544,136,22);
+  control(d,"EDIT","0",WS_BORDER|ES_NUMBER|WS_TABSTOP,x,568,136,27,ID_SIZE_MIN+i);
+  control(d,"EDIT","128",WS_BORDER|ES_NUMBER|WS_TABSTOP,x,600,136,27,ID_SIZE_MAX+i);
+ }
+ control(d,"STATIC","",SS_LEFT,24,636,410,30,ID_LEGACY_LIMITS);
+ control(d,"BUTTON","Clear old paired limits",BS_PUSHBUTTON|WS_TABSTOP,450,636,194,30,ID_CLEAR_LEGACY_LIMITS);
 
  d->creatingPage=7;
  label(d,"Disasters",24,108,632,24);
@@ -136,7 +150,7 @@ static int wsCreateMenu(DialogState*d,HWND w){
  label(d,"Same seed + same world options reproduce the preview.",896,726,200,38);
  label(d,"Status",24,670,632,20);control(d,"STATIC",developmentConfigured&&prepareBackend?configuredStatus:noBackend,SS_LEFT,24,696,632,64,ID_STATUS);
  control(d,"BUTTON","Back",BS_PUSHBUTTON|WS_TABSTOP,388,768,120,32,ID_BACK);control(d,"BUTTON","Start custom world",BS_DEFPUSHBUTTON|WS_TABSTOP,528,768,120,32,ID_START);
- wsMenuPutSeed(d,freshPreviewSeed(0));wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuDisasterControls(d);wsMenuStartHint(d);wsMenuIslandInfo(d);wsPresetRefresh(d,NULL);wsMenuPage(d,0);
+ wsMenuShowSizeLimits(d);wsMenuLegacyLimits(d);wsMenuPutSeed(d,freshPreviewSeed(0));wsMenuCargoControls(d);wsMenuFairControls(d);wsMenuActivityControls(d);wsMenuDisasterControls(d);wsMenuStartHint(d);wsMenuIslandInfo(d);wsPresetRefresh(d,NULL);wsMenuPage(d,0);
  EnableWindow(GetDlgItem(w,ID_START),FALSE);d->creating=0;PostMessageA(w,WS_PREVIEW_MESSAGE,0,0);
  SetFocus(GetDlgItem(w,ID_WORLD_SIZE));return 1;
 }
