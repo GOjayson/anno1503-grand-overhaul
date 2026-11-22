@@ -92,6 +92,13 @@ separate tool installation are needed. Start a new endless world for Food 0.6;
 vanilla and Food 0.5 saves are not migrated. Food balance and Huge worlds
 remain experimental. See the [installer guide](docs/INSTALLER.md).
 
+## Culture Buildings prototype
+
+The experimental Culture Buildings source build adds ten architectural styles
+to the Add-On Ornaments menu, with working residences and sprite-based icons.
+It builds an independent test copy with Food Overhaul on or off. See the
+[Culture Buildings guide](docs/CULTURE_BUILDINGS.md).
+
 ## Restore or change features
 
 Close Anno, select your **Modded copy folder** in setup, and click

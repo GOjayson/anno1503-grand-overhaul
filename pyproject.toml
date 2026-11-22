@@ -10,6 +10,9 @@ requires-python = ">=3.10"
 authors = [{name = "GOjayson"}]
 dependencies = []
 
+[project.optional-dependencies]
+culture-buildings = ["Pillow>=10.1"]
+
 [project.scripts]
 anno1503-overhaul = "anno1503_overhaul.__main__:main"
 

@@ -10,6 +10,8 @@ This source update is separate from the published installer. The preceding
 game checks remain bound to their original builds; see the [environment
 options guide](WORLD_ENVIRONMENT_OPTIONS.md).
 
+- Add [Culture Buildings](CULTURE_BUILDINGS.md) to the source build. The separate single-player builder adds ten styles, 20 residence options, 137 decorations and locally generated icons. It has independent Food On and Food Off profiles.
+
 ## 0.10.0-beta.1
 
 - Include optional Food 0.6 and Bug Fixes in the standalone Windows installer, alongside World Settings. All three can be selected together.
