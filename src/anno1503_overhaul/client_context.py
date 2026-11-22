@@ -340,19 +340,22 @@ def _menu_identity(observation: dict, pid: int, not_before: int):
 
 
 def start_game(uri: str, source_game: Path, copy_game: Path, source_probe, *, copy_probe,
-               event=None, progress=None, timeout: float = 300):
+               event=None, progress=None, timeout: float = 300, copy_timeout: float | None = None):
     """Normal Ubisoft authentication, then one identical-copy context relay.
 
     ``source_probe`` must be the existing read-only NativeReadiness observer
     configured for the exact registered source profile. It must positively
     identify the visible ordinary main menu. A world, unknown process or
     unverified window is never closed. Existing games are never adopted.
+    A separate copy timeout gives measured startup stages independent deadlines.
     """
     import re
     if not isinstance(uri, str) or not re.fullmatch(r'uplay://launch/[0-9]+/0', uri):
         raise ContextError('An exact registered Ubisoft launch route is required.')
     if type(timeout) not in (int, float) or not 5 <= timeout <= 600:
         raise ContextError('The normal-client startup timeout is invalid.')
+    if copy_timeout is not None and (type(copy_timeout) not in (int, float) or not 5 <= copy_timeout <= 600):
+        raise ContextError('The copied-game startup timeout is invalid.')
     source, target = validate_roots(source_game, copy_game)
     for probe, expected in ((source_probe, source), (copy_probe, target)):
         inputs = getattr(probe, 'inputs', {})
@@ -408,6 +411,8 @@ def start_game(uri: str, source_game: Path, copy_game: Path, source_probe, *, co
         # copied SDK initializes. Closing it first was observed to fail normal
         # platform initialization. The guarded allowance names only this menu.
         child = launch_copy(captured, target, source_identity=chosen, source_probe=bootstrap_probe)
+        if copy_timeout is not None:
+            deadline = time.monotonic() + copy_timeout
         notify('feature_copy_initialization_requested', dict(pid=child.pid, normal_source_menu_still_alive=True))
         message('Waiting for your selected-feature copy to finish normal startup…')
         copied_identity, copied_since = None, None
@@ -439,7 +444,9 @@ def start_game(uri: str, source_game: Path, copy_game: Path, source_probe, *, co
         _request_menu_close(pid, hwnd)
         notify('normal_source_menu_close_requested', dict(pid=pid, process_creation_time=created))
         message('Finishing the normal-client handoff…')
-        close_deadline = min(deadline, time.monotonic()+30)
+        close_deadline = time.monotonic()+30
+        if copy_timeout is None:
+            close_deadline = min(deadline, close_deadline)
         single_since = None
         while time.monotonic() < close_deadline:
             ids = source_probe.processes()

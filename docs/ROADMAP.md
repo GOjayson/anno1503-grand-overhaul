@@ -86,6 +86,9 @@ all remaining unsupported profiles explicitly.
 
 ## Priority research: local-host multiplayer
 
+The [multiplayer research notes](MULTIPLAYER.md) cover the public preflight,
+private host and VM tests, and the remaining integration work.
+
 Begin feasibility work alongside the existing-feature workstreams so that
 future module interfaces account for deterministic state and synchronization.
 

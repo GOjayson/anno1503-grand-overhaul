@@ -15,6 +15,7 @@ sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT/'src'), str(ROOT/'.local/toolchain/world-options-validation')]
 from anno1503_overhaul import world_options_factions as f
+from anno1503_overhaul import world_settings_multiplayer_faction_activity as multiplayer_activity
 from anno1503_overhaul.world_runtime_build import RuntimeBuildError
 from anno1503_overhaul.world_native import derive_ai_candidate
 
@@ -231,7 +232,9 @@ class NativeFactionGateTests(unittest.TestCase):
                             text=string(rcx);at=(text.rfind if kind=='strrchr' else text.find)(bytes([rdx&255]));returned(machine,rcx+at if at>=0 else 0)
                         elif kind=='strncmp':
                             left,right=bytes(machine.mem_read(rcx,r8)).split(b'\0')[0],bytes(machine.mem_read(rdx,r8)).split(b'\0')[0];returned(machine,(left>right)-(left<right))
-                        else:returned(machine,int(string(rcx)))
+                        else:
+                            number = re.match(rb'[ \t]*[+-]?\d+', string(rcx))
+                            returned(machine, int(number[0]) if number else 0)
                 for target in [base+printf,base+memset,base+probe,*[ext+x for x in (0x100,0x120,0x140,0x160,0x180,0x1a0,0x200,0x220)],*imports]:
                     u.hook_add(UC_HOOK_CODE,primitive,begin=target,end=target)
                 stop=ext+0xf000
@@ -252,7 +255,8 @@ class NativeFactionGateTests(unittest.TestCase):
                     self.assertEqual(call(save,ctrl,io,out),1)
                     tokens=b''.join(output_chunks).split(b'\0');token=('SPEZFLAG='+str(flags)).encode()
                     self.assertIn(token,tokens)
-                    input_text[0]=token+b'\0';put(ctrl+0xab8,'<I',0)
+                    input_text[0]=getattr(self, 'stock_comp_options', {}).get(typ, b'')+token+b'\0'
+                    put(ctrl+0xab8,'<I',0)
                     self.assertEqual(call(load,ctrl,io,len(input_text[0])),1)
                     self.assertEqual(struct.unpack('<I',u.mem_read(ctrl+0xab8,4))[0],flags)
 
@@ -289,6 +293,100 @@ class NativeFactionGateTests(unittest.TestCase):
                     if reference is not None:self.assertEqual(actual,reference,(profile,name,row['name'],hex(ins.address)))
                     else:
                         self.assertEqual(struct.unpack_from('<Q',actual,128)[0],stack[0])
+
+
+class MultiplayerFactionFrequencyTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        try:
+            import capstone
+            import pefile
+            from unicorn import Uc, UC_ARCH_X86, UC_MODE_64, x86_const
+        except ImportError as exc:
+            raise unittest.SkipTest('Local native instruction tools are unavailable.') from exc
+        stock = os.environ.get('ANNO_TEST_MULTIPLAYER_STOCK')
+        if not stock:
+            raise unittest.SkipTest('Set ANNO_TEST_MULTIPLAYER_STOCK to the reviewed independent game copy.')
+        from anno1503_overhaul.world_settings_multiplayer_ai import _subfields
+        from anno1503_overhaul.world_settings_multiplayer_scene import SCENARIO, _source_chunks
+
+        root = Path(stock)
+        cls.stock_comp_options = {}
+        for tag, body in _source_chunks((root / SCENARIO).read_bytes()):
+            if tag != b'SPIELER' or struct.unpack_from('<I', body, 4)[0] not in (5, 6):
+                continue
+            for kind, payload in _subfields(body[8:]):
+                if kind == b'COMP':
+                    player_type, = struct.unpack_from('<I', payload)
+                    if not payload.endswith(b'SUSPEND=0\0'):
+                        raise AssertionError('The licensed special faction COMP body changed.')
+                    cls.stock_comp_options[player_type] = payload[8:]
+        if cls.stock_comp_options.keys() != {15, 16}:
+            raise AssertionError('Both tested licensed faction controllers are required.')
+        cls.PE, cls.Uc, cls.X, cls.capstone = pefile.PE, Uc, x86_const, capstone
+        cls.arch, cls.mode = UC_ARCH_X86, UC_MODE_64
+        cls.mapped_images = {}
+        cls.variants = []
+        for name in multiplayer_activity.MULTIPLAYER_FREQUENCY_AI_SHA256:
+            raw = (root / name).read_bytes()
+            output, proof = multiplayer_activity.derive_multiplayer_faction_ai(name, raw)
+            cls.variants.append(('multiplayer-stock', name, raw, output, proof))
+
+    fixture = NativeFactionGateTests.fixture
+    test_comp_save_and_load = NativeFactionGateTests.test_actual_native_comp_serialization_and_parser_preserve_full_special_policy_words
+    test_gate_unwind = NativeFactionGateTests.test_windows_unwind_at_every_gate_instruction_matches_original_native_context
+
+    def test_derives_only_frequency_and_flag_preservation_without_changing_exports(self):
+        for _, name, raw, output, proof in self.variants:
+            self.assertEqual((output, proof), multiplayer_activity.derive_multiplayer_faction_ai(name, raw))
+            self.assertEqual(proof['output_sha256'], multiplayer_activity.MULTIPLAYER_FREQUENCY_AI_SHA256[name])
+            before, after = self.PE(data=raw), self.PE(data=output)
+            spec = f.SPEC[name]
+            self.assertEqual({edit['rva'] for edit in proof['edits']},
+                             {spec['threshold'], spec['merchant'], spec['setter']})
+            self.assertEqual(before.get_data(spec['spawn'], 5), after.get_data(spec['spawn'], 5))
+            self.assertEqual(before.DIRECTORY_ENTRY_EXPORT.struct.dump(), after.DIRECTORY_ENTRY_EXPORT.struct.dump())
+            with self.assertRaises(RuntimeBuildError):
+                multiplayer_activity.derive_multiplayer_faction_ai(name, output)
+
+    def test_installed_pirate_and_merchant_gate_jumps_change_the_native_limits(self):
+        for _, name, raw, output, proof in self.variants:
+            for mode, expected_multiplier in enumerate((60000, 30000, 15000)):
+                for base in (0x180000000, 0x280000000):
+                    u, put, ctrl, rsp, _, _, spec, _ = self.fixture(name, output, proof, base)
+                    put(ctrl + 0xab8, '<I', f.PIRATE_TAG | (mode << 8) | (1 << 10) | 0x10)
+                    u.emu_start(base + spec['threshold'], base + spec['threshold'] + 7, count=100)
+                    self.assertEqual(u.reg_read(self.X.UC_X86_REG_RAX) & 0xffffffff, 6 * expected_multiplier)
+                    self.assertEqual(u.reg_read(self.X.UC_X86_REG_RSP), rsp)
+                    put(ctrl, '<Q', base + spec['merchant_vtable'])
+                    put(ctrl + 0xa4c, '<I', 16)
+                    put(ctrl + 0xab8, '<I', f.MERCHANT_TAG | (mode << 8) | 0x10)
+                    u.reg_write(self.X.UC_X86_REG_R14, 3)
+                    for fleet_count in range(8):
+                        put(ctrl + 0xc88, '<I', fleet_count)
+                        u.emu_start(base + spec['merchant'], base + spec['merchant'] + 7, count=100)
+                        flags = u.reg_read(self.X.UC_X86_REG_EFLAGS)
+                        self.assertEqual(bool((flags >> 7 & 1) == (flags >> 11 & 1)),
+                                         fleet_count >= (2, 3, 6)[mode])
+                    self.assertEqual(u.reg_read(self.X.UC_X86_REG_R14), 3)
+
+    def test_stock_types_keep_unmodified_setter_and_special_low_flags_are_preserved(self):
+        for _, name, _, output, proof in self.variants:
+            for typ, previous, incoming in itertools.product((12, 15, 16), (0, 0x575406a5, 0x575502a6),
+                                                            (0, 0x89, 0x57540455, 0x57550037)):
+                u, put, ctrl, rsp, _, base, spec, _ = self.fixture(name, output, proof)
+                vtable = (0x84fc8 if 'Classic' in name else 0x88128) if typ == 12 else (
+                    spec['pirate_vtable'] if typ == 15 else spec['merchant_vtable'])
+                put(ctrl, '<Q', base + vtable)
+                put(ctrl + 0xa4c, '<I', typ)
+                put(ctrl + 0xab8, '<I', previous)
+                u.reg_write(self.X.UC_X86_REG_RAX, incoming)
+                u.emu_start(base + spec['setter'], base + spec['setter'] + 6, count=100)
+                tag = {12: 0, 15: f.PIRATE_TAG, 16: f.MERCHANT_TAG}[typ]
+                expected = (previous & 0xffffff00 | incoming
+                            if tag and previous & 0xffff0000 == tag and incoming <= 0xff else incoming)
+                self.assertEqual(struct.unpack('<I', u.mem_read(ctrl + 0xab8, 4))[0], expected)
+                self.assertEqual(u.reg_read(self.X.UC_X86_REG_RSP), rsp)
 
 
 SOURCE = r'''

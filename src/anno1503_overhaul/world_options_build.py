@@ -208,11 +208,72 @@ def build_public_options_runtime(input_root, *, output, require_reviewed=True):
     return report
 
 
+def build_multiplayer_options_runtime(input_root, *, output, visibility_pins=None,
+                                      allow_huge_planning=False, huge_engine_frame=None, allow_stock_ai=False,
+                                      disaster_engine_world=None, allow_populated_factions=False, allow_populated_cultures=False,
+                                      allow_peaceful_ai=False, allow_faction_activity=False):
+    """Compile the opt-in native World Settings chooser for standalone multiplayer."""
+    if type(allow_huge_planning) is not bool:
+        raise old.RuntimeBuildError("Choose an explicit offline Huge world planning policy.")
+    if type(allow_stock_ai) is not bool:
+        raise old.RuntimeBuildError("Choose an explicit stock multiplayer AI policy.")
+    if type(allow_peaceful_ai) is not bool or (allow_peaceful_ai and not (allow_stock_ai and visibility_pins)):
+        raise old.RuntimeBuildError("Peaceful multiplayer AI requires stock opponents and the exact optional visibility runtime.")
+    if type(allow_populated_cultures) is not bool:
+        raise old.RuntimeBuildError("Choose an explicit multiplayer culture policy.")
+    if type(allow_populated_factions) is not bool:
+        raise old.RuntimeBuildError("Choose an explicit multiplayer faction policy.")
+    if type(allow_faction_activity) is not bool or (allow_faction_activity and not allow_populated_factions):
+        raise old.RuntimeBuildError("Multiplayer faction frequency requires populated native faction islands.")
+    if huge_engine_frame is not None and (not allow_huge_planning or not visibility_pins
+                                          or not visibility_pins.get("scene_sha256")):
+        raise old.RuntimeBuildError("Huge multiplayer requires the reviewed chooser and all native visibility pins.")
+    if disaster_engine_world is not None and not (visibility_pins and visibility_pins.get("world_sha256")):
+        raise old.RuntimeBuildError("Multiplayer disaster options require the exact derived World image.")
+    if generator_id() != PINNED_GENERATOR:
+        raise old.RuntimeBuildError('The base World Settings generator differs from its reviewed source.')
+    inputs = _public_runtime_inputs(checked_path(input_root))
+    verified = inputs['verified']
+    return _build_options_runtime('world-only', verified.get('native_host_root', verified['source_game']),
+                                  output=output, _public_inputs=inputs, _multiplayer_preview=True,
+                                  _multiplayer_visibility_pins=visibility_pins,
+                                  _multiplayer_huge_planning=allow_huge_planning,
+                                  _multiplayer_huge_engine_frame=huge_engine_frame,
+                                  _multiplayer_stock_ai=allow_stock_ai,
+                                  _multiplayer_disaster_world=disaster_engine_world,
+                                  _multiplayer_populated_factions=allow_populated_factions,
+                                  _multiplayer_populated_cultures=allow_populated_cultures,
+                                  _multiplayer_peaceful_ai=allow_peaceful_ai,
+                                  _multiplayer_faction_activity=allow_faction_activity)
+
+
 def _build_options_runtime(profile, game, tools=None, *, output=None, publish=False, _public_inputs=None,
                            _food06_profile=False, _food06_asset_source=None, _food06_asset_root=None,
-                           city_statistics_guard=False):
+                           city_statistics_guard=False,
+                           _multiplayer_preview=False, _multiplayer_visibility_pins=None,
+                           _multiplayer_huge_planning=False, _multiplayer_huge_engine_frame=None,
+                           _multiplayer_stock_ai=False, _multiplayer_disaster_world=None,
+                           _multiplayer_populated_factions=False, _multiplayer_populated_cultures=False,
+                           _multiplayer_peaceful_ai=False, _multiplayer_faction_activity=False):
     if type(_food06_profile) is not bool or type(city_statistics_guard) is not bool:
         raise old.RuntimeBuildError('Choose an explicit native runtime profile.')
+    if _multiplayer_visibility_pins is not None and not _multiplayer_preview:
+        raise old.RuntimeBuildError("Select the optional multiplayer visibility build explicitly.")
+    if _multiplayer_huge_planning and not _multiplayer_preview:
+        raise old.RuntimeBuildError("Offline Huge planning requires the multiplayer preview build.")
+    if _multiplayer_stock_ai and not _multiplayer_preview:
+        raise old.RuntimeBuildError("Stock multiplayer AI requires the multiplayer preview build.")
+    if _multiplayer_populated_cultures and not _multiplayer_preview:
+        raise old.RuntimeBuildError("Populated cultures require the multiplayer preview build.")
+    if _multiplayer_populated_factions and not _multiplayer_preview:
+        raise old.RuntimeBuildError("Populated factions require the multiplayer preview build.")
+    if _multiplayer_faction_activity and not (_multiplayer_preview and _multiplayer_populated_factions):
+        raise old.RuntimeBuildError("Multiplayer faction frequency requires populated native faction islands.")
+    if _multiplayer_huge_engine_frame is not None and not (
+            _multiplayer_preview and _multiplayer_huge_planning and _multiplayer_visibility_pins):
+        raise old.RuntimeBuildError("Select a separate multiplayer Huge runtime with its exact Frame.")
+    if _multiplayer_preview and (_public_inputs is None or profile != 'world-only' or publish or _food06_profile):
+        raise old.RuntimeBuildError('The multiplayer chooser requires its own uninstalled World-only build.')
     if _food06_profile:
         from .food_world_runtime import PROFILE, derive_sources as food06_sources, runtime_hash
         if profile != PROFILE or publish:
@@ -262,6 +323,63 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
                 activity_inputs=_public_inputs['activity_inputs'])
         proof['public_beta_inputs'] = verified['manifest']
         zig = checked_path(verified['compiler_path'])
+    required_exports = REQUIRED_EXPORTS
+    if _multiplayer_preview:
+        from .world_settings_multiplayer_native import (
+            BUILD_EXPORT, BUILD_STARTS_EXPORT, PREVIEW_EXPORT, PREVIEW_PRESETS_EXPORT, PREVIEW_STARTS_EXPORT,
+            CULTURE_CAPACITY_EXPORT, FACTION_FREQUENCY_EXPORT, FACTION_MASK_EXPORT, STOCK_AI_CAPACITY_EXPORT,
+            apply_multiplayer_preview,
+        )
+        apply_multiplayer_preview(files, allow_huge_planning=_multiplayer_huge_planning,
+                                  allow_huge_matches=_multiplayer_huge_engine_frame is not None,
+                                  allow_stock_ai=_multiplayer_stock_ai,
+                                  allow_disasters=_multiplayer_disaster_world is not None,
+                                  allow_populated_factions=_multiplayer_populated_factions,
+                                  allow_populated_cultures=_multiplayer_populated_cultures,
+                                  allow_peaceful_ai=_multiplayer_peaceful_ai,
+                                  allow_faction_activity=_multiplayer_faction_activity)
+        required_exports = required_exports | {
+            BUILD_EXPORT, BUILD_STARTS_EXPORT, PREVIEW_EXPORT, PREVIEW_PRESETS_EXPORT, PREVIEW_STARTS_EXPORT,
+        }
+        if _multiplayer_stock_ai:
+            required_exports |= {STOCK_AI_CAPACITY_EXPORT}
+        if _multiplayer_populated_factions:
+            required_exports |= {FACTION_MASK_EXPORT}
+        if _multiplayer_faction_activity:
+            required_exports |= {FACTION_FREQUENCY_EXPORT}
+        if _multiplayer_populated_cultures:
+            required_exports |= {CULTURE_CAPACITY_EXPORT}
+        if _multiplayer_visibility_pins is not None:
+            from .world_settings_multiplayer_visibility import (
+                DISABLE_VISIBILITY_EXPORT, PEACEFUL_AI_EXPORT, VISIBILITY_ACTIVITY_EXPORTS, VISIBILITY_EXPORT,
+                VISIBILITY_RELOAD_EXPORT, VISIBILITY_VIEW_EXPORT,
+                apply_multiplayer_visibility,
+            )
+            apply_multiplayer_visibility(files, peaceful_ai=_multiplayer_peaceful_ai, **_multiplayer_visibility_pins)
+            required_exports |= {
+                VISIBILITY_EXPORT, DISABLE_VISIBILITY_EXPORT, VISIBILITY_VIEW_EXPORT, VISIBILITY_RELOAD_EXPORT,
+                *VISIBILITY_ACTIVITY_EXPORTS,
+            }
+            if _multiplayer_peaceful_ai:
+                required_exports.add(PEACEFUL_AI_EXPORT)
+            proof["multiplayer_visibility_module_pins"] = _multiplayer_visibility_pins
+        if _multiplayer_disaster_world is not None:
+            from .world_settings_multiplayer_disasters import CLEAR_DISASTERS, PREPARE_DISASTERS, apply_multiplayer_disasters
+
+            world = checked_path(_multiplayer_disaster_world).read_bytes()
+            proof["multiplayer_disasters"] = apply_multiplayer_disasters(
+                files, world, _multiplayer_visibility_pins["world_sha256"],
+            )
+            required_exports |= {CLEAR_DISASTERS, PREPARE_DISASTERS}
+        if _multiplayer_huge_engine_frame is not None:
+            from .world_settings_multiplayer_huge import CLEAR_EXPORT, PREPARE_EXPORT, apply_huge_engine, prove_huge_frame
+
+            frame = checked_path(_multiplayer_huge_engine_frame).read_bytes()
+            proof["multiplayer_huge_engine"] = prove_huge_frame(
+                frame, _multiplayer_visibility_pins["frame_sha256"], files[old.ENGINE_PLAN],
+            )
+            apply_huge_engine(files)
+            required_exports |= {CLEAR_EXPORT, PREPARE_EXPORT}
     compiler_options = ({'creationflags':subprocess.CREATE_NO_WINDOW}
                         if _public_inputs is not None and os.name == 'nt' else {})
     version = subprocess.check_output([str(zig), 'version'], text=True, **compiler_options).strip()
@@ -289,6 +407,8 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
                or name.startswith(PRIVATE) and name.endswith(('.h', '.inc'))
                or name in (old.BLOBS, old.AI_LOADER, old.ENGINE_HEADER,
                            'developer/source/engine_resume/ai_loader/visibility_hooks.inc',
+                           'developer/source/engine_resume/ai_loader/visibility_multiplayer_install.inc',
+                           'developer/source/engine_resume/ai_loader/huge_multiplayer_install.inc',
                            'developer/source/engine_resume/ai_loader/disaster_hooks.inc',
                            'developer/source/engine_resume/ai_loader/visibility_native_pins.h')
                or name.startswith('developer/source/') and name.endswith(('.c', '.h', '.inc'))
@@ -303,6 +423,10 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
                                    for n, value in files.items() if original.get(n) != value],
                   toolchain_version=version, game_executed=False, installed=False,
                   game_files_modified=False, output_root=str(output))
+    if _multiplayer_preview:
+        report['runtime_variant'] = 'world-settings-multiplayer-preview'
+    if _multiplayer_huge_planning:
+        report['multiplayer_huge_planning'] = True
     (output / 'SOURCE_PROOF.json').write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     working = stage / 'developer/source/runtime_dev3'
     build = output / 'compiler'
@@ -330,7 +454,7 @@ def _build_options_runtime(profile, game, tools=None, *, output=None, publish=Fa
     module = importlib.util.spec_from_file_location('_options_exports', repo / 'legacy/world_settings/activation/pe_exports.py')
     parser = importlib.util.module_from_spec(module)
     module.loader.exec_module(parser)
-    exports = parser.exports(normalized, REQUIRED_EXPORTS)
+    exports = parser.exports(normalized, required_exports)
     report.update(built=True, runtime_path=str(runtime), runtime_sha256=_sha(normalized),
                   normalized_metadata=metadata, exports=exports,
                   matches_reviewed_runtime=_sha(normalized) == (expected_runtime if _food06_profile

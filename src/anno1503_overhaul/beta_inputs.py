@@ -60,12 +60,12 @@ def _pairs(values):
     return result
 
 
-def _source_module(kind):
+def _source_module(kind, root=ROOT):
     """Import only a named, provenance-checked tracked data transformer."""
     relative = _ASSET_POLICIES[kind]
-    provenance = json.loads((ROOT / 'provenance/legacy_import.json').read_bytes())
+    provenance = json.loads(safe_child(root, 'provenance/legacy_import.json', exists=True).read_bytes())
     records = {record['path']: record['imported_sha256'] for record in provenance['source_files']}
-    path = checked_path(ROOT / relative)
+    path = safe_child(root, relative, exists=True)
     if relative not in records or file_sha(path) != records[relative]:
         raise BetaInputError('A tracked island construction recipe changed: ' + relative)
     spec = importlib.util.spec_from_file_location('_anno_beta_' + kind + '_' + uuid.uuid4().hex, path)
@@ -76,10 +76,11 @@ def _source_module(kind):
     return module
 
 
-def derive_beta_assets(source_game):
+def derive_beta_assets(source_game, *, recipe_root=None):
     """Return all sixteen exact assets in memory; never write into the game."""
     game = checked_path(Path(source_game))
-    pirate, venetian, world = (_source_module(kind) for kind in ('pirate', 'venetian', 'world'))
+    recipe_root = ROOT if recipe_root is None else checked_path(Path(recipe_root))
+    pirate, venetian, world = (_source_module(kind, recipe_root) for kind in ('pirate', 'venetian', 'world'))
     result, inputs = {}, {}
     for record in pirate.RECORDS:
         source = safe_child(game, record['source'], exists=True).read_bytes()

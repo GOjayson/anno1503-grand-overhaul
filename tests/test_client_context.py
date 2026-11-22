@@ -210,6 +210,19 @@ class ClientContextTests(unittest.TestCase):
             context.start_game('uplay://launch/123/0', source, target, probe, copy_probe=probe.copy_probe, timeout=10)
         for action in (route, capture, close_menu, launch): action.assert_not_called()
 
+    def test_bridge_can_give_the_copy_a_fresh_startup_budget(self):
+        source, target, probe, _, route, _, close_menu, launch = self._bridge_fixture()
+        def slow_normal_launch(_):
+            probe.started = True
+            context.time.sleep(2.7)
+        route.side_effect = slow_normal_launch
+        result = context.start_game('uplay://launch/123/0', source, target, probe,
+                                    copy_probe=probe.copy_probe, timeout=5, copy_timeout=5)
+        self.assertEqual(result.pid, 8)
+        self.assertGreater(context.time.monotonic(), 5)
+        close_menu.assert_called_once_with(7, 12)
+        launch.assert_called_once()
+
     def test_bridge_refuses_unsafe_process_without_close_or_copy(self):
         source, target, probe, _, _, capture, close_menu, launch = self._bridge_fixture(state='unsafe')
         with self.assertRaises(context.ContextError):

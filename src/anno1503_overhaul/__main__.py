@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import sys
 
+from . import lan_preflight
 from .features import default_catalog
 from .profile import ProfileError,default_profile,load_profile,save_profile,selected_features
 
@@ -11,6 +12,8 @@ from .profile import ProfileError,default_profile,load_profile,save_profile,sele
 def main(argv=None):
     ap=argparse.ArgumentParser(description=__doc__)
     sub=ap.add_subparsers(dest='command',required=True)
+    lan=sub.add_parser('lan',help='Run the experimental two-player LAN preflight')
+    lan_preflight.add_commands(lan)
     sub.add_parser('features',help='Show current feature availability and dependencies')
     new=sub.add_parser('new-profile',help='Save the default feature selection')
     new.add_argument('path',type=Path);new.add_argument('--name',default='Default')
@@ -42,6 +45,8 @@ def main(argv=None):
         if args.command=='features':
             result=dict(features=[f.to_dict()for f in default_catalog().features],
                         scope='Choose Food, World Settings and Bug Fixes on a managed copy.')
+        elif args.command=='lan':
+            result=lan_preflight.run_command(args)
         elif args.command=='new-profile':
             saved=save_profile(args.path,default_profile(name=args.name))
             result=dict(saved=str(saved),installed=False)
@@ -83,7 +88,7 @@ def main(argv=None):
             else:
                 process=installer.launch_installed_game(args.copy,progress=progress)
                 result=dict(launcher_started=True,pid=process.pid)
-        print(json.dumps(result,indent=2,ensure_ascii=False));return 0
+        print(json.dumps(result,indent=2,ensure_ascii=args.command=='lan'));return 0
     except (ValueError,RuntimeError,OSError)as exc:
         print('ERROR: '+str(exc),file=sys.stderr);return 2
 
